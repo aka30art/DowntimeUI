@@ -311,6 +311,22 @@ details[open]>summary .disclosure-chevron{transform:rotate(180deg)}
  .nav-items .nav{font-size:11px;min-height:40px}
  .day-setup-label,.day-setup>summary strong{font-size:12px}
 }
+/* Mobile compact controls: reduce header interruption; keep controls in same hierarchy */
+.compact-operating-header{display:flex;flex-direction:column;gap:7px}
+.compact-operating-header h1{margin-bottom:4px}
+.compact-status{font-size:11px;font-weight:800;color:var(--muted);margin-top:4px}
+.compact-sync{font-size:10px;margin-top:3px}
+.compact-tools{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-top:8px}
+.compact-tools button{min-width:0;width:100%;padding:9px 4px;font-size:11px;white-space:nowrap}
+.compact-duty{margin-top:8px!important;padding:7px 11px!important;min-height:0!important;font-size:11px}
+.compact-week{margin-top:8px!important;gap:6px}
+.compact-week button{min-height:42px;padding:8px 11px}
+.compact-week .weeklabel{min-height:42px;padding:8px 5px;font-size:12px}
+.weekly-analytics .weekly-collapse>summary{min-height:32px}
+.weekly-analytics-subsection{margin-top:13px;padding-top:13px;border-top:1px solid var(--line)}
+.weekly-analytics-subsection h3{margin:0 0 10px;font-size:14px;color:var(--text)}
+.weekly-analytics .weekly-collapse-content{padding-top:12px}
+@media(max-width:600px){.compact-tools button{font-size:10px;padding:8px 2px}.compact-week .weeklabel{font-size:11px}.compact-duty{font-size:10px!important}}
 </style><style>
 /* Preview-only refinements: preserve production design, improve responsive fit */
 .previewNotice{position:sticky;top:0;z-index:9999;display:flex;gap:12px;align-items:center;justify-content:center;padding:9px 12px;background:#263747;border-bottom:1px solid #526b80;color:#eaf2f7;font-size:12px;text-align:center}
@@ -338,8 +354,9 @@ details[open]>summary .disclosure-chevron{transform:rotate(180deg)}
 </div></details>
 <div class="sidefoot">75-minute daily break excluded from calculations.</div></aside>
 <main>
-<div class="top"><div><h1>Plant Downtime Tracker</h1><div class="muted" id="subtitle">Weekly recording sheet · Monday–Saturday</div><div id="cloudStatus" class="muted" style="font-size:11px;margin-top:4px">Cloud status · sign in required</div><div id="lastSync" class="muted" style="font-size:10px;margin-top:3px">Last successful refresh · —</div><button id="manualRefreshBtn" type="button" style="margin-top:6px;padding:7px 10px;font-size:11px">↻ REFRESH DATA</button><button id="plantOperatorToggle" type="button" style="display:none;margin-top:6px;padding:8px 12px;font-weight:900;border-radius:9px">PLANT ON · GREEN</button><button id="fullscreenBtn" type="button" style="margin-top:6px;padding:7px 10px;font-size:11px" aria-pressed="false" title="Toggle full screen">⛶ FULL SCREEN</button><div id="onDuty" class="pill" style="display:inline-block;margin-top:6px;background:#403514;color:#ffd21b;font-weight:900;letter-spacing:.4px">OPERATOR ON DUTY · NOT ASSIGNED</div></div>
-<div class="weekbar"><button id="prevWeek" aria-label="Previous week">‹</button><div class="weeklabel" id="weekLabel"></div><button id="nextWeek" aria-label="Next week">›</button><button class="primary" id="exportBtn">⇩ Export Weekly PDF</button></div></div>
+<div class="top compact-operating-header"><div><h1>Plant Downtime Tracker</h1><div id="cloudStatus" class="compact-status">● CLOUD STATUS · SIGN IN REQUIRED</div><div id="lastSync" class="muted compact-sync">Last refresh · —</div>
+<div class="compact-tools"><button id="manualRefreshBtn" type="button">↻ REFRESH</button><button id="fullscreenBtn" type="button" aria-pressed="false" title="Toggle full screen">⛶ FULL SCREEN</button><button class="primary" id="exportBtn">⇩ PDF</button></div><button id="plantOperatorToggle" type="button" style="display:none;margin-top:6px;padding:8px 12px;font-weight:900;border-radius:9px">PLANT ON · GREEN</button><div id="onDuty" class="pill compact-duty" style="display:inline-block;background:#403514;color:#ffd21b;font-weight:900;letter-spacing:.4px">● OPERATOR ON DUTY · NOT ASSIGNED</div></div>
+<div class="weekbar compact-week"><button id="prevWeek" aria-label="Previous week">‹</button><div class="weeklabel" id="weekLabel"></div><button id="nextWeek" aria-label="Next week">›</button></div></div>
 <section id="weekly" class="view active">
 <div class="weeklyKpis">
 <div class="kpi"><span>WEEKLY DOWNTIME</span><strong id="topWeekDown">00h 00m</strong></div>
@@ -374,9 +391,9 @@ details[open]>summary .disclosure-chevron{transform:rotate(180deg)}
 <div class="stat"><small>Running %</small><strong id="runPct">0.0%</strong></div>
 </div></div>
 </aside>
-<div class="panel weekly wide"><details class="weekly-collapse"><summary><span class="weekly-title">Weekly summary · Monday–Saturday</span><span class="disclosure-chevron">⌄</span></summary><div class="weekly-collapse-content"><div class="tablewrap"><table><thead><tr><th>Day</th><th>Operator</th><th>Date implemented</th><th>Plant start</th><th>Plant stop</th><th>Downtime</th><th>Downtime %</th><th>Running %</th></tr></thead><tbody id="weekBody"></tbody></table></div></div></details></div>
-<div class="panel weekly wide"><details class="weekly-collapse"><summary><span class="weekly-title">Weekly intelligence</span><span class="disclosure-chevron">⌄</span></summary><div class="weekly-collapse-content"><div class="stats"><div class="stat highlight"><small>Top downtime cause</small><strong id="topCause">—</strong></div><div class="stat"><small>Top cause share</small><strong id="topCauseShare">—</strong></div><div class="stat"><small>Compared with previous week</small><strong id="weekChange">—</strong></div><div class="stat"><small>Previous week downtime</small><strong id="prevWeekDown">—</strong></div></div><div id="weeklyInsight" class="muted" style="margin-top:10px">Insights update as entries are recorded.</div></div></details></div>
-<div class="panel weekly"><details class="weekly-collapse"><summary><span class="weekly-title">Weekly total</span><span class="disclosure-chevron">⌄</span></summary><div class="weekly-collapse-content"><div class="stats"><div class="stat highlight"><small>Overall downtime</small><strong id="weekDown">00h 00m</strong></div><div class="stat"><small>Overall downtime %</small><strong id="weekPct">0.0%</strong></div><div class="stat"><small>Net available time</small><strong id="weekNet">00h 00m</strong></div><div class="stat"><small>Overall running %</small><strong id="weekRunPct">0.0%</strong></div></div></div></details></div>
+<div class="panel weekly wide weekly-analytics"><details class="weekly-collapse"><summary><span class="weekly-title">WEEKLY ANALYTICS</span><span class="disclosure-chevron">⌄</span></summary><div class="weekly-collapse-content"><div class="tablewrap"><table><thead><tr><th>Day</th><th>Operator</th><th>Date implemented</th><th>Plant start</th><th>Plant stop</th><th>Downtime</th><th>Downtime %</th><th>Running %</th></tr></thead><tbody id="weekBody"></tbody></table></div></div></details></div>
+<div class="weekly-analytics-subsection"><h3>Weekly intelligence</h3><div class="stats"><div class="stat highlight"><small>Top downtime cause</small><strong id="topCause">—</strong></div><div class="stat"><small>Top cause share</small><strong id="topCauseShare">—</strong></div><div class="stat"><small>Compared with previous week</small><strong id="weekChange">—</strong></div><div class="stat"><small>Previous week downtime</small><strong id="prevWeekDown">—</strong></div></div><div id="weeklyInsight" class="muted" style="margin-top:10px">Insights update as entries are recorded.</div></div>
+<div class="weekly-analytics-subsection"><h3>Weekly total</h3><div class="stats"><div class="stat highlight"><small>Overall downtime</small><strong id="weekDown">00h 00m</strong></div><div class="stat"><small>Overall downtime %</small><strong id="weekPct">0.0%</strong></div><div class="stat"><small>Net available time</small><strong id="weekNet">00h 00m</strong></div><div class="stat"><small>Overall running %</small><strong id="weekRunPct">0.0%</strong></div></div></div></details></div>
 </div></section>
 <section id="reports" class="view"><div class="panel"><h2>PDF Reports Archive</h2><div class="muted" style="margin-bottom:10px">Cloud archive · rolling retention · maximum 12 reports. Oldest report is automatically removed when the limit is exceeded.</div><div id="reportsList" class="empty">Loading cloud archive…</div></div></section>
 <section id="staff" class="view"><div class="panel"><h2>STAFF</h2><p class="muted">Full operator roster. Off-site operators cannot be assigned to the tracker.</p><div class="field" style="margin:12px 0"><label>Add staff member (no app login required)</label><input id="newStaffName" maxlength="30" placeholder="Staff name"><button id="addStaffBtn" class="primary" type="button" style="margin-top:8px">ADD STAFF MEMBER</button><div id="staffAdminMsg" class="muted"></div></div><div id="staffRosterList"></div></div></section><section id="settings" class="view">
