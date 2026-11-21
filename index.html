@@ -313,7 +313,14 @@ details[open]>summary .disclosure-chevron{transform:rotate(180deg)}
 }
 .unified-weekly-panel .weekly-collapse-content{padding-top:10px}
 .unified-weekly-panel .weekly-analytics-subsection{margin-top:14px;padding-top:14px;border-top:1px solid #294252}
-.unified-weekly-panel .weekly-analytics-subsection h3{font-size:15px;margin:0 0 10px}.preview-demo-data{margin:10px 14px;padding:8px 12px;border:1px solid #d8a400;border-radius:8px;background:#3b3013;color:#ffd21b;font-size:11px;font-weight:900;letter-spacing:.8px;text-align:center}</style><style>
+.unified-weekly-panel .weekly-analytics-subsection h3{font-size:15px;margin:0 0 10px}.preview-demo-data{margin:10px 14px;padding:8px 12px;border:1px solid #d8a400;border-radius:8px;background:#3b3013;color:#ffd21b;font-size:11px;font-weight:900;letter-spacing:.8px;text-align:center}/* Day setup overlap polish: keep time controls and lock actions inside their own grid cells */
+.day-setup .fields{grid-template-columns:repeat(2,minmax(0,1fr));align-items:start}
+.day-setup .field{min-width:0;overflow:hidden}
+.day-setup .field input{box-sizing:border-box;max-width:100%;min-width:0}
+.day-setup .field button{box-sizing:border-box;max-width:100%;white-space:normal;min-height:44px}
+.day-setup .field small{display:block;overflow-wrap:anywhere;margin-top:4px}
+@media(max-width:600px){.day-setup .fields{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.day-setup .field{width:100%}}
+</style><style>
 /* Preview-only refinements: preserve production design, improve responsive fit */
 .previewNotice{position:sticky;top:0;z-index:9999;display:flex;gap:12px;align-items:center;justify-content:center;padding:9px 12px;background:#263747;border-bottom:1px solid #526b80;color:#eaf2f7;font-size:12px;text-align:center}
 .previewNotice b{color:#ffc400;letter-spacing:.08em}
@@ -354,7 +361,7 @@ details[open]>summary .disclosure-chevron{transform:rotate(180deg)}
 <div class="fields">
 <div class="field"><label>Date implemented</label><input id="dayDate" type="date"></div>
 <div class="field"><label>Plant start</label><input id="plantStart" type="time" value="06:30"><button id="lockStartBtn" class="primary" type="button" style="width:100%;margin-top:6px">🔒 LOCK START</button><button id="unlockStartBtn" class="danger" type="button" style="display:none;width:100%;margin-top:6px">ADMIN UNLOCK START</button><small id="startLockStatus" class="muted"></small></div>
-<div class="field"><label>Plant stop</label><input id="plantStop" type="time" value="17:00"></div>
+<div class="field"><label>Plant finish</label><input id="plantStop" type="time" value="17:00"><button id="lockFinishBtn" class="primary" type="button" style="width:100%;margin-top:6px">🔒 LOCK FINISH</button><button id="unlockFinishBtn" class="danger" type="button" style="display:none;width:100%;margin-top:6px">ADMIN UNLOCK FINISH</button><small id="finishLockStatus" class="muted"></small></div>
 <div class="field"><label>Break excluded</label><input id="breakExcluded" value="" disabled></div>
 </div>
 </details></div>
