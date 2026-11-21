@@ -313,7 +313,7 @@ details[open]>summary .disclosure-chevron{transform:rotate(180deg)}
 }
 .unified-weekly-panel .weekly-collapse-content{padding-top:10px}
 .unified-weekly-panel .weekly-analytics-subsection{margin-top:14px;padding-top:14px;border-top:1px solid #294252}
-.unified-weekly-panel .weekly-analytics-subsection h3{font-size:15px;margin:0 0 10px}</style><style>
+.unified-weekly-panel .weekly-analytics-subsection h3{font-size:15px;margin:0 0 10px}.preview-demo-data{margin:10px 14px;padding:8px 12px;border:1px solid #d8a400;border-radius:8px;background:#3b3013;color:#ffd21b;font-size:11px;font-weight:900;letter-spacing:.8px;text-align:center}</style><style>
 /* Preview-only refinements: preserve production design, improve responsive fit */
 .previewNotice{position:sticky;top:0;z-index:9999;display:flex;gap:12px;align-items:center;justify-content:center;padding:9px 12px;background:#263747;border-bottom:1px solid #526b80;color:#eaf2f7;font-size:12px;text-align:center}
 .previewNotice b{color:#ffc400;letter-spacing:.08em}
@@ -339,13 +339,13 @@ details[open]>summary .disclosure-chevron{transform:rotate(180deg)}
 <button id="logoutBtn" class="nav logout-nav" type="button" aria-label="Log out and return to USER login">↪ &nbsp; LOG OUT</button>
 </div></details>
 <div class="sidefoot">75-minute daily break excluded from calculations.</div></aside>
-<main>
+<div class="preview-demo-data">DEMO DATA · FICTIONAL EXAMPLE · NO LIVE DATA</div><main>
 
 <section id="weekly" class="view active">
 <div class="weeklyKpis">
-<div class="kpi"><span>WEEKLY DOWNTIME</span><strong id="topWeekDown">00h 00m</strong></div>
-<div class="kpi blue"><span>OVERALL DOWNTIME</span><strong id="topWeekPct">0.0%</strong></div>
-<div class="kpi blue"><span>OVERALL RUNNING</span><strong id="topWeekRunPct">0.0%</strong></div>
+<div class="kpi"><span>WEEKLY DOWNTIME</span><strong id="topWeekDown">04h 42m</strong></div>
+<div class="kpi blue"><span>OVERALL DOWNTIME</span><strong id="topWeekPct">10.8%</strong></div>
+<div class="kpi blue"><span>OVERALL RUNNING</span><strong id="topWeekRunPct">89.2%</strong></div>
 </div>
 <div class="days" id="dayTabs"></div>
 <div class="layout">
@@ -359,25 +359,25 @@ details[open]>summary .disclosure-chevron{transform:rotate(180deg)}
 </div>
 </details></div>
 <div class="panel downtime-entry-panel"><h2>Downtime entries</h2>
-<div class="tablewrap entrylistwrap"><table class="entrylisttable"><tbody id="entriesBody"></tbody></table></div>
+<div class="tablewrap entrylistwrap"><table class="entrylisttable"><tbody id="entriesBody"><tr class="entrycompact"><td><div class="entrytile"><span class="entrymain"><b>Picking line</b><small>Clean up + operator late</small></span><strong>00:31</strong></div></td></tr><tr class="entrycompact"><td><div class="entrytile"><span class="entrymain"><b>Sorting belt</b><small>Blockage · oversize material</small></span><strong>00:00</strong></div></td></tr></tbody></table></div>
 <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="add" id="addEntry" style="flex:1">＋ ADD DOWNTIME ENTRY</button><button id="undoBtn" class="danger" style="margin-top:12px">↶ UNDO LAST ACTION</button></div>
 <div class="muted" id="dayFootnote" hidden>Changes are saved automatically on this device.</div>
 </div>
 </div>
 <aside>
 <div class="panel"><h2>Daily summary</h2><div class="stats">
-<div class="stat"><small>Scheduled plant time</small><strong id="scheduled">—</strong></div>
+<div class="stat"><small>Scheduled plant time</small><strong id="scheduled">09h 00m</strong></div>
 <div class="stat"><small>Break excluded</small><strong>01h 15m</strong></div>
-<div class="stat"><small>Net available time</small><strong id="net">—</strong></div>
-<div class="stat highlight"><small>Total downtime</small><strong id="downtime">00h 00m</strong></div>
-<div class="stat"><small>Actual running time</small><strong id="running">—</strong></div>
-<div class="stat"><small>Downtime %</small><strong id="downPct">0.0%</strong></div>
-<div class="stat"><small>Running %</small><strong id="runPct">0.0%</strong></div>
+<div class="stat"><small>Net available time</small><strong id="net">07h 45m</strong></div>
+<div class="stat highlight"><small>Total downtime</small><strong id="downtime">00h 31m</strong></div>
+<div class="stat"><small>Actual running time</small><strong id="running">07h 14m</strong></div>
+<div class="stat"><small>Downtime %</small><strong id="downPct">6.7%</strong></div>
+<div class="stat"><small>Running %</small><strong id="runPct">93.3%</strong></div>
 </div></div>
 </aside>
-<div class="panel weekly wide unified-weekly-panel"><details class="weekly-collapse"><summary><span class="weekly-title">Weekly summary · Monday–Saturday</span><span class="disclosure-chevron">⌄</span></summary><div class="weekly-collapse-content"><div class="tablewrap"><table><thead><tr><th>Day</th><th>Operator</th><th>Date implemented</th><th>Plant start</th><th>Plant stop</th><th>Downtime</th><th>Downtime %</th><th>Running %</th></tr></thead><tbody id="weekBody"></tbody></table></div>
-<div class="weekly-analytics-subsection"><h3>Weekly intelligence</h3><div class="stats"><div class="stat highlight"><small>Top downtime cause</small><strong id="topCause">—</strong></div><div class="stat"><small>Top cause share</small><strong id="topCauseShare">—</strong></div><div class="stat"><small>Compared with previous week</small><strong id="weekChange">—</strong></div><div class="stat"><small>Previous week downtime</small><strong id="prevWeekDown">—</strong></div></div><div id="weeklyInsight" class="muted" style="margin-top:10px">Insights update as entries are recorded.</div></div>
-<div class="weekly-analytics-subsection"><h3>Weekly total</h3><div class="stats"><div class="stat highlight"><small>Overall downtime</small><strong id="weekDown">00h 00m</strong></div><div class="stat"><small>Overall downtime %</small><strong id="weekPct">0.0%</strong></div><div class="stat"><small>Net available time</small><strong id="weekNet">00h 00m</strong></div><div class="stat"><small>Overall running %</small><strong id="weekRunPct">0.0%</strong></div></div></div>
+<div class="panel weekly wide unified-weekly-panel"><details class="weekly-collapse"><summary><span class="weekly-title">Weekly summary · Monday–Saturday</span><span class="disclosure-chevron">⌄</span></summary><div class="weekly-collapse-content"><div class="tablewrap"><table><thead><tr><th>Day</th><th>Operator</th><th>Date implemented</th><th>Plant start</th><th>Plant stop</th><th>Downtime</th><th>Downtime %</th><th>Running %</th></tr></thead><tbody id="weekBody"><tr><td>Monday</td><td>Jan</td><td>16 Nov 2026</td><td>06:30</td><td>16:00</td><td>00h 31m</td><td>6.7%</td><td>93.3%</td></tr><tr><td>Tuesday</td><td>Mick</td><td>17 Nov 2026</td><td>06:30</td><td>16:00</td><td>00h 11m</td><td>2.4%</td><td>97.6%</td></tr><tr><td>Wednesday</td><td>Gigi</td><td>18 Nov 2026</td><td>06:30</td><td>16:00</td><td>01h 51m</td><td>23.9%</td><td>76.1%</td></tr><tr><td>Thursday</td><td>Daz</td><td>19 Nov 2026</td><td>06:30</td><td>16:00</td><td>00h 49m</td><td>10.5%</td><td>89.5%</td></tr><tr><td>Friday</td><td>Shayne</td><td>20 Nov 2026</td><td>06:30</td><td>16:00</td><td>01h 13m</td><td>15.7%</td><td>84.3%</td></tr><tr><td>Saturday</td><td>Jan</td><td>21 Nov 2026</td><td>08:00</td><td>12:45</td><td>00h 07m</td><td>2.6%</td><td>97.4%</td></tr></tbody></table></div>
+<div class="weekly-analytics-subsection"><h3>Weekly intelligence</h3><div class="stats"><div class="stat highlight"><small>Top downtime cause</small><strong id="topCause">Other</strong></div><div class="stat"><small>Top cause share</small><strong id="topCauseShare">19.1%</strong></div><div class="stat"><small>Compared with previous week</small><strong id="weekChange">−12.4%</strong></div><div class="stat"><small>Previous week downtime</small><strong id="prevWeekDown">05h 22m</strong></div></div><div id="weeklyInsight" class="muted" style="margin-top:10px">Top cause: Other (19.1% of recorded downtime). Best running day: Tuesday (97.6%). Highest downtime: Wednesday (01h 51m). Total downtime is 12.4% lower than the previous week.</div></div>
+<div class="weekly-analytics-subsection"><h3>Weekly total</h3><div class="stats"><div class="stat highlight"><small>Overall downtime</small><strong id="weekDown">04h 42m</strong></div><div class="stat"><small>Overall downtime %</small><strong id="weekPct">10.8%</strong></div><div class="stat"><small>Net available time</small><strong id="weekNet">43h 10m</strong></div><div class="stat"><small>Overall running %</small><strong id="weekRunPct">89.2%</strong></div></div></div>
 </div></details></div>
 </div></section>
 <section id="reports" class="view"><div class="panel"><h2>PDF Reports Archive</h2><div class="muted" style="margin-bottom:10px">Cloud archive · rolling retention · maximum 12 reports. Oldest report is automatically removed when the limit is exceeded.</div><div id="reportsList" class="empty">Loading cloud archive…</div></div></section>
