@@ -320,6 +320,15 @@ details[open]>summary .disclosure-chevron{transform:rotate(180deg)}
 .day-setup .field button{box-sizing:border-box;max-width:100%;white-space:normal;min-height:44px}
 .day-setup .field small{display:block;overflow-wrap:anywhere;margin-top:4px}
 @media(max-width:600px){.day-setup .fields{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.day-setup .field{width:100%}}
+
+/* Day Setup lock controls: dedicated aligned row, never nested under time inputs */
+.day-setup-fields{grid-template-columns:repeat(4,minmax(0,1fr));align-items:start}
+.day-lock-actions{grid-column:1/-1;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding-top:2px}
+.lock-action{min-width:0;display:flex;flex-direction:column;gap:6px}
+.lock-action button{width:100%;min-height:44px;margin:0!important;white-space:normal;line-height:1.25}
+.lock-action small{min-height:1.1em;overflow-wrap:anywhere}
+@media(max-width:800px){.day-setup-fields{grid-template-columns:repeat(2,minmax(0,1fr))}.day-lock-actions{grid-column:1/-1}}
+@media(max-width:520px){.day-setup-fields{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.day-lock-actions{gap:8px}.lock-action button{padding:10px 6px;font-size:12px;min-height:46px}}
 </style><style>
 /* Preview-only refinements: preserve production design, improve responsive fit */
 .previewNotice{position:sticky;top:0;z-index:9999;display:flex;gap:12px;align-items:center;justify-content:center;padding:9px 12px;background:#263747;border-bottom:1px solid #526b80;color:#eaf2f7;font-size:12px;text-align:center}
@@ -358,11 +367,15 @@ details[open]>summary .disclosure-chevron{transform:rotate(180deg)}
 <div class="layout">
 <div>
 <div class="panel day-setup-panel"><details class="day-setup"><summary><span class="day-setup-label">DAY SET UP</span><strong id="dayHeading">MONDAY</strong><span class="day-setup-hint">Shift settings</span><span class="disclosure-chevron">⌄</span></summary>
-<div class="fields">
+<div class="fields day-setup-fields">
 <div class="field"><label>Date implemented</label><input id="dayDate" type="date"></div>
-<div class="field"><label>Plant start</label><input id="plantStart" type="time" value="06:30"><button id="lockStartBtn" class="primary" type="button" style="width:100%;margin-top:6px">🔒 LOCK START</button><button id="unlockStartBtn" class="danger" type="button" style="display:none;width:100%;margin-top:6px">ADMIN UNLOCK START</button><small id="startLockStatus" class="muted"></small></div>
-<div class="field"><label>Plant finish</label><input id="plantStop" type="time" value="17:00"><button id="lockFinishBtn" class="primary" type="button" style="width:100%;margin-top:6px">🔒 LOCK FINISH</button><button id="unlockFinishBtn" class="danger" type="button" style="display:none;width:100%;margin-top:6px">ADMIN UNLOCK FINISH</button><small id="finishLockStatus" class="muted"></small></div>
+<div class="field"><label>Plant start</label><input id="plantStart" type="time" value="06:30"></div>
+<div class="field"><label>Plant finish</label><input id="plantStop" type="time" value="17:00"></div>
 <div class="field"><label>Break excluded</label><input id="breakExcluded" value="" disabled></div>
+<div class="day-lock-actions">
+<div class="lock-action"><button id="lockStartBtn" class="primary" type="button">🔒 LOCK START</button><button id="unlockStartBtn" class="danger" type="button" style="display:none">ADMIN UNLOCK START</button><small id="startLockStatus" class="muted"></small></div>
+<div class="lock-action"><button id="lockFinishBtn" class="primary" type="button">🔒 LOCK FINISH</button><button id="unlockFinishBtn" class="danger" type="button" style="display:none">ADMIN UNLOCK FINISH</button><small id="finishLockStatus" class="muted"></small></div>
+</div>
 </div>
 </details></div>
 <div class="panel downtime-entry-panel"><h2>Downtime entries</h2>
