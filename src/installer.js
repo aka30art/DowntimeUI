@@ -3,6 +3,7 @@ import {
   saveDraft, loadDraft, saveInstalledConfig, loadInstalledConfig
 } from "./config-core.js";
 import { mountWorkspace } from "./workspace.js";
+import { restoreWorkspaceBackup, validateWorkspaceBackup } from "./domain/backup.js";
 
 const root = document.getElementById("installerRoot");
 if (!root) throw new Error("DOWNTIMEUI installer mount point is missing.");
@@ -39,7 +40,7 @@ function shiftRows(arr,path,type,titleLabel) {
 }
 function content(errors) {
   if(step===0) return title("FIRST-RUN INSTALLATION","Set up your workspace.","DOWNTIMEUI begins with a clean configuration. Define the structure and rules used by your organisation; optional sections can be completed later.")+
-    '<div class="setup-welcome-grid"><div class="setup-welcome-card"><span class="setup-number">01</span><strong>Company identity</strong><p>Company, language and local time zone.</p></div><div class="setup-welcome-card"><span class="setup-number">02</span><strong>Site structure</strong><p>Site, areas and stations configured to your operation.</p></div><div class="setup-welcome-card"><span class="setup-number">03</span><strong>Operating rules</strong><p>Reasons, shifts, staff, permissions and task templates.</p></div></div><div class="setup-note"><b>Empty by default</b><span>No company, operator, plant, station or downtime data has been pre-filled.</span></div>';
+    '<div class="setup-welcome-grid"><div class="setup-welcome-card"><span class="setup-number">01</span><strong>Company identity</strong><p>Company, language and local time zone.</p></div><div class="setup-welcome-card"><span class="setup-number">02</span><strong>Site structure</strong><p>Site, areas and stations configured to your operation.</p></div><div class="setup-welcome-card"><span class="setup-number">03</span><strong>Operating rules</strong><p>Reasons, shifts, staff, permissions and task templates.</p></div></div><div class="setup-note"><b>Empty by default</b><span>No company, operator, plant, station or downtime data has been pre-filled.</span></div><div class="setup-restore-option"><div><b>Already have a workspace backup?</b><p>Restore a previously exported DOWNTIMEUI backup onto this clean installation.</p></div><button type="button" data-action="choose-restore">Restore backup JSON</button><input type="file" accept=".json,application/json" data-initial-backup hidden></div>';
   if(step===1) return title("STEP 01 / 08","Company identity","Identify the organisation using this workspace. These values can be changed after installation.")+
     '<div class="setup-form-grid">'+field("Company name *","identity.companyName",config.identity.companyName,"Enter company name")+
     field("Language / regional format","identity.locale",config.identity.locale,"en-GB")+
@@ -149,8 +150,33 @@ function install() {
 root.addEventListener("input",e=>{
   const el=e.target;if(el.matches("[data-path]")){setPath(el.dataset.path,el.type==="checkbox"?el.checked:el.value);saveDraftState();}
 });
-root.addEventListener("change",e=>{
+async function restoreInitialBackup(file){
+  if(!file)return;
+  let backup;
+  try{backup=JSON.parse(await file.text());}
+  catch{saveMessage="Backup rejected: file is not valid JSON.";renderWizard([saveMessage]);return;}
+  const backupInstallationId=backup?.configuration?.installationId;
+  const validation=validateWorkspaceBackup(backup,backupInstallationId);
+  if(!validation.ok){renderWizard(["Backup rejected: "+validation.errors.join(" ")]);return;}
+  const company=backup.configuration.identity.companyName;
+  const site=backup.configuration.site.siteName;
+  if(typeof globalThis.confirm==="function"&&!globalThis.confirm("Restore the "+company+" · "+site+" workspace and its local records onto this clean installation?"))return;
+  const restored=restoreWorkspaceBackup(backup,backupInstallationId,{storage:globalThis.localStorage});
+  if(!restored.ok){renderWizard(["Backup restore failed: "+restored.errors.join(" ")]);return;}
+  config=restored.configuration;
+  installed=true;
+  step=8;
+  screen="installed";
+  render();
+}
+root.addEventListener("change",async e=>{
   const el=e.target;
+  if(el.matches("[data-initial-backup]")){
+    const file=el.files?.[0];
+    if(file)await restoreInitialBackup(file);
+    el.value="";
+    return;
+  }
   if(el.matches("[data-day]")){
     const day=el.dataset.day;config.schedule.workDays=el.checked?[...new Set([...config.schedule.workDays,day])]:config.schedule.workDays.filter(x=>x!==day);saveDraftState();
   }
@@ -169,6 +195,7 @@ root.addEventListener("click",e=>{
   else if(a==="resume"){screen="wizard";render();}
   else if(a==="edit-config"){step=1;screen="wizard";render();}
   else if(a==="export-config")exportConfig();
+  else if(a==="choose-restore")root.querySelector("[data-initial-backup]")?.click?.();
   else if(a==="open-preview"){screen="preview";render();}
   else if(a.startsWith("add-")){addItem(a.slice(4));render();saveDraftState();}
   else if(a.startsWith("remove-")){removeItem(a.slice(7),Number(b.dataset.index));render();saveDraftState();}
