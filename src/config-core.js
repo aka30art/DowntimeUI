@@ -92,7 +92,18 @@ export function validateConfig(c) {
       });
     }
   }
-  if (!Array.isArray(c.staff)) e.push("Staff must be a list."); else uniqueNamed(c.staff, "Staff member", e);
+  if (!Array.isArray(c.staff)) e.push("Staff must be a list."); else {
+    uniqueNamed(c.staff, "Staff member", e);
+    c.staff.forEach((member, i) => {
+      if (member.photoDataUrl !== undefined && member.photoDataUrl !== "") {
+        if (typeof member.photoDataUrl !== "string" ||
+            member.photoDataUrl.length > 180000 ||
+            !/^data:image\/jpeg;base64,[A-Za-z0-9+/]+=*$/.test(member.photoDataUrl)) {
+          e.push("Staff member " + (i + 1) + " photo must be a compressed JPEG under the supported size limit.");
+        }
+      }
+    });
+  }
   if (!Array.isArray(c.roles)) e.push("Access roles must be a list.");
   else {
     uniqueNamed(c.roles, "Role", e);
