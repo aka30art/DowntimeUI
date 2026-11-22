@@ -30,10 +30,12 @@ Port behavior—not company-specific content—and track every feature against i
 |---|---|---|
 | Universal first-run installation | Implemented locally | Nine-stage installer, empty defaults, validation, resumable draft, browser install |
 | Company / site / areas / stations | Implemented locally | Tenant configuration and editable setup steps |
-| Downtime reasons / staff / daily task templates | Implemented locally | Optional tenant-defined lists; no inherited Main data |
+| Downtime reasons / quick-entry presets | Implemented locally | Tenant-scoped presets reference configured areas, stations and reasons; preset duration is validated and applied to the daily form |
+| Staff profiles / intended role links | Implemented locally | Optional compressed local photo and optional role metadata reference; not account authentication |
+| Staff / daily task templates | Implemented locally | Optional tenant-defined lists; no inherited Main data |
 | Schedule, shifts, breaks and timezone | Implemented locally | Weekly schedule model, overnight periods and break overlap |
 | Daily timekeeping | Implemented locally | Planned schedule plus per-day actual start/finish overrides |
-| Downtime entry | Implemented locally | Add, edit, delete, duration validation and station association |
+| Downtime entry | Implemented locally | Add, edit, delete, duration validation, station association and quick-entry preset application |
 | Daily calculations | Implemented locally | Scheduled, net, downtime and running minutes/rates |
 | Weekly intelligence | Implemented locally | Weighted aggregate rates, day ranking, cause distribution and prior-week comparison |
 | Daily Tasks | Implemented locally | Day-specific immutable snapshot and SAVE & LOCK FOR TODAY |
@@ -45,11 +47,11 @@ Port behavior—not company-specific content—and track every feature against i
 ### Partially implemented
 | Capability | Remaining work |
 |---|---|
-| Settings Hub | Settings can reopen the installer sections; a fully native settings editor, bulk management, archive/delete policies and audit view remain |
-| Downtime presets | Free-text/datalist entry and configured reasons exist; richer reusable area/reason preset UX and validation rules remain |
+| Settings Hub | Settings can reopen installer sections, including a shortcut to reason/preset configuration; a fully native settings editor, bulk management, archive/delete policies and audit view remain |
+| Downtime presets | Tenant preset setup, area/station/reason linkage, duration validation and quick-apply in the daily form are implemented; preset categories, sorting, bulk editing and archive policies remain |
 | Plant alerts | Station states and transition history exist; alert routing, acknowledgement, severity and escalation remain |
 | Shift tracking | Actual start/finish overrides and tenant-timezone live Start/Stop controls exist; pause/resume, operator handover and server clock integrity remain |
-| Access roles | Role definitions and client-side default-deny helpers exist; there is no authenticated active-user/session layer or server-side authorization |
+| Access roles | Role definitions, optional staff-to-role metadata links and client-side default-deny helpers exist; there is no authenticated active-user/session layer or server-side authorization |
 | Reports | Local archive and browser print/PDF exist; scheduled delivery, centrally shared archives and controlled report access remain |
 
 ### Not yet implemented / production blockers
@@ -89,3 +91,10 @@ The implementation is a **local single-browser functional build**, not a product
 - Full Main Plant Overview blueprint/visual parity and any remaining uncovered edge cases.
 
 Local role definitions and browser controls are not secure access control. Local plant state is an operational record, not a machinery-control command. These limitations must remain visible until the backend and security work is completed.
+
+
+## Latest verified universal branch checkpoint
+
+- Head: `97ebd1e8786ccbf9213bd6dd4006086e7c41a747`
+- CI + browser QA runs: [44980310122](https://github.com/aka30art/DowntimeUI/actions/runs/44980310122) and [44980308168](https://github.com/aka30art/DowntimeUI/actions/runs/44980308168), both completed successfully.
+- Added verification includes schema-v3 migration from v1/v2, tenant-configured quick-entry preset validation and application, and intended staff-role links surviving backup/restore.
