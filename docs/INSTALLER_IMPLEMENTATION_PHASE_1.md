@@ -17,3 +17,16 @@ Overnight shift and break intervals are supported by the schedule domain engine.
 
 ## Release gate
 This phase is a setup foundation only. Restore and validate Main app behavior module-by-module, implement shared persistence and authentication safely, complete desktop/mobile browser QA, and pass all CI and regression checks before proposing release. Do not merge, deploy or publish until the user gives the exact instruction **DEPLOY & Merge**.
+
+
+## Phase 2 — local operations workspace
+
+The installer now opens a tenant-configured operations workspace with:
+- daily downtime entry capture and deletion, station selection and staff assignment;
+- schedule-aware daily availability, break deduction, downtime and running metrics;
+- seven-day date selection and weighted weekly calculations;
+- daily task completion, per-day immutable snapshot and SAVE & LOCK behaviour;
+- weekly report snapshots, local archive, print-to-PDF and JSON export;
+- local backup export and access to edit workspace configuration.
+
+All operational state is namespaced by the installation ID. This is a single-browser local mode. It is not shared across devices, and the configured role permissions are not yet server-enforced. Do not use it as a secure multi-user production system.
