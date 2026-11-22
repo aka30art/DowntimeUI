@@ -2,6 +2,7 @@ import {
   cloneDefaultConfig, createId, createTenantConfig, activateInstall, validateConfig,
   saveDraft, loadDraft, saveInstalledConfig, loadInstalledConfig
 } from "./config-core.js";
+import { mountWorkspace } from "./workspace.js";
 
 const root = document.getElementById("installerRoot");
 if (!root) throw new Error("DOWNTIMEUI installer mount point is missing.");
@@ -86,17 +87,21 @@ function renderInstalled() {
   root.innerHTML='<div class="setup-backdrop"><div class="setup-complete"><div class="setup-complete-mark">✓</div><div class="setup-kicker">'+(installed?"LOCAL INSTALLATION FOUND":"SETUP SAVED")+'</div><h1>'+(installed?"Workspace configured.":"Your setup is saved.")+'</h1><p class="setup-intro">'+(installed?esc(config.identity.companyName)+" · "+esc(config.site.siteName):"Installation is not complete. Resume setup to validate and install this workspace.")+'</p>'+
     '<div class="setup-complete-card"><div><span>Company</span><strong>'+esc(config.identity.companyName||"Not configured")+'</strong></div><div><span>Site</span><strong>'+esc(config.site.siteName||"Not configured")+'</strong></div><div><span>Areas and stations</span><strong>'+config.site.areas.length+" / "+config.site.stations.length+'</strong></div><div><span>Downtime reasons</span><strong>'+config.downtime.reasons.length+'</strong></div></div>'+
     '<div class="setup-note"><b>Local-only installation</b><span>The setup is stored in this browser. The operational screen behind this installer is still a mock-data preview; live operations, secure accounts, shared persistence and server-side permissions are not enabled.</span></div>'+
-    '<div class="setup-complete-actions">'+(installed?'<button type="button" class="setup-primary" data-action="open-preview">Open preview lab <span>→</span></button><button type="button" class="setup-secondary" data-action="edit-config">Edit configuration</button><button type="button" class="setup-secondary" data-action="export-config">Export configuration JSON</button>':'<button type="button" class="setup-primary" data-action="resume">Resume setup <span>→</span></button>')+'</div><div class="setup-fineprint">Configuration remains on this device until browser storage is cleared or the configuration is exported.</div></div></div>';
+    '<div class="setup-complete-actions">'+(installed?'<button type="button" class="setup-primary" data-action="open-preview">Open workspace <span>→</span></button><button type="button" class="setup-secondary" data-action="edit-config">Edit configuration</button><button type="button" class="setup-secondary" data-action="export-config">Export configuration JSON</button>':'<button type="button" class="setup-primary" data-action="resume">Resume setup <span>→</span></button>')+'</div><div class="setup-fineprint">Configuration remains on this device until browser storage is cleared or the configuration is exported.</div></div></div>';
 }
 function saveDraftState() {
   if(installed)return;
   const r=saveDraft(config); saveMessage=r.ok?"Draft saved on this device.":"Local save unavailable: "+r.error;
   const n=document.getElementById("setupSaveState"); if(n)n.textContent=saveMessage;
 }
-function renderPreviewBar(){
-  root.innerHTML='<div class="setup-preview-bar"><div class="setup-preview-copy"><b>PREVIEW LAB · MOCK DATA ONLY</b><span>'+esc(config.identity.companyName)+' · '+esc(config.site.siteName)+' — operational functions are not connected in this prototype.</span></div><div class="setup-preview-actions"><button type="button" class="setup-preview-export" data-action="export-config">Export JSON</button><button type="button" class="setup-preview-edit" data-action="edit-config">Edit workspace configuration</button></div></div>';
+function renderWorkspace(){
+  mountWorkspace(root,config,{
+    onEditConfiguration:()=>{screen="wizard";step=1;config.setup.currentStep=1;render();},
+    onExportConfiguration:exportConfig
+  });
 }
-function render() { if(screen==="installed")renderInstalled(); else if(screen==="preview")renderPreviewBar(); else renderWizard(); }
+function render() { if(screen==="installed")renderInstalled(); else if(screen==="preview")renderWorkspace(); else renderWizard(); }
+
 function addItem(type) {
   const base={
     area:{id:createId("area"),name:""},
@@ -154,15 +159,7 @@ root.addEventListener("click",e=>{
   else if(a==="resume"){screen="wizard";render();}
   else if(a==="edit-config"){step=1;screen="wizard";render();}
   else if(a==="export-config")exportConfig();
-  else if(a==="open-preview"){
-    const shell=document.querySelector(".shell");
-    if(shell){
-      shell.classList.add("preview-inert");
-      shell.querySelectorAll("input,select,textarea,button").forEach(el=>{el.disabled=true;el.setAttribute("aria-disabled","true")});
-      shell.querySelectorAll("a").forEach(el=>{el.setAttribute("aria-disabled","true");el.setAttribute("tabindex","-1");el.addEventListener("click",event=>event.preventDefault())});
-    }
-    screen="preview";render();
-  }
+  else if(a==="open-preview"){screen="preview";render();}
   else if(a.startsWith("add-")){addItem(a.slice(4));render();saveDraftState();}
   else if(a.startsWith("remove-")){removeItem(a.slice(7),Number(b.dataset.index));render();saveDraftState();}
 });
