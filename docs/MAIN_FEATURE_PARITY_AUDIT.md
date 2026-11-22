@@ -48,7 +48,7 @@ Port behavior—not company-specific content—and track every feature against i
 | Settings Hub | Settings can reopen the installer sections; a fully native settings editor, bulk management, archive/delete policies and audit view remain |
 | Downtime presets | Free-text/datalist entry and configured reasons exist; richer reusable area/reason preset UX and validation rules remain |
 | Plant alerts | Station states and transition history exist; alert routing, acknowledgement, severity and escalation remain |
-| Shift tracking | Actual start/finish overrides exist; live start/stop timers, pause/resume, operator handover and clock integrity remain |
+| Shift tracking | Actual start/finish overrides and tenant-timezone live Start/Stop controls exist; pause/resume, operator handover and server clock integrity remain |
 | Access roles | Role definitions and client-side default-deny helpers exist; there is no authenticated active-user/session layer or server-side authorization |
 | Reports | Local archive and browser print/PDF exist; scheduled delivery, centrally shared archives and controlled report access remain |
 
@@ -56,7 +56,7 @@ Port behavior—not company-specific content—and track every feature against i
 - User account creation, invitations, sign-in, credential lifecycle, session management and account recovery.
 - Server-side tenant isolation, persistent shared database, realtime sync, concurrency control, audit events and server-authoritative backup/recovery.
 - Server-enforced role, operator/spectator and read-only permissions.
-- Staff photo upload, storage, privacy controls and photo assignment UI.
+- Secure private staff photo storage, signed upload/download, privacy controls and linking staff profiles to authenticated accounts. Local photo compression and operator-card rendering are implemented.
 - Cross-device and multi-user operational workflows, including collision and offline reconciliation.
 - Production deployment hardening, security review, accessibility review, performance testing and complete visual parity QA.
 
@@ -73,8 +73,8 @@ The implementation is a **local single-browser functional build**, not a product
 - **Weekly intelligence:** day-by-day view; weighted weekly rates; cause ranking; best/worst day; previous-week comparison.
 - **Reports:** immutable weekly report snapshots, archive, browser print/PDF and JSON export.
 - **Plant Overview:** tenant-configured area/station cards, station Running/Down/Maintenance/Idle states, operator allocation, portrait/name/station operator cards, alerts and transition history.
-- **Daily Tasks:** daily checklist, completion persistence and immutable **SAVE & LOCK FOR TODAY** snapshot.
-- **Staff profiles:** optional JPEG/PNG/WebP photo upload, browser-side crop/resize/compression and local portrait display in operator cards. Photos remain in the local tenant configuration.
+- **Daily Tasks:** week/date navigation, per-day checklist completion, independent day-specific immutable snapshots and **SAVE & LOCK FOR TODAY**.
+- **Staff profiles:** optional JPEG/PNG/WebP photo upload, browser-side 320px crop/resize/compression, JPEG data validation and local portrait display in Plant Overview operator cards. Each card shows only photo, name and assigned station. Photos remain in the local tenant configuration.
 - **Settings:** company/site, reasons, schedule, roster/photos, role definitions and task template edit routes.
 - **Backup and recovery:** schema-checked, installation-scoped JSON backup; validation; rollback-aware restore; clean-install restore path.
 - **QA:** domain/flow regression plus Chromium desktop/mobile browser suite for the implemented paths.
