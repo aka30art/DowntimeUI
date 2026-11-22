@@ -93,8 +93,23 @@ function content(errors) {
       '<div class="setup-subsection"><div class="setup-subhead"><div><h2>Areas</h2><p>Locations or departments within the site.</p></div>'+add("area","Add area")+'</div>'+areas+'</div>'+
       '<div class="setup-subsection"><div class="setup-subhead"><div><h2>Stations</h2><p>Workstations, lines, machines or operational points.</p></div>'+add("station","Add station")+'</div>'+stations+'</div>';
   }
-  if(step===3) return title("STEP 03 / 08 · OPTIONAL","Downtime reasons","Create the reason library staff will use when recording downtime. The list starts empty.")+
-    '<div class="setup-subsection"><div class="setup-subhead"><div><h2>Reason library</h2><p>Use names that match your operation.</p></div>'+add("reason","Add reason")+'</div>'+itemRows(config.downtime.reasons,"downtime.reasons","reason","Reason name","e.g. Mechanical fault")+'</div>';
+  if(step===3) {
+    const presetRows=config.downtime.presets.map((preset,i)=>{
+      const areaOptions=[["","Any area"],...config.site.areas.map(item=>[item.id,item.name])];
+      const stationOptions=[["","Any station"],...config.site.stations.map(item=>[item.id,item.name])];
+      const reasonOptions=[["","Choose reason"],...config.downtime.reasons.map(item=>[item.id,item.name])];
+      return '<div class="setup-preset-row">'+
+        field("Preset name","downtime.presets."+i+".name",preset.name,"e.g. Mechanical stoppage")+
+        selectField("Area","downtime.presets."+i+".areaId",preset.areaId||"",areaOptions)+
+        selectField("Station","downtime.presets."+i+".stationId",preset.stationId||"",stationOptions)+
+        selectField("Reason","downtime.presets."+i+".reasonId",preset.reasonId||"",reasonOptions)+
+        field("Default duration (minutes)","downtime.presets."+i+".defaultDurationMinutes",preset.defaultDurationMinutes??"","Optional","number")+
+        remove("preset",i)+'</div>';
+    }).join("")||'<div class="setup-empty">No presets configured. Staff can still enter downtime manually.</div>';
+    return title("STEP 03 / 08 · OPTIONAL","Downtime reasons and presets","Define the reason library and reusable entry presets for this organisation. Presets never contain pre-filled company or station data.")+
+      '<div class="setup-subsection"><div class="setup-subhead"><div><h2>Reason library</h2><p>Use names that match your operation.</p></div>'+add("reason","Add reason")+'</div>'+itemRows(config.downtime.reasons,"downtime.reasons","reason","Reason name","e.g. Mechanical fault")+'</div>'+
+      '<div class="setup-subsection"><div class="setup-subhead"><div><h2>Quick-entry presets</h2><p>Optional combinations of area, station, reason and duration.</p></div>'+add("preset","Add preset")+'</div>'+presetRows+'</div>';
+  }
   if(step===4) return title("STEP 04 / 08 · OPTIONAL","Operating schedule","Define working days, shift windows and break periods for time calculations.")+
     '<div class="setup-subsection"><h2>Operating days</h2><p>Select the days on which this site normally operates.</p><div class="setup-days">'+days.map(d=>'<label class="setup-day"><input type="checkbox" data-day="'+d[0]+'" '+(config.schedule.workDays.includes(d[0])?"checked":"")+'><span>'+d[1]+'</span></label>').join("")+'</div></div>'+
     '<div class="setup-subsection"><div class="setup-subhead"><div><h2>Shifts</h2><p>Times use the selected time zone. An end time earlier than the start time represents an overnight period.</p></div>'+add("shift","Add shift")+'</div>'+shiftRows(config.schedule.shifts,"schedule.shifts","shift","Shift name")+'</div>'+
@@ -158,13 +173,14 @@ function addItem(type) {
     break:{id:createId("break"),name:"",start:"",end:""},
     staff:{id:createId("staff"),name:""},
     role:{id:createId("role"),name:"",permissions:Object.fromEntries(perms.map(p=>[p[0],false]))},
-    task:{id:createId("task"),name:""}
+    task:{id:createId("task"),name:""},
+    preset:{id:createId("preset"),name:"",areaId:"",stationId:"",reasonId:"",defaultDurationMinutes:null}
   };
-  const target={area:config.site.areas,station:config.site.stations,reason:config.downtime.reasons,shift:config.schedule.shifts,break:config.schedule.breaks,staff:config.staff,role:config.roles,task:config.dailyTasks}[type];
+  const target={area:config.site.areas,station:config.site.stations,reason:config.downtime.reasons,preset:config.downtime.presets,shift:config.schedule.shifts,break:config.schedule.breaks,staff:config.staff,role:config.roles,task:config.dailyTasks}[type];
   target.push(base[type]);
 }
 function removeItem(type,index) {
-  const target={area:config.site.areas,station:config.site.stations,reason:config.downtime.reasons,shift:config.schedule.shifts,break:config.schedule.breaks,staff:config.staff,role:config.roles,task:config.dailyTasks}[type];
+  const target={area:config.site.areas,station:config.site.stations,reason:config.downtime.reasons,preset:config.downtime.presets,shift:config.schedule.shifts,break:config.schedule.breaks,staff:config.staff,role:config.roles,task:config.dailyTasks}[type];
   if(target&&index>=0&&index<target.length)target.splice(index,1);
 }
 function exportConfig() {
@@ -184,7 +200,7 @@ function install() {
   installed=true;screen="installed";render();
 }
 root.addEventListener("input",e=>{
-  const el=e.target;if(el.matches("[data-path]")){setPath(el.dataset.path,el.type==="checkbox"?el.checked:el.value);saveDraftState();}
+  const el=e.target;if(el.matches("[data-path]")){setPath(el.dataset.path,el.type==="checkbox"?el.checked:el.type==="number"?(el.value===""?null:Number(el.value)):el.value);saveDraftState();}
 });
 async function restoreInitialBackup(file){
   if(!file)return;
