@@ -1,5 +1,5 @@
 import {createId} from "./config-core.js";
-import {calculateDayMetrics,calculateWeekMetrics,getEntryDurationMinutes,validateDowntimeEntry} from "./domain/downtime.js";
+import {calculateDayMetrics,calculateWeekMetrics,getEntryDurationMinutes,rankDowntimeCauses,validateDowntimeEntry} from "./domain/downtime.js";
 import {saveAndLockDailyTasks,setTaskCompletion,visibleDailyTasks,completedTaskCount,createDailyTaskState} from "./domain/daily-tasks.js";
 import {calculateScheduleForDate,formatMinutes} from "./domain/schedule.js";
 import {buildWeeklyReport} from "./domain/reports.js";
@@ -135,11 +135,23 @@ export function mountWorkspace(root,config,{onEditConfiguration=()=>{},onExportC
   }
   function renderWeekly(){
     const week=ensureWeek(),metrics=weekMetrics(),days=week.days.map(day=>({day,metrics:calculateDayMetrics(day,config.schedule)}));
+    const previousKey=localIso(addDays(selectedWeek,-7)),previousDays=state.weeks[previousKey]?.days||[];
+    const report=buildWeeklyReport({weekStart:getWeekKey(),days:week.days,previousDays,schedule:config.schedule,companyName:config.identity.companyName,siteName:config.site.siteName});
+    const causes=rankDowntimeCauses(week.days),top=causes[0],best=days.filter(x=>x.metrics.netMinutes>0).sort((a,b)=>b.metrics.runningRate-a.metrics.runningRate)[0],worst=days.slice().sort((a,b)=>b.metrics.downtimeMinutes-a.metrics.downtimeMinutes)[0];
+    const delta=report.comparison?.downtimeDeltaMinutes;
+    const comparison=report.comparison?(delta>0?"+"+formatMinutes(delta)+" vs previous week":delta<0?"−"+formatMinutes(Math.abs(delta))+" vs previous week":"No change vs previous week"):"No previous-week data";
     const body=days.map(({day,metrics:m})=>'<tr><td>'+esc(dayName(day.date))+'</td><td>'+esc(day.operatorId?config.staff.find(x=>x.id===day.operatorId)?.name||"—":"—")+'</td><td>'+day.date+'</td><td>'+formatMinutes(m.netMinutes)+'</td><td>'+formatMinutes(m.downtimeMinutes)+'</td><td>'+formatMinutes(m.runningMinutes)+'</td><td>'+m.downtimeRate.toFixed(1)+'%</td><td>'+m.runningRate.toFixed(1)+'%</td></tr>').join("");
+    const causesBody=causes.length?causes.slice(0,5).map(item=>'<div class="workspace-cause-row"><span>'+esc(item.reason)+'</span><b>'+formatMinutes(item.minutes)+'</b><small>'+(metrics.downtimeMinutes?(item.minutes/metrics.downtimeMinutes*100).toFixed(1):"0.0")+'%</small></div>').join(""):'<div class="workspace-empty">No downtime causes recorded this week.</div>';
     return '<section class="workspace-section"><div class="workspace-eyebrow">PERFORMANCE</div><h1>Weekly summary</h1><p class="workspace-lead">'+selectedWeek.toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"})+' — '+addDays(selectedWeek,6).toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"})+'</p>'+
       '<div class="workspace-week-nav"><button type="button" data-action="previous-week">← Previous week</button><button type="button" data-action="current-week">Current week</button><button type="button" data-action="next-week">Next week →</button></div>'+
       '<div class="workspace-metrics">'+metricCard("NET AVAILABLE",formatMinutes(metrics.netMinutes))+metricCard("WEEKLY DOWNTIME",formatMinutes(metrics.downtimeMinutes))+metricCard("RUNNING",formatMinutes(metrics.runningMinutes))+metricCard("DOWNTIME RATE",metrics.downtimeRate.toFixed(1)+"%")+'</div>'+
-      '<div class="workspace-panel"><div class="workspace-panel-head"><div><h2>Day-by-day performance</h2><p>Weekly rates use aggregate minutes, not an average of daily percentages.</p></div></div><div class="workspace-table-wrap"><table><thead><tr><th>Day</th><th>Operator</th><th>Date</th><th>Net</th><th>Downtime</th><th>Running</th><th>Downtime %</th><th>Running %</th></tr></thead><tbody>'+body+'</tbody></table></div></div></section>';
+      '<div class="workspace-insights">'+
+      '<article><span>TOP DOWNTIME CAUSE</span><b>'+(top?esc(top.reason):"—")+'</b><small>'+(top&&metrics.downtimeMinutes?(top.minutes/metrics.downtimeMinutes*100).toFixed(1)+"% of weekly downtime":"No recorded causes")+'</small></article>'+
+      '<article><span>WEEK-ON-WEEK</span><b>'+esc(comparison)+'</b><small>'+(report.comparison?"Compared with the previous recorded week":"Comparison becomes available when the previous week has data")+'</small></article>'+
+      '<article><span>BEST RUNNING DAY</span><b>'+(best?esc(dayName(best.day.date)):"—")+'</b><small>'+(best?best.metrics.runningRate.toFixed(1)+"% running":"No scheduled time")+'</small></article>'+
+      '<article><span>HIGHEST DOWNTIME</span><b>'+(worst&&worst.metrics.downtimeMinutes?esc(dayName(worst.day.date)):"—")+'</b><small>'+(worst?formatMinutes(worst.metrics.downtimeMinutes):"No downtime recorded")+'</small></article></div>'+
+      '<div class="workspace-two-col"><div class="workspace-panel"><div class="workspace-panel-head"><div><h2>Day-by-day performance</h2><p>Weekly rates use aggregate minutes, not an average of daily percentages.</p></div></div><div class="workspace-table-wrap"><table><thead><tr><th>Day</th><th>Operator</th><th>Date</th><th>Net</th><th>Downtime</th><th>Running</th><th>Downtime %</th><th>Running %</th></tr></thead><tbody>'+body+'</tbody></table></div></div>'+
+      '<div class="workspace-panel"><div class="workspace-panel-head"><div><h2>Downtime causes</h2><p>Share of total recorded downtime.</p></div></div>'+causesBody+'</div></div></section>';
   }
   function renderReports(){
     const reports=state.reports.slice().sort((a,b)=>String(b.generatedAt).localeCompare(String(a.generatedAt)));
