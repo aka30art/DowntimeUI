@@ -6,6 +6,7 @@ assert.equal(state.plantOn,true);
 let result=assignStationOperator(state,{stationId:"s1",staffId:"p1",stationIds,staffIds,at:"2026-11-22T06:30:00.000Z"});
 assert.equal(result.ok,true);assert.equal(result.changed,true);state=result.state;
 assert.equal(state.stationAssignments.s1,"p1");
+assert.equal(assignStationOperator(state,{stationId:"s2",staffId:"p1",stationIds,staffIds}).code,"OPERATOR_ALREADY_ASSIGNED");
 assert.equal(state.transitions[0].type,"station-assignment");
 result=assignStationOperator(state,{stationId:"s1",staffId:"p1",stationIds,staffIds});
 assert.equal(result.changed,false);
