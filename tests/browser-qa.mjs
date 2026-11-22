@@ -117,7 +117,7 @@ try{
   await page.locator('[data-entry-preset]').selectOption({label:"Line 1 mechanical"});
   await page.locator('[data-action="apply-entry-preset"]').click();
   assert.equal(await page.locator('[name="entry-area"]').inputValue(),"Production");
-  assert.equal(await page.locator('[name="entry-station"]').inputValue(),"s1");
+  assert.equal(await page.locator('[name="entry-station"] option:checked').innerText(),"Line 1");
   assert.equal(await page.locator('[name="entry-reason"]').inputValue(),"Mechanical fault");
   assert.equal(await page.locator('[name="entry-minutes"]').inputValue(),"30");
   await page.locator('[data-action="save-entry"]').click();
