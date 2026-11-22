@@ -78,6 +78,9 @@ try{
   await page.locator('[data-action="add-role"]').click();
   await page.locator('[data-path="roles.0.name"]').fill("Supervisor");
   await page.locator('[data-action="next"]').click();
+  await page.locator('[data-goto="5"]').click();
+  await page.locator('[data-path="staff.0.roleId"]').selectOption({label:"Supervisor"});
+  await page.locator('[data-goto="7"]').click();
 
   await page.locator('[data-action="add-task"]').click();
   await page.locator('[data-path="dailyTasks.0.name"]').fill("Safety inspection");
@@ -163,6 +166,7 @@ try{
   assert.match(await page.locator(".workspace-root").innerText(),/00h 45m/,"Archived report must remain unchanged after deleting the source entry.");
 
   await page.locator('.workspace-navigation [data-view="people"]').click();
+  assert.match(await page.locator(".workspace-settings-grid").innerText(),/Supervisor/,"Settings summary should show the intended staff access role.");
   await page.locator('[data-step="4"]').click();
   await page.getByRole("heading",{name:"Operating schedule"}).waitFor();
   await page.locator('[data-path="schedule.shifts.0.start"]').fill("07:00");
@@ -216,6 +220,8 @@ try{
   await cleanRestorePage.locator('[data-action="open-preview"]').click();
   await cleanRestorePage.locator(".workspace-daystrip [data-day]").first().click();
   assert.match(await cleanRestorePage.locator(".workspace-root").innerText(),/07:00/,"A clean installation must be able to recover the backed-up schedule.");
+  await cleanRestorePage.locator('.workspace-navigation [data-view="people"]').click();
+  assert.match(await cleanRestorePage.locator(".workspace-settings-grid").innerText(),/Supervisor/,"Clean recovery must retain staff role assignment.");
   await cleanRestorePage.locator('.workspace-navigation [data-view="plant"]').click();
   await cleanRestorePage.locator(".workspace-operator-card img").waitFor();
   await cleanRestorePage.locator('.workspace-navigation [data-view="tasks"]').click();
