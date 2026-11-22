@@ -36,8 +36,10 @@ function staffRows(){
   return config.staff.map((member,index)=>{
     const preview=member.photoDataUrl
       ?'<img src="'+esc(member.photoDataUrl)+'" alt="'+esc(member.name||"Staff photo")+'">'
-      :'<span>'+esc((member.name||"").trim().split(/\s+/).filter(Boolean).slice(0,2).map(part=>part[0].toUpperCase()).join("")||"—")+'</span>';
-    return '<div class="setup-staff-row"><div class="setup-staff-name">'+field("Staff member","staff."+index+".name",member.name,"Full name")+'</div>'+
+      :'<span>'+esc((member.name||"").trim().split(/\\s+/).filter(Boolean).slice(0,2).map(part=>part[0].toUpperCase()).join("")||"—")+'</span>';
+    const roles='<option value="">No role linked</option>'+config.roles.map(role=>'<option value="'+esc(role.id)+'" '+(member.roleId===role.id?"selected":"")+'>'+esc(role.name)+'</option>').join("");
+    return '<div class="setup-staff-row"><div class="setup-staff-name">'+field("Staff member","staff."+index+".name",member.name,"Full name")+
+      '<label class="setup-staff-role"><span>Intended access role (optional)</span><select data-path="staff.'+index+'.roleId">'+roles+'</select></label></div>'+
       '<div class="setup-staff-photo"><div class="setup-staff-preview">'+preview+'</div><label><span>Profile photo (optional)</span><input type="file" accept="image/jpeg,image/png,image/webp" data-staff-photo="'+index+'"></label>'+
       (member.photoDataUrl?'<button type="button" class="setup-photo-remove" data-action="remove-staff-photo" data-index="'+index+'">Remove photo</button>':'')+'</div>'+
       remove("staff",index)+'</div>';
@@ -223,6 +225,7 @@ async function restoreInitialBackup(file){
 }
 root.addEventListener("change",async e=>{
   const el=e.target;
+  if(el.matches("select[data-path]")){setPath(el.dataset.path,el.value);saveDraftState();return;}
   if(el.matches("[data-staff-photo]")){
     const index=Number(el.dataset.staffPhoto),member=config.staff[index],file=el.files?.[0];
     if(!member||!file)return;
