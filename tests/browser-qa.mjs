@@ -227,8 +227,15 @@ try{
 
   await page.setViewportSize({width:390,height:844});
   await page.locator('.workspace-navigation [data-view="daily"]').click();
-  const mobileMetrics=await page.evaluate(()=>({viewport:innerWidth,document:document.documentElement.scrollWidth,body:document.body.scrollWidth}));
+  const mobileMetrics=await page.evaluate(()=>{
+    const controls=[...document.querySelectorAll(".workspace-root input:not([type=file]),.workspace-root select,.workspace-root textarea")].map(el=>{
+      const rect=el.getBoundingClientRect(),panel=el.closest(".workspace-panel,.workspace-actual-shift,.workspace-add-form")?.getBoundingClientRect();
+      return {name:el.getAttribute("name")||el.getAttribute("data-shift-start")||el.getAttribute("data-shift-stop")||el.tagName,left:rect.left,right:rect.right,panelRight:panel?.right};
+    });
+    return {viewport:innerWidth,document:document.documentElement.scrollWidth,body:document.body.scrollWidth,controls};
+  });
   assert.ok(mobileMetrics.document<=mobileMetrics.viewport+1,"Mobile layout must not overflow horizontally: "+JSON.stringify(mobileMetrics));
+  assert.ok(mobileMetrics.controls.every(control=>control.right<=mobileMetrics.viewport+1&&(!control.panelRight||control.right<=control.panelRight+1)),"Mobile controls must fit their viewport and containing panels: "+JSON.stringify(mobileMetrics.controls));
   await page.screenshot({path:"artifacts/workspace-mobile.png",fullPage:true});
   assert.deepEqual(failures,[],"Browser runtime errors: "+failures.join(" | "));
   console.log("PASS: Chromium installer, daily operations, plant overview, task-lock persistence, reports, Settings edits, backup/restore and 390px mobile layout");
