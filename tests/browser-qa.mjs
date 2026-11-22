@@ -156,7 +156,7 @@ try{
   assert.match(await page.locator(".workspace-root").innerText(),/07:00/,"Settings changes must persist to the installed workspace.");
 
   await page.locator('.workspace-navigation [data-view="people"]').click();
-  await page.locator('[data-action="export-backup"]').click();
+  await page.getByRole("button",{name:"Export full workspace backup"}).click();
   await page.waitForTimeout(150);
   assert.deepEqual(failures,[],"Exporting a workspace backup must not raise browser errors: "+failures.join(" | "));
   const backupJson=await page.evaluate(()=>{
