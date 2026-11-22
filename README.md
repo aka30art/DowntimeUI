@@ -9,7 +9,7 @@ Company-neutral installation and interface development environment for DOWNTIME.
 - This branch must not contain production credentials, production tenant records or production database connections.
 
 ## Current development scope
-The universal first-run installer supports local draft persistence, validation, installation and JSON export. The current operational screen remains a preview prototype. Live operational persistence, authentication, user provisioning, server-enforced permissions, cross-device sync, backups and full Main feature parity remain separate implementation gates.
+The universal first-run installer supports local draft persistence, validation, installation and JSON export. A local operations workspace is now connected to the installer. It supports downtime entry, operator assignment, daily task locking, weighted weekly metrics, report snapshots and export. Its operational state is local to one browser; shared persistence, authentication, user provisioning, server-enforced permissions, cross-device sync, secure backups and full Main feature parity remain separate implementation gates.
 
 ## Quality and release boundary
 - Development branch: `feature/universal-app-foundation`
