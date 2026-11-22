@@ -196,15 +196,21 @@ export function mountWorkspace(root,config,{onEditConfiguration=()=>{},onExportC
       '<div class="workspace-message" role="status">'+esc(status)+'</div></section>';
   }
   function renderTasks(){
-    const day=currentDay(),templates=Array.isArray(config.dailyTasks)?config.dailyTasks:[],locked=Boolean(day.dailyTasks?.lockedAt);
+    const day=currentDay(),week=ensureWeek(),templates=Array.isArray(config.dailyTasks)?config.dailyTasks:[],locked=Boolean(day.dailyTasks?.lockedAt);
     const tasks=visibleDailyTasks(day.dailyTasks,templates),done=new Set(day.dailyTasks?.completedTaskIds||[]);
     const count=completedTaskCount({...day.dailyTasks,snapshot:locked?day.dailyTasks.snapshot:templates});
     const rows=tasks.map(task=>'<label class="workspace-task '+(done.has(task.id)?"done":"")+'"><input type="checkbox" data-task="'+esc(task.id)+'" '+(done.has(task.id)?"checked":"")+(locked?" disabled":"")+'><span>'+esc(task.name)+'</span></label>').join("");
-    return '<section class="workspace-section workspace-narrow"><div class="workspace-eyebrow">DAILY CONTROL</div><h1>Daily tasks</h1><p class="workspace-lead">Checklist for '+esc(dayName(selectedDate))+' · '+esc(selectedDate)+'. Save and lock to freeze this exact checklist for the selected day.</p>'+
+    const days=week.days.map(item=>{
+      const metrics=calculateDayMetrics(item,config.schedule),label=labelForDay(item.date);
+      return '<button type="button" data-day="'+item.date+'" class="workspace-day '+(item.date===selectedDate?"selected":"")+'"><b>'+label.short+'</b><span>'+label.date+'</span><small>'+formatMinutes(metrics.downtimeMinutes)+'</small>'+(item.dailyTasks?.lockedAt?'<i>LOCKED</i>':'')+'</button>';
+    }).join("");
+    return '<section class="workspace-section workspace-narrow"><div class="workspace-eyebrow">DAILY CONTROL</div><h1>Daily tasks</h1><p class="workspace-lead">Checklist for '+esc(dayName(selectedDate))+' · '+esc(selectedDate)+'. Select a date to review its checklist. Save and lock to freeze that date’s snapshot.</p>'+
+      '<div class="workspace-week-nav"><button type="button" data-action="previous-week">← Previous week</button><button type="button" data-action="current-week">Current week</button><button type="button" data-action="next-week">Next week →</button></div>'+
+      '<div class="workspace-daystrip">'+days+'</div>'+
       '<div class="workspace-panel"><div class="workspace-panel-head"><div><h2>Task checklist</h2><p>'+(locked?"This day's task snapshot is immutable.":"Mark completed tasks, then save and lock for the day.")+'</p></div><span class="workspace-count">'+count+' / '+tasks.length+' COMPLETE</span></div>'+
       '<div class="workspace-progress"><span style="width:'+(tasks.length?count/tasks.length*100:0)+'%"></span></div>'+
       (tasks.length?'<div class="workspace-task-list">'+rows+'</div>':'<div class="workspace-empty">No daily task templates are configured. Add tasks in workspace setup.</div>')+
-      (locked?'<div class="workspace-lock-banner"><b>Saved and locked</b><span>Locked '+esc(new Date(day.dailyTasks.lockedAt).toLocaleString("en-GB"))+'. This checklist cannot be edited.</span></div>':'<div class="workspace-task-actions"><span>Changes are stored locally before the lock is applied.</span><button type="button" class="workspace-primary" data-action="lock-tasks" '+(!tasks.length?"disabled":"")+'>SAVE &amp; LOCK FOR TODAY</button></div>')+
+      (locked?'<div class="workspace-lock-banner"><b>Saved and locked</b><span>Locked '+esc(new Date(day.dailyTasks.lockedAt).toLocaleString("en-GB"))+'. This checklist cannot be edited.</span></div>':'<div class="workspace-task-actions"><span>Changes are stored locally before the lock is applied.</span><button type="button" class="workspace-primary" data-action="lock-tasks" '+(!tasks.length?"disabled":"")+' >SAVE &amp; LOCK FOR TODAY</button></div>')+
       '<div class="workspace-message" role="status">'+esc(status)+'</div></div></section>';
   }
   function renderWeekly(){
