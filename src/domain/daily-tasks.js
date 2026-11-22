@@ -22,10 +22,10 @@ export function visibleDailyTasks(dayState,templates=[]){
   if(dayState?.snapshot&&Array.isArray(dayState.snapshot))return dayState.snapshot.map(x=>({...x}));
   return (Array.isArray(templates)?templates:[]).map(x=>({id:x.id,name:x.name}));
 }
-export function setTaskCompletion(dayState,taskId,completed){
+export function setTaskCompletion(dayState,taskId,completed,templates=[]){
   const current=dayState&&typeof dayState==="object"?dayState:createDailyTaskState();
   if(current.lockedAt)return {ok:false,code:"DAY_LOCKED",message:"Daily tasks are saved and locked for this day.",state:current};
-  const tasks=visibleDailyTasks(current,[]);
+  const tasks=visibleDailyTasks(current,templates);
   if(!tasks.some(x=>x.id===taskId))return {ok:false,code:"TASK_NOT_FOUND",message:"Task is not part of this day's checklist.",state:current};
   const done=new Set(Array.isArray(current.completedTaskIds)?current.completedTaskIds:[]);
   if(completed)done.add(taskId);else done.delete(taskId);
