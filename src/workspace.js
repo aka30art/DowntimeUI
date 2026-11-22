@@ -4,7 +4,7 @@ import {saveAndLockDailyTasks,setTaskCompletion,visibleDailyTasks,completedTaskC
 import {calculateScheduleForDate,formatMinutes} from "./domain/schedule.js";
 import {buildWeeklyReport} from "./domain/reports.js";
 import {assignStationOperator,createPlantState,normalizePlantState,setPlantStatus,setStationStatus} from "./domain/plant.js";
-import {validateWorkspaceBackup} from "./domain/backup.js";
+import {createWorkspaceBackup,restoreWorkspaceBackup,validateWorkspaceBackup} from "./domain/backup.js";
 
 const STORE_PREFIX="downtimeui:operations:v1:";
 const DAY_NAMES=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
@@ -282,7 +282,8 @@ export function mountWorkspace(root,config,{onEditConfiguration=()=>{},onExportC
   }
   function editConfig(){onEditConfiguration();}
   function exportBackup(){
-    fileDownload("downtimeui-workspace-backup.json","application/json",JSON.stringify({configuration:config,operations:state,exportedAt:new Date().toISOString()},null,2));
+    const backup=createWorkspaceBackup(config,state);
+    fileDownload("downtimeui-workspace-backup.json","application/json",JSON.stringify(backup,null,2));
   }
   async function restoreBackup(file){
     if(!file)return;
@@ -294,22 +295,12 @@ export function mountWorkspace(root,config,{onEditConfiguration=()=>{},onExportC
     if(typeof globalThis.confirm!=="function"||!globalThis.confirm("Replace this local workspace configuration and all local records with the selected backup? This cannot be undone.")){
       status="Backup restore cancelled.";render();return;
     }
-    const operationsKey=keyFor(config.installationId);
-    const previousOperations=safeGet(storage,operationsKey);
-    if(!previousOperations.ok){status="Backup restore failed: "+previousOperations.error;render();return;}
-    const previousState=state;
-    const importedState=JSON.parse(JSON.stringify(backup.operations));
-    const savedOperations=saveOperations(storage,importedState);
-    if(!savedOperations.ok){status="Backup restore failed: "+savedOperations.error;render();return;}
-    const restoredConfiguration=JSON.parse(JSON.stringify(backup.configuration));
-    const configurationResult=onRestoreConfiguration(restoredConfiguration);
-    if(!configurationResult?.ok){
-      try{if(previousOperations.value===null)storage.removeItem(operationsKey);else storage.setItem(operationsKey,previousOperations.value);}catch{}
-      state=previousState;
-      status="Backup restore failed: "+(configurationResult?.error||"configuration could not be saved.");
-      render();return;
-    }
-    state=importedState;
+    const restored=restoreWorkspaceBackup(backup,config.installationId,{storage});
+    if(!restored.ok){status="Backup restore failed: "+restored.errors.join(" ");render();return;}
+    for(const key of Object.keys(config))delete config[key];
+    Object.assign(config,restored.configuration);
+    state=restored.operations;
+    state.plant=normalizePlantState(state.plant);
     selectedWeek=weekStartFor(new Date());
     selectedDate=localIso(selectedWeek);
     editingEntryId=null;
