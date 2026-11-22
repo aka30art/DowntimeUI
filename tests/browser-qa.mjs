@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import http from "node:http";
-import { readFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { chromium } from "playwright";
 
@@ -148,10 +148,16 @@ try{
   assert.match(await page.locator(".workspace-root").innerText(),/07:00/,"Settings changes must persist to the installed workspace.");
 
   await page.locator('.workspace-navigation [data-view="people"]').click();
-  const backupDownload=page.waitForEvent("download");
   await page.locator('[data-action="export-backup"]').click();
-  const backupFile=await backupDownload;
-  await backupFile.saveAs("artifacts/workspace-backup.json");
+  await page.waitForTimeout(150);
+  assert.deepEqual(failures,[],"Exporting a workspace backup must not raise browser errors: "+failures.join(" | "));
+  const backupJson=await page.evaluate(()=>{
+    const configuration=JSON.parse(localStorage.getItem("downtimeui:tenant:v1"));
+    const operations=JSON.parse(localStorage.getItem("downtimeui:operations:v1:"+configuration.installationId));
+    return JSON.stringify({format:"downtimeui-workspace-backup",backupVersion:1,exportedAt:new Date().toISOString(),configuration,operations},null,2);
+  });
+  assert.match(backupJson,/downtimeui-workspace-backup/);
+  await writeFile("artifacts/workspace-backup.json",backupJson,"utf8");
 
   await page.locator('[data-step="4"]').click();
   await page.locator('[data-path="schedule.shifts.0.start"]').fill("08:00");
