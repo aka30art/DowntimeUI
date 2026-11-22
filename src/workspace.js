@@ -275,15 +275,20 @@ export function mountWorkspace(root,config,{onEditConfiguration=()=>{},onExportC
       hours:Number(findField("entry-hours"))||0,minutes:Number(findField("entry-minutes"))||0,createdAt:previous?.createdAt||new Date().toISOString(),updatedAt:previous?new Date().toISOString():null};
     const errors=validateDowntimeEntry(entry);
     if(errors.length){status=errors.join(" ");render();return;}
-    if(previous){currentDay().entries=currentDay().entries.map(item=>item.id===previous.id?entry:item);editingEntryId=null;}
-    else currentDay().entries.push(entry);
+    const day=currentDay(),previousEntries=day.entries.slice(),previousEditingId=editingEntryId;
+    if(previous){day.entries=day.entries.map(item=>item.id===previous.id?entry:item);editingEntryId=null;}
+    else day.entries.push(entry);
     if(persist(previous?"Downtime entry updated locally.":"Downtime entry saved locally."))render();
+    else{day.entries=previousEntries;editingEntryId=previousEditingId;render();}
   }
   function generateReport(){
     const week=ensureWeek(),previousKey=localIso(addDays(selectedWeek,-7)),previous=state.weeks[previousKey]?.days||[];
     const report=buildWeeklyReport({weekStart:getWeekKey(),days:week.days,previousDays:previous,schedule:config.schedule,companyName:config.identity.companyName,siteName:config.site.siteName});
-    report.id=createId("report");state.reports.push(report);
+    report.id=createId("report");
+    const previousReports=state.reports.slice();
+    state.reports.push(report);
     if(persist("Weekly report snapshot created.")){view="reports";render();}
+    else{state.reports=previousReports;render();}
   }
   function downloadReport(report){
     if(report)fileDownload("downtime-weekly-report-"+(report.weekStart||"week")+".json","application/json",JSON.stringify(report,null,2));
@@ -341,9 +346,11 @@ export function mountWorkspace(root,config,{onEditConfiguration=()=>{},onExportC
     }
     else if(action==="cancel-edit"){editingEntryId=null;render();}
     else if(action==="delete-entry"){
-      currentDay().entries=currentDay().entries.filter(x=>x.id!==button.dataset.entryId);
+      const day=currentDay(),previousEntries=day.entries.slice(),previousEditingId=editingEntryId;
+      day.entries=day.entries.filter(x=>x.id!==button.dataset.entryId);
       if(editingEntryId===button.dataset.entryId)editingEntryId=null;
       if(persist("Downtime entry removed."))render();
+      else{day.entries=previousEntries;editingEntryId=previousEditingId;render();}
     }
     else if(action==="toggle-plant"){
       const previous=ensurePlantState();
@@ -396,12 +403,15 @@ export function mountWorkspace(root,config,{onEditConfiguration=()=>{},onExportC
     if(control.matches("[data-task]")){
       const day=currentDay(),result=setTaskCompletion(day.dailyTasks,control.dataset.task,control.checked,config.dailyTasks||[]);
       if(!result.ok){status=result.message;render();return;}
+      const previousTasks=day.dailyTasks;
       day.dailyTasks=result.state;
-      if(!persist("Task completion saved locally.")){day.dailyTasks=createDailyTaskState();render();return;}
+      if(!persist("Task completion saved locally.")){day.dailyTasks=previousTasks;render();return;}
       render();
     } else if(control.matches("[data-operator]")){
-      currentDay().operatorId=control.value||"";
+      const day=currentDay(),previousOperatorId=day.operatorId;
+      day.operatorId=control.value||"";
       if(persist("Operator assignment saved locally."))render();
+      else{day.operatorId=previousOperatorId||"";render();}
     } else if(control.matches("[data-station-status]")){
       const previous=ensurePlantState(),id=control.dataset.stationStatus,station=config.site.stations.find(item=>item.id===id);
       const result=setStationStatus(previous,{stationId:id,status:control.value,stationIds:(config.site.stations||[]).map(item=>item.id),stationName:station?.name||"Station"});
