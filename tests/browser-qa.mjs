@@ -86,6 +86,14 @@ try{
   assert.match(await page.locator(".workspace-root").innerText(),/09h 00m/,"Configured 9h net working time should appear in the daily summary.");
   await page.screenshot({path:"artifacts/workspace-desktop.png",fullPage:true});
 
+  await page.locator("[data-shift-start]").fill("07:00");
+  await page.locator("[data-shift-stop]").fill("16:00");
+  await page.locator('[data-action="save-shift-times"]').click();
+  assert.match(await page.locator(".workspace-metrics").innerText(),/08h 30m/,"Actual shift override must reduce net availability by the configured break overlap.");
+  assert.match(await page.locator(".workspace-schedule-line").first().innerText(),/07:00–16:00 \(actual\)/);
+  await page.locator('[data-action="clear-shift-times"]').click();
+  assert.match(await page.locator(".workspace-metrics").innerText(),/09h 00m/,"Resetting actual shift times must restore configured schedule calculations.");
+
   await page.locator('[name="entry-area"]').fill("Production");
   await page.locator('[name="entry-station"]').selectOption({label:"Line 1"});
   await page.locator('[name="entry-reason"]').fill("Mechanical fault");
