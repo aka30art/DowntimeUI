@@ -73,3 +73,13 @@ export function formatMinutes(value){
   const minutes=Math.max(0,Math.round(Number(value)||0));
   return String(Math.floor(minutes/60)).padStart(2,"0")+"h "+String(minutes%60).padStart(2,"0")+"m";
 }
+
+export function calculateCustomScheduleForDate(date,start,end,schedule={}){
+  const day=dateDayCode(date);
+  if(!day)return null;
+  return calculateScheduleForDate(date,{
+    workDays:[day],
+    shifts:[{id:"actual-shift",name:"Actual shift",start,end,days:[day]}],
+    breaks:Array.isArray(schedule.breaks)?schedule.breaks:[]
+  });
+}
