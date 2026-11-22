@@ -171,6 +171,11 @@ try{
   assert.match(await page.locator(".workspace-root").innerText(),/07:00/,"Restoring the backup must return the prior schedule configuration.");
   await page.locator('.workspace-navigation [data-view="reports"]').click();
   assert.match(await page.locator(".workspace-root").innerText(),/00h 45m/,"Restoring the backup must reinstate the archived report snapshot.");
+  await page.locator('.workspace-navigation [data-view="people"]').click();
+  await page.locator('[data-step="4"]').click();
+  assert.equal(await page.locator('[data-path="schedule.shifts.0.start"]').inputValue(),"07:00","Installer Settings must read the restored backup configuration.");
+  await page.locator('[data-action="save-exit"]').click();
+  await page.locator('[data-action="open-preview"]').click();
 
   const cleanRestorePage=await browser.newPage({viewport:{width:1280,height:900},deviceScaleFactor:1});
   cleanRestorePage.on("pageerror",error=>failures.push(error.message));
