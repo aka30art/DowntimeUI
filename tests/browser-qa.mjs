@@ -63,6 +63,16 @@ try{
 
   await page.locator('[data-action="add-staff"]').click();
   await page.locator('[data-path="staff.0.name"]').fill("Operator One");
+  const photoBase64=await page.evaluate(()=>{
+    const canvas=document.createElement("canvas");canvas.width=48;canvas.height=48;
+    const context=canvas.getContext("2d");context.fillStyle="#d8a800";context.fillRect(0,0,48,48);
+    context.fillStyle="#172b38";context.beginPath();context.arc(24,17,9,0,Math.PI*2);context.fill();
+    context.fillRect(9,29,30,16);
+    return canvas.toDataURL("image/png").split(",")[1];
+  });
+  await page.locator('[data-staff-photo="0"]').setInputFiles({name:"operator.png",mimeType:"image/png",buffer:Buffer.from(photoBase64,"base64")});
+  await page.locator(".setup-staff-preview img").waitFor();
+  assert.match(await page.locator(".setup-staff-preview img").getAttribute("src"),/^data:image\\/jpeg;base64,/);
   await page.locator('[data-action="next"]').click();
 
   await page.locator('[data-action="add-role"]').click();
@@ -201,6 +211,8 @@ try{
   await cleanRestorePage.locator('[data-action="open-preview"]').click();
   await cleanRestorePage.locator(".workspace-daystrip [data-day]").first().click();
   assert.match(await cleanRestorePage.locator(".workspace-root").innerText(),/07:00/,"A clean installation must be able to recover the backed-up schedule.");
+  await cleanRestorePage.locator('.workspace-navigation [data-view="plant"]').click();
+  await cleanRestorePage.locator(".workspace-operator-card img").waitFor();
   await cleanRestorePage.locator('.workspace-navigation [data-view="tasks"]').click();
   await cleanRestorePage.locator('.workspace-daystrip [data-day="'+lockedDate+'"]').click();
   assert.equal(await cleanRestorePage.locator("input[data-task]").nth(0).isDisabled(),true,"Backup recovery must preserve the daily task lock on the original task date.");
