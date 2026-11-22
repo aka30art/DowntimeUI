@@ -79,7 +79,7 @@ export function validateConfig(c) {
       uniqueNamed(s.shifts, "Shift", e);
       s.shifts.forEach((x, i) => {
         if (!TIME.test(x?.start || "") || !TIME.test(x?.end || "")) e.push("Shift " + (i + 1) + " needs valid HH:MM start and end times.");
-        else if (x.start >= x.end) e.push("Shift " + (i + 1) + " must end after it starts. Overnight shifts are not yet supported.");
+        else if (x.start === x.end) e.push("Shift " + (i + 1) + " start and end times cannot be identical.");
       });
       if (s.shifts.length && !s.workDays?.length) e.push("Choose operating days when shifts are configured.");
     }
@@ -88,7 +88,7 @@ export function validateConfig(c) {
       uniqueNamed(s.breaks, "Break", e);
       s.breaks.forEach((x, i) => {
         if (!TIME.test(x?.start || "") || !TIME.test(x?.end || "")) e.push("Break " + (i + 1) + " needs valid HH:MM start and end times.");
-        else if (x.start >= x.end) e.push("Break " + (i + 1) + " must end after it starts.");
+        else if (x.start === x.end) e.push("Break " + (i + 1) + " start and end times cannot be identical.");
       });
     }
   }
