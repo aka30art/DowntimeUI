@@ -85,6 +85,7 @@ export function mountWorkspace(root,config,{onEditConfiguration=()=>{},onExportC
     return parts.find(x=>x.type==="year").value+"-"+parts.find(x=>x.type==="month").value+"-"+parts.find(x=>x.type==="day").value;
   };
   let state=loaded.state,view="daily",selectedWeek=weekStartFor(getLocalDate()),selectedDate=getLocalDate(),status=loaded.error||"Local workspace ready.",editingEntryId=null;
+  let lastPersistedState=JSON.parse(JSON.stringify(state));
   function getWeekKey(){return localIso(selectedWeek);}
   function ensurePlantState(){
     state.plant=normalizePlantState(state.plant);
@@ -117,9 +118,18 @@ export function mountWorkspace(root,config,{onEditConfiguration=()=>{},onExportC
     return calculateWeekMetrics(week.days.map(day=>day.start&&!day.stop&&day.date===getLocalDate()?{...day,stop:getLocalClock(),breakMinutes:undefined}:day),config.schedule);
   }
   function persist(message="Saved on this device."){
-    const result=saveOperations(storage,state);
-    status=result.ok?message:"Save failed: "+result.error;
-    return result.ok;
+    const candidate=JSON.parse(JSON.stringify(state));
+    const result=saveOperations(storage,candidate);
+    if(result.ok){
+      state=candidate;
+      lastPersistedState=JSON.parse(JSON.stringify(candidate));
+      status=message;
+      return true;
+    }
+    state=JSON.parse(JSON.stringify(lastPersistedState));
+    status="Save failed; unsaved changes were rolled back: "+result.error;
+    render();
+    return false;
   }
   function nav(){
     return [["daily","Daily sheet"],["plant","Plant overview"],["tasks","Daily tasks"],["weekly","Weekly summary"],["reports","Reports"],["people","People & settings"]].map(([id,name])=>'<button type="button" class="workspace-nav '+(view===id?"active":"")+'" data-view="'+id+'">'+name+'</button>').join("");
