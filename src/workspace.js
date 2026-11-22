@@ -477,7 +477,7 @@ export function mountWorkspace(root,config,{onEditConfiguration=()=>{},onExportC
     else if(action==="factory-reset"){
       if(typeof globalThis.confirm!=="function"||!globalThis.confirm("WIPE OUT will permanently clear this DOWNTIMEUI workspace from this browser. Continue?")){status="Factory reset cancelled.";render();return;}
       const restoreFirst=typeof globalThis.confirm==="function"&&globalThis.confirm("DO YOU WANT TO RESTORE A BACKUP JSON FILE instead of starting empty?\n\nChoose OK to select and restore a backup. Choose Cancel to continue with an empty factory reset.");
-      if(restoreFirst){root.querySelector("[data-backup-file]")?.click?.();status="Select a valid backup JSON file to restore. No data has been wiped.";render();return;}
+      if(restoreFirst){status="Select a valid backup JSON file to restore. No data has been wiped.";render();root.querySelector("[data-backup-file]")?.click?.();return;}
       if(typeof globalThis.confirm!=="function"||!globalThis.confirm("Confirm final WIPE OUT? This will return to the empty installation screen.")){status="Factory reset cancelled.";render();return;}
       const wiped=factoryResetStorage(storage);
       if(!wiped.ok){status="Factory reset failed; local data was retained where rollback allowed: "+wiped.error;render();return;}
