@@ -1,4 +1,4 @@
-import {validateConfig} from "../config-core.js";
+import {DRAFT_STORAGE_KEY,TENANT_STORAGE_KEY,validateConfig} from "../config-core.js";
 import {validateDowntimeEntry} from "./downtime.js";
 import {validateTaskTemplates} from "./daily-tasks.js";
 const isObject=value=>value!==null&&typeof value==="object"&&!Array.isArray(value);
@@ -98,4 +98,43 @@ export function validateWorkspaceBackup(backup,currentInstallationId){
     }
   }
   return {ok:errors.length===0,errors:[...new Set(errors)]};
+}
+
+
+export function createWorkspaceBackup(configuration,operations,{exportedAt=new Date()}={}){
+  const backup={
+    format:"downtimeui-workspace-backup",backupVersion:1,
+    exportedAt:exportedAt instanceof Date?exportedAt.toISOString():new Date(exportedAt).toISOString(),
+    configuration,operations
+  };
+  const validation=validateWorkspaceBackup(backup,configuration?.installationId);
+  if(!validation.ok)throw new TypeError("Cannot create an invalid workspace backup: "+validation.errors.join(" "));
+  return JSON.parse(JSON.stringify(backup));
+}
+export function restoreWorkspaceBackup(backup,currentInstallationId,{storage=globalThis.localStorage}={}){
+  const validation=validateWorkspaceBackup(backup,currentInstallationId);
+  if(!validation.ok)return {ok:false,errors:validation.errors};
+  if(!storage)return {ok:false,errors:["Local browser storage is unavailable."]};
+  const configurationKey=TENANT_STORAGE_KEY;
+  const operationsKey="downtimeui:operations:v1:"+currentInstallationId;
+  let previousConfiguration,previousOperations,previousDraft;
+  try{
+    previousConfiguration=storage.getItem(configurationKey);
+    previousOperations=storage.getItem(operationsKey);
+    previousDraft=storage.getItem(DRAFT_STORAGE_KEY);
+    storage.setItem(configurationKey,JSON.stringify(backup.configuration));
+    storage.setItem(operationsKey,JSON.stringify(backup.operations));
+    storage.removeItem(DRAFT_STORAGE_KEY);
+    return {ok:true,errors:[],configuration:JSON.parse(JSON.stringify(backup.configuration)),operations:JSON.parse(JSON.stringify(backup.operations))};
+  }catch(error){
+    try{
+      if(previousConfiguration===null||previousConfiguration===undefined)storage.removeItem(configurationKey);
+      else storage.setItem(configurationKey,previousConfiguration);
+      if(previousOperations===null||previousOperations===undefined)storage.removeItem(operationsKey);
+      else storage.setItem(operationsKey,previousOperations);
+      if(previousDraft===null||previousDraft===undefined)storage.removeItem(DRAFT_STORAGE_KEY);
+      else storage.setItem(DRAFT_STORAGE_KEY,previousDraft);
+    }catch{/* Best-effort rollback if browser storage also rejects recovery writes. */}
+    return {ok:false,errors:["Restore failed and the previous local data was retained where browser storage allowed rollback: "+(error?.message||"Storage error")]};
+  }
 }
