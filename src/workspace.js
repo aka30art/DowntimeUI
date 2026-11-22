@@ -121,7 +121,6 @@ export function mountWorkspace(root,config,{onEditConfiguration=()=>{},onExportC
     const candidate=JSON.parse(JSON.stringify(state));
     const result=saveOperations(storage,candidate);
     if(result.ok){
-      state=candidate;
       lastPersistedState=JSON.parse(JSON.stringify(candidate));
       status=message;
       return true;
@@ -379,6 +378,7 @@ export function mountWorkspace(root,config,{onEditConfiguration=()=>{},onExportC
     Object.assign(config,restored.configuration);
     state=restored.operations;
     state.plant=normalizePlantState(state.plant);
+    lastPersistedState=JSON.parse(JSON.stringify(state));
     selectedDate=getLocalDate();
     selectedWeek=weekStartFor(selectedDate);
     editingEntryId=null;
