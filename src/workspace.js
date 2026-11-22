@@ -70,11 +70,19 @@ export function mountWorkspace(root,config,{onEditConfiguration=()=>{},onExportC
   const bindingController=new AbortController();
   WORKSPACE_BINDINGS.set(root,()=>bindingController.abort());
   const loaded=readOperations(storage,config.installationId);
-  const getNow=()=>options.now?new Date(options.now()):new Date();
-  let state=loaded.state,view="daily",selectedWeek=weekStartFor(new Date()),selectedDate=localIso(new Date()),status=loaded.error||"Local workspace ready.",editingEntryId=null;
-  const getNow=()=>options.now?new Date(options.now()):new Date();
-  const getLocalClock=()=>{const parts=new Intl.DateTimeFormat("en-GB",{timeZone:config.identity.timezone||"UTC",hour:"2-digit",minute:"2-digit",hourCycle:"h23"}).formatToParts(getNow());return parts.find(x=>x.type==="hour").value+":"+parts.find(x=>x.type==="minute").value;};
-  const getLocalDate=()=>{const parts=new Intl.DateTimeFormat("en-CA",{timeZone:config.identity.timezone||"UTC",year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(getNow());return parts.find(x=>x.type==="year").value+"-"+parts.find(x=>x.type==="month").value+"-"+parts.find(x=>x.type==="day").value;};
+  const getNow=()=>{
+    const supplied=typeof options.now==="function"?options.now():options.now;
+    return supplied===undefined?new Date():new Date(supplied);
+  };
+  const getLocalClock=()=>{
+    const parts=new Intl.DateTimeFormat("en-GB",{timeZone:config.identity.timezone||"UTC",hour:"2-digit",minute:"2-digit",hourCycle:"h23"}).formatToParts(getNow());
+    return parts.find(x=>x.type==="hour").value+":"+parts.find(x=>x.type==="minute").value;
+  };
+  const getLocalDate=()=>{
+    const parts=new Intl.DateTimeFormat("en-CA",{timeZone:config.identity.timezone||"UTC",year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(getNow());
+    return parts.find(x=>x.type==="year").value+"-"+parts.find(x=>x.type==="month").value+"-"+parts.find(x=>x.type==="day").value;
+  };
+  let state=loaded.state,view="daily",selectedDate=getLocalDate(),selectedWeek=weekStartFor(selectedDate),status=loaded.error||"Local workspace ready.",editingEntryId=null;
   function getWeekKey(){return localIso(selectedWeek);}
   function ensurePlantState(){
     state.plant=normalizePlantState(state.plant);
@@ -298,7 +306,7 @@ export function mountWorkspace(root,config,{onEditConfiguration=()=>{},onExportC
   function saveEntry(){
     const previous=currentDay().entries.find(entry=>entry.id===editingEntryId)||null;
     const entry={id:previous?.id||createId("entry"),area:findField("entry-area").trim(),stationId:findField("entry-station")||null,reason:findField("entry-reason").trim(),
-      hours:Number(findField("entry-hours"))||0,minutes:Number(findField("entry-minutes"))||0,createdAt:previous?.createdAt||new Date().toISOString(),updatedAt:previous?new Date().toISOString():null};
+      hours:Number(findField("entry-hours"))||0,minutes:Number(findField("entry-minutes"))||0,createdAt:previous?.createdAt||getNow().toISOString(),updatedAt:previous?getNow().toISOString():null};
     const errors=validateDowntimeEntry(entry);
     if(errors.length){status=errors.join(" ");render();return;}
     const day=currentDay(),previousEntries=day.entries.slice(),previousEditingId=editingEntryId;
@@ -309,7 +317,7 @@ export function mountWorkspace(root,config,{onEditConfiguration=()=>{},onExportC
   }
   function generateReport(){
     const week=ensureWeek(),previousKey=localIso(addDays(selectedWeek,-7)),previous=state.weeks[previousKey]?.days||[];
-    const report=buildWeeklyReport({weekStart:getWeekKey(),days:week.days,previousDays:previous,schedule:config.schedule,companyName:config.identity.companyName,siteName:config.site.siteName});
+    const report=buildWeeklyReport({weekStart:getWeekKey(),days:week.days,previousDays:previous,schedule:config.schedule,companyName:config.identity.companyName,siteName:config.site.siteName,generatedAt:getNow()});
     report.id=createId("report");
     const previousReports=state.reports.slice();
     state.reports.push(report);
@@ -349,8 +357,8 @@ export function mountWorkspace(root,config,{onEditConfiguration=()=>{},onExportC
     Object.assign(config,restored.configuration);
     state=restored.operations;
     state.plant=normalizePlantState(state.plant);
-    selectedWeek=weekStartFor(new Date());
-    selectedDate=localIso(selectedWeek);
+    selectedDate=getLocalDate();
+    selectedWeek=weekStartFor(selectedDate);
     editingEntryId=null;
     view="daily";
     status="Workspace backup restored successfully.";
@@ -385,7 +393,7 @@ export function mountWorkspace(root,config,{onEditConfiguration=()=>{},onExportC
     }
     else if(action==="lock-tasks"){
       const day=currentDay(),before=day.dailyTasks;
-      const result=saveAndLockDailyTasks(before,config.dailyTasks||[],{actorId:null,now:new Date()});
+      const result=saveAndLockDailyTasks(before,config.dailyTasks||[],{actorId:null,now:getNow()});
       if(!result.ok){status=result.errors.join(" ");render();return;}
       day.dailyTasks=result.state;
       if(persist("Daily tasks saved and locked for this day."))render();else day.dailyTasks=before;
@@ -420,7 +428,7 @@ export function mountWorkspace(root,config,{onEditConfiguration=()=>{},onExportC
     }
     else if(action==="previous-week")selectedWeekMove(-1);
     else if(action==="next-week")selectedWeekMove(1);
-    else if(action==="current-week"){selectedWeek=weekStartFor(new Date());selectedDate=localIso(selectedWeek);ensureWeek();render();}
+    else if(action==="current-week"){selectedDate=getLocalDate();selectedWeek=weekStartFor(selectedDate);ensureWeek();render();}
     else if(action==="generate-report")generateReport();
     else if(action==="print-report"||action==="export-report"){
       const report=state.reports.find(x=>x.id===button.dataset.reportId);
