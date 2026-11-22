@@ -72,7 +72,7 @@ try{
   });
   await page.locator('[data-staff-photo="0"]').setInputFiles({name:"operator.png",mimeType:"image/png",buffer:Buffer.from(photoBase64,"base64")});
   await page.locator(".setup-staff-preview img").waitFor();
-  assert.match(await page.locator(".setup-staff-preview img").getAttribute("src"),/^data:image\\/jpeg;base64,/);
+  assert.match(await page.locator(".setup-staff-preview img").getAttribute("src"),/^data:image\/jpeg;base64,/);
   await page.locator('[data-action="next"]').click();
 
   await page.locator('[data-action="add-role"]').click();
