@@ -14,4 +14,14 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      - run: npm install --no-audit --no-fund
       - run: npm run check
+      - run: npx playwright install --with-deps chromium
+      - run: mkdir -p artifacts && npm run test:browser
+      - name: Upload browser QA screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: downtimeui-browser-qa
+          path: artifacts/
+          if-no-files-found: ignore
