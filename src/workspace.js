@@ -249,7 +249,7 @@ export function mountWorkspace(root,config,{onEditConfiguration=()=>{},onExportC
   });
   selectedWeek=weekStartFor(selectedDate);
   ensureWeek();
-  root.classList.add("workspace-root");
+  root.classList?.add("workspace-root");
   const legacy=document.querySelector(".shell");if(legacy)legacy.hidden=true;
   const notice=document.querySelector(".previewNotice");if(notice)notice.hidden=true;
   render();
