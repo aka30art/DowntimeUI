@@ -84,6 +84,7 @@ try{
   await page.locator(".workspace-section h1").waitFor();
   assert.match(await page.locator(".workspace-root").innerText(),/LOCAL MODE · SINGLE DEVICE/);
   assert.match(await page.locator(".workspace-root").innerText(),/09h 00m/,"Configured 9h net working time should appear in the daily summary.");
+  await page.locator(".workspace-daystrip [data-day]").first().click();
   await page.screenshot({path:"artifacts/workspace-desktop.png",fullPage:true});
 
   await page.locator("[data-shift-start]").fill("07:00");
@@ -125,6 +126,7 @@ try{
 
   await page.reload({waitUntil:"networkidle"});
   await page.locator('[data-action="open-preview"]').click();
+  await page.locator(".workspace-daystrip [data-day]").first().click();
   await page.locator('.workspace-navigation [data-view="tasks"]').click();
   assert.equal(await page.locator("input[data-task]").nth(0).isDisabled(),true,"Locked checklist must remain immutable after reload.");
   assert.equal(await page.locator("input[data-task]").nth(0).isChecked(),true,"Task completion must persist after reload.");
