@@ -279,7 +279,7 @@ export function mountWorkspace(root,config,{onEditConfiguration=()=>{},onExportC
       ["Shifts",shiftsList.length],["Breaks",breaksList.length],
       ["Staff",staffList.length],["Access roles",rolesList.length],["Daily task templates",tasksList.length]
     ];
-    const staff=staffList.map(person=>'<span class="workspace-chip">'+esc(person.name)+'</span>').join("")||'<span class="workspace-muted">No staff configured</span>';
+    const staff=staffList.map(person=>{const role=rolesList.find(item=>item.id===person.roleId);return '<span class="workspace-chip">'+esc(person.name)+(role?' · '+esc(role.name):"")+'</span>';}).join("")||'<span class="workspace-muted">No staff configured</span>';
     const roles=rolesList.map(role=>'<span class="workspace-chip">'+esc(role.name)+'</span>').join("")||'<span class="workspace-muted">No roles configured</span>';
     const stat=counts.map(([label,count])=>'<div class="workspace-setting-stat"><b>'+count+'</b><span>'+label+'</span></div>').join("");
     return '<section class="workspace-section workspace-narrow"><div class="workspace-eyebrow">WORKSPACE ADMINISTRATION</div><h1>Settings</h1><p class="workspace-lead">All company, site and operational configuration is maintained here after installation. Changes are saved to this browser workspace.</p>'+
