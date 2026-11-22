@@ -36,7 +36,7 @@ function staffRows(){
   return config.staff.map((member,index)=>{
     const preview=member.photoDataUrl
       ?'<img src="'+esc(member.photoDataUrl)+'" alt="'+esc(member.name||"Staff photo")+'">'
-      :'<span>'+esc((member.name||"").trim().split(/\\s+/).filter(Boolean).slice(0,2).map(part=>part[0].toUpperCase()).join("")||"—")+'</span>';
+      :'<span>'+esc((member.name||"").trim().split(/\s+/).filter(Boolean).slice(0,2).map(part=>part[0].toUpperCase()).join("")||"—")+'</span>';
     const roles='<option value="">No role linked</option>'+config.roles.map(role=>'<option value="'+esc(role.id)+'" '+(member.roleId===role.id?"selected":"")+'>'+esc(role.name)+'</option>').join("");
     return '<div class="setup-staff-row"><div class="setup-staff-name">'+field("Staff member","staff."+index+".name",member.name,"Full name")+
       '<label class="setup-staff-role"><span>Intended access role (optional)</span><select data-path="staff.'+index+'.roleId">'+roles+'</select></label></div>'+
