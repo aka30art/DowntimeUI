@@ -65,7 +65,7 @@ click("previous-week");
 assert.equal(api.getSelectedDate(),"2026-11-23");
 api.selectDate("2026-11-23");
 assert.match(root.innerHTML,/Saved and locked/);
-assert.equal(root.querySelector?.(".unused"),undefined);
+assert.equal(root.querySelector?.(".unused"),null,"An absent workspace selector should resolve to null in the DOM fixture.");
 const saved=JSON.parse(storage.getItem("downtimeui:operations:v1:task-calendar-test"));
 assert.deepEqual(saved.weeks["2026-11-23"].days[0].dailyTasks.completedTaskIds,["t1"]);
 assert.deepEqual(saved.weeks["2026-11-23"].days[1].dailyTasks.completedTaskIds,["t2"]);
