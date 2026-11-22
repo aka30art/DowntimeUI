@@ -1,4 +1,4 @@
-import {calculateScheduleForDate,intervalMinutes,parseClock} from "./schedule.js";
+import {calculateCustomScheduleForDate,calculateScheduleForDate,intervalMinutes,parseClock} from "./schedule.js";
 export function getEntryDurationMinutes(entry){
   if(!entry||typeof entry!=="object")return 0;
   if(Number.isFinite(entry.durationMinutes))return Math.max(0,entry.durationMinutes);
@@ -19,12 +19,10 @@ export function validateDowntimeEntry(entry){
 export function calculateDayMetrics(day={},schedule=null){
   let scheduledMinutes=0,breakMinutes=0;
   if(day.start&&day.stop){
-    scheduledMinutes=intervalMinutes(day.start,day.stop)??0;
+    const actual=day.date?calculateCustomScheduleForDate(day.date,day.start,day.stop,schedule||{}):null;
+    scheduledMinutes=actual?.scheduledMinutes??(intervalMinutes(day.start,day.stop)??0);
     if(Number.isFinite(day.breakMinutes))breakMinutes=Math.max(0,day.breakMinutes);
-    else if(schedule){
-      const resolved=calculateScheduleForDate(day.date,schedule);
-      breakMinutes=resolved.breakMinutes;
-    }
+    else breakMinutes=actual?.breakMinutes||0;
   } else if(schedule){
     const resolved=calculateScheduleForDate(day.date,schedule);
     scheduledMinutes=resolved.scheduledMinutes;
