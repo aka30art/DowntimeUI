@@ -229,7 +229,7 @@ export function mountWorkspace(root,config,{onEditConfiguration=()=>{},onExportC
       const entry=currentDay().entries.find(item=>item.id===button.dataset.entryId);
       if(!entry)return;
       editingEntryId=entry.id;render();
-      root.querySelector('[name="entry-area"]')?.focus();
+      root.querySelector('[name="entry-area"]')?.focus?.();
     }
     else if(action==="cancel-edit"){editingEntryId=null;render();}
     else if(action==="delete-entry"){
