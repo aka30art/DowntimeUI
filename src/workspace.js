@@ -52,6 +52,16 @@ function scheduleLabel(date,schedule){
 export function mountWorkspace(root,config,{onEditConfiguration=()=>{},onExportConfiguration=()=>{} }={},options={}){
   if(!root)throw new Error("Workspace mount point is required.");
   if(!config?.installed||!config.installationId)throw new Error("A validated installed workspace is required.");
+  config={
+    ...config,
+    identity:{companyName:"",locale:"en-GB",timezone:"UTC",...(config.identity||{})},
+    site:{siteName:"",hierarchy:["Area","Station"],...(config.site||{}),areas:Array.isArray(config.site?.areas)?config.site.areas:[],stations:Array.isArray(config.site?.stations)?config.site.stations:[]},
+    downtime:{...(config.downtime||{}),reasons:Array.isArray(config.downtime?.reasons)?config.downtime.reasons:[]},
+    schedule:{...(config.schedule||{}),workDays:Array.isArray(config.schedule?.workDays)?config.schedule.workDays:[],shifts:Array.isArray(config.schedule?.shifts)?config.schedule.shifts:[],breaks:Array.isArray(config.schedule?.breaks)?config.schedule.breaks:[]},
+    staff:Array.isArray(config.staff)?config.staff:[],
+    roles:Array.isArray(config.roles)?config.roles:[],
+    dailyTasks:Array.isArray(config.dailyTasks)?config.dailyTasks:[]
+  };
   const storage=options.storage||globalThis.localStorage;
   const loaded=readOperations(storage,config.installationId);
   let state=loaded.state,view="daily",selectedWeek=weekStartFor(new Date()),selectedDate=localIso(new Date()),status=loaded.error||"Local workspace ready.",editingEntryId=null;
