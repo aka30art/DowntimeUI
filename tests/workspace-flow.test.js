@@ -14,7 +14,7 @@ class Root{
 globalThis.document={querySelector(){return null;}};
 const storage=new Storage(),root=new Root();root.fields={};
 let clockNow=new Date();clockNow.setHours(7,0,0,0);
-const config={schemaVersion:3,installed:true,installedAt:"2026-11-22T05:00:00.000Z",installationId:"test-install",identity:{companyName:"QA Company",logoUrl:"",locale:"en-GB",timezone:"Europe/London"},site:{siteName:"Test Site",hierarchy:["Area","Station"],areas:[{id:"a1",name:"Production"}],stations:[{id:"s1",name:"Line 1",areaId:"a1"}]},downtime:{reasons:[{id:"r1",name:"Mechanical"}],presets:[]},schedule:{workDays:["mon","tue","wed","thu","fri"],shifts:[{id:"sh1",name:"Day",start:"06:30",end:"16:00"}],breaks:[{id:"b1",name:"Break",start:"12:00",end:"13:00"}]},staff:[{id:"p1",name:"Operator A"}],roles:[],dailyTasks:[{id:"t1",name:"Safety check"},{id:"t2",name:"Equipment check"}],setup:{currentStep:8,completedSteps:[0,1,2,3,4,5,6,7,8],updatedAt:"2026-11-22T05:00:00.000Z"}};
+const config={schemaVersion:3,installed:true,installedAt:"2026-11-22T05:00:00.000Z",installationId:"test-install",identity:{companyName:"QA Company",logoUrl:"",locale:"en-GB",timezone:"Europe/London"},site:{siteName:"Test Site",hierarchy:["Area","Station"],areas:[{id:"a1",name:"Production"}],stations:[{id:"s1",name:"Line 1",areaId:"a1"}]},downtime:{reasons:[{id:"r1",name:"Mechanical"}],presets:[{id:"preset1",name:"Mechanical Line 1",areaId:"a1",stationId:"s1",reasonId:"r1",defaultDurationMinutes:25}]},schedule:{workDays:["mon","tue","wed","thu","fri"],shifts:[{id:"sh1",name:"Day",start:"06:30",end:"16:00"}],breaks:[{id:"b1",name:"Break",start:"12:00",end:"13:00"}]},staff:[{id:"p1",name:"Operator A"}],roles:[],dailyTasks:[{id:"t1",name:"Safety check"},{id:"t2",name:"Equipment check"}],setup:{currentStep:8,completedSteps:[0,1,2,3,4,5,6,7,8],updatedAt:"2026-11-22T05:00:00.000Z"}};
 let requestedSettingsStep=null;
 const api=mountWorkspace(root,config,{
  onEditConfiguration:step=>{requestedSettingsStep=step;},
@@ -59,12 +59,18 @@ assert.equal(liveDay.start,expectedStart);
 api.selectDate(monday);
 
 root.fields={
- '[name="entry-area"]':{value:"Production"},
- '[name="entry-station"]':{value:"s1"},
- '[name="entry-reason"]':{value:"Mechanical"},
+ "[data-entry-preset]":{value:"preset1"},
+ '[name="entry-area"]':{value:""},
+ '[name="entry-station"]':{value:""},
+ '[name="entry-reason"]':{value:""},
  '[name="entry-hours"]':{value:"0"},
- '[name="entry-minutes"]':{value:"25"}
+ '[name="entry-minutes"]':{value:"0"}
 };
+click("apply-entry-preset");
+assert.equal(root.fields['[name="entry-area"]'].value,"Production");
+assert.equal(root.fields['[name="entry-station"]'].value,"s1");
+assert.equal(root.fields['[name="entry-reason"]'].value,"Mechanical");
+assert.equal(root.fields['[name="entry-minutes"]'].value,"25");
 click("save-entry");
 const days=Object.values(api.getState().weeks)[0].days;
 assert.equal(days[0].entries.length,1);
