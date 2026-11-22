@@ -27,3 +27,7 @@ assert.match(workspace, /function renderPlantOverview/);
 assert.match(workspace, /data-station-status/);
 assert.match(workspace, /data-station-operator/);
 assert.match(workspaceCss, /workspace-station-grid/);
+
+assert.match(workspace, /function renderPlantOverview/);
+assert.match(workspace, /setStationStatus/);
+assert.match(workspace, /assignStationOperator/);
