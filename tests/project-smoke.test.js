@@ -5,6 +5,7 @@ const moduleSource = await readFile(new URL("../src/installer.js", import.meta.u
 const css = await readFile(new URL("../src/installer.css", import.meta.url), "utf8");
 const workspace = await readFile(new URL("../src/workspace.js", import.meta.url), "utf8");
 const workspaceCss = await readFile(new URL("../src/workspace.css", import.meta.url), "utf8");
+const backup = await readFile(new URL("../src/domain/backup.js", import.meta.url), "utf8");
 assert.match(html, /id=["']installerRoot["']/);
 assert.match(html, /src=["']\.\/src\/installer\.js["']/);
 assert.match(html, /href=["']\.\/src\/installer\.css["']/);
@@ -31,3 +32,9 @@ assert.match(workspaceCss, /workspace-station-grid/);
 assert.match(workspace, /function renderPlantOverview/);
 assert.match(workspace, /setStationStatus/);
 assert.match(workspace, /assignStationOperator/);
+
+assert.match(workspace, /async function restoreBackup/);
+assert.match(workspace, /validateWorkspaceBackup/);
+assert.match(workspace, /data-backup-file/);
+assert.match(moduleSource, /onRestoreConfiguration/);
+assert.match(backup, /restoreWorkspaceBackup/);
