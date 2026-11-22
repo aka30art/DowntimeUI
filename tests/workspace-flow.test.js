@@ -3,7 +3,7 @@ import {mountWorkspace} from "../src/workspace.js";
 import {createWorkspaceBackup} from "../src/domain/backup.js";
 import {TENANT_STORAGE_KEY} from "../src/config-core.js";
 class Storage{
- data=new Map();getItem(k){return this.data.has(k)?this.data.get(k):null;}setItem(k,v){this.data.set(k,String(v));}removeItem(k){this.data.delete(k);}
+ data=new Map();failNext=false;getItem(k){return this.data.has(k)?this.data.get(k):null;}setItem(k,v){if(this.failNext){this.failNext=false;throw new Error("simulated storage quota error");}this.data.set(k,String(v));}removeItem(k){this.data.delete(k);}
 }
 class Root{
  listeners={};innerHTML="";classList={add(){}};
@@ -91,6 +91,9 @@ assert.equal(api.getState().plant.status,"stopped");
 assert.match(root.innerHTML,/Site stopped/);
 api.setView("daily");
 const taskControl={dataset:{task:"t1"},checked:true,matches:selector=>selector==="[data-task]"};
+storage.failNext=true;
+root.listeners.change({target:taskControl});
+assert.deepEqual(api.getState().weeks[Object.keys(api.getState().weeks)[0]].days[0].dailyTasks.completedTaskIds,[],"A failed task write must roll back the in-memory completion.");
 root.listeners.change({target:taskControl});
 assert.deepEqual(api.getState().weeks[Object.keys(api.getState().weeks)[0]].days[0].dailyTasks.completedTaskIds,["t1"]);
 click("lock-tasks");
