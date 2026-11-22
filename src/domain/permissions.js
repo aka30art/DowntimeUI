@@ -25,3 +25,20 @@ export function validateRole(role){
   return errors;
 }
 /* This is a client-side policy helper only. All protected operations must also be authorised by the server. */
+
+
+/*
+ * Platform-level Central Data Bank access is intentionally separate from tenant
+ * roles. A trusted server-issued identity claim is required; tenant configuration
+ * must never be able to grant this capability.
+ */
+export function canAccessCentralDataBank(principal){
+  return Boolean(principal&&principal.active===true&&
+    typeof principal.userId==="string"&&principal.userId.trim()&&
+    principal.systemRole==="platform-admin");
+}
+export function authorizeCentralDataBank(principal){
+  return canAccessCentralDataBank(principal)
+    ?{ok:true}
+    :{ok:false,code:"PLATFORM_ADMIN_REQUIRED",message:"Central Data Bank access is restricted to an authenticated platform administrator."};
+}
