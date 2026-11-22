@@ -1,0 +1,13 @@
+import assert from "node:assert/strict";
+import {authorizeAction,canAccessSection,hasPermission,resolveRole,validateRole} from "../src/domain/permissions.js";
+const roles=[{id:"supervisor",name:"Supervisor",permissions:{view:true,record:true,manageDailyTasks:false,exportReports:true}}];
+assert.equal(resolveRole(roles,"supervisor").name,"Supervisor");
+assert.equal(hasPermission(roles,"supervisor","record"),true);
+assert.equal(hasPermission(roles,"supervisor","manageDailyTasks"),false);
+assert.equal(hasPermission(roles,"supervisor","undefinedRight"),false);
+assert.equal(canAccessSection(roles,"supervisor",{viewPermission:"view",managePermission:"manageDailyTasks"}),true);
+assert.deepEqual(authorizeAction(roles,"supervisor","record"),{ok:true});
+assert.equal(authorizeAction(roles,"supervisor","manageDailyTasks").code,"FORBIDDEN");
+assert.equal(validateRole(roles[0]).length,0);
+assert.ok(validateRole({id:"x",name:"Bad",permissions:{manage:"yes"}}).length>0);
+console.log("Configurable roles and least-privilege permission helpers: PASS");
