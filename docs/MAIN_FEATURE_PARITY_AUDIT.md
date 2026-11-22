@@ -62,3 +62,29 @@ Port behavior—not company-specific content—and track every feature against i
 
 ### Release gate
 The implementation is a **local single-browser functional build**, not a production multi-user application. No claim of full Main parity or production readiness is made. Complete the remaining modules, provision a separate development backend (never Main's production database), run security and multi-user tests, pass browser QA and only then request the user's explicit **DEPLOY & Merge** authorisation.
+
+
+## Implementation status — universal branch
+
+### Implemented
+- **Empty tenant installation:** nine-step universal installer; resumable draft; identity/site/schedule/reasons/roster/role/task configuration; section-specific Settings editing.
+- **Downtime entry:** local create/edit/delete; reason, area, station, duration; per-day operator assignment.
+- **Daily metrics:** configured or actual shift start/finish; configured break deduction clipped to actual shift; downtime/running minutes and rates.
+- **Weekly intelligence:** day-by-day view; weighted weekly rates; cause ranking; best/worst day; previous-week comparison.
+- **Reports:** immutable weekly report snapshots, archive, browser print/PDF and JSON export.
+- **Plant Overview:** tenant-configured area/station cards, station Running/Down/Maintenance/Idle states, operator allocation, alerts and transition history.
+- **Daily Tasks:** daily checklist, completion persistence and immutable **SAVE & LOCK FOR TODAY** snapshot.
+- **Settings:** company/site, reasons, schedule, roster, role definitions and task template edit routes.
+- **Backup and recovery:** schema-checked, installation-scoped JSON backup; validation; rollback-aware restore; clean-install restore path.
+- **QA:** domain/flow regression plus Chromium desktop/mobile browser suite for the implemented paths.
+
+### Not yet at Main parity — release blockers
+- Secure user account creation, login/session lifecycle and account administration.
+- Backend-enforced permissions for each protected action and a read-only spectator policy.
+- A separately provisioned DOWNTIMEUI backend, server-side tenant isolation policies, shared persistence, realtime sync and concurrent-edit conflict resolution.
+- Central audit trail with authenticated user attribution.
+- Staff photo/profile upload and account linking.
+- Server-managed backup, retention, monitoring and tested disaster recovery.
+- Full Main Plant Overview blueprint/visual parity and any remaining uncovered edge cases.
+
+Local role definitions and browser controls are not secure access control. Local plant state is an operational record, not a machinery-control command. These limitations must remain visible until the backend and security work is completed.
