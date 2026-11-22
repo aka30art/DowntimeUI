@@ -184,6 +184,17 @@ try{
   assert.match(await page.locator(".workspace-root").innerText(),/07:00/,"Settings changes must persist to the installed workspace.");
 
   await page.locator('.workspace-navigation [data-view="people"]').click();
+  await page.locator('[data-step="3"]').click();
+  await page.getByRole("heading",{name:"Downtime reasons and presets"}).waitFor();
+  await page.locator('[data-path="downtime.presets.0.defaultDurationMinutes"]').fill("45");
+  await page.locator('[data-action="save-exit"]').click();
+  await page.getByRole("heading",{name:"Workspace configured."}).waitFor();
+  await page.locator('[data-action="open-preview"]').click();
+  await page.locator('[data-entry-preset]').selectOption({label:"Line 1 mechanical"});
+  await page.locator('[data-action="apply-entry-preset"]').click();
+  assert.equal(await page.locator('[name="entry-minutes"]').inputValue(),"45","Settings must allow editing an installed quick-entry preset.");
+
+  await page.locator('.workspace-navigation [data-view="people"]').click();
   await page.getByRole("button",{name:"Export full workspace backup"}).click();
   await page.waitForTimeout(150);
   assert.deepEqual(failures,[],"Exporting a workspace backup must not raise browser errors: "+failures.join(" | "));
@@ -208,6 +219,9 @@ try{
   await page.locator(".workspace-message").filter({hasText:"Workspace backup restored successfully"}).waitFor();
   await page.locator(".workspace-daystrip [data-day]").first().click();
   assert.match(await page.locator(".workspace-root").innerText(),/07:00/,"Restoring the backup must return the prior schedule configuration.");
+  await page.locator('[data-entry-preset]').selectOption({label:"Line 1 mechanical"});
+  await page.locator('[data-action="apply-entry-preset"]').click();
+  assert.equal(await page.locator('[name="entry-minutes"]').inputValue(),"45","Backup restore must retain the edited quick-entry preset.");
   await page.locator('.workspace-navigation [data-view="reports"]').click();
   assert.match(await page.locator(".workspace-root").innerText(),/00h 45m/,"Restoring the backup must reinstate the archived report snapshot.");
   await page.locator('.workspace-navigation [data-view="people"]').click();
