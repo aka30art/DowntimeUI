@@ -54,8 +54,9 @@ assert.equal(storage.getItem(TENANT_STORAGE_KEY),before,"Cross-installation rest
 class FailingStorage extends MemoryStorage{
   failKey="downtimeui:operations:v1:install-1";
   didFail=false;
+  armed=false;
   setItem(key,value){
-    if(key===this.failKey&&!this.didFail){this.didFail=true;throw new Error("simulated quota error");}
+    if(this.armed&&key===this.failKey&&!this.didFail){this.didFail=true;throw new Error("simulated quota error");}
     super.setItem(key,value);
   }
 }
@@ -65,6 +66,7 @@ failing.setItem(TENANT_STORAGE_KEY,JSON.stringify({installed:true,installationId
 failing.setItem("downtimeui:operations:v1:install-1",JSON.stringify({original:true}));
 failing.failKey="downtimeui:operations:v1:install-1";
 const originalConfig=failing.getItem(TENANT_STORAGE_KEY),originalOps=failing.getItem("downtimeui:operations:v1:install-1");
+failing.armed=true;
 const failedRestore=restoreWorkspaceBackup(backup,"install-1",{storage:failing});
 assert.equal(failedRestore.ok,false);
 assert.equal(failing.getItem(TENANT_STORAGE_KEY),originalConfig,"Failed restore must roll configuration back.");
