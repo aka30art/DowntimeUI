@@ -68,4 +68,13 @@ assert.ok(validateConfig({...c,schedule:{...c.schedule,shifts:[{id:"s1",name:"In
 assert.ok(validateConfig({...c,site:{...c.site,areas:[{id:"a1",name:"Production"},{id:"a2",name:"production"}]}}).some(x=>x.includes("unique")));
 assert.equal(loadInstalledConfig(new MemoryStorage()).value,null);
 assert.equal(saveInstalledConfig({...c,installed:false},store).ok,false);
+const withPhoto=structuredClone(c);
+withPhoto.staff[0].photoDataUrl="data:image/jpeg;base64,AA==";
+assert.deepEqual(validateConfig(withPhoto),[],"compressed JPEG profile photos should be accepted");
+const invalidPhoto=structuredClone(c);
+invalidPhoto.staff[0].photoDataUrl="data:image/png;base64,AA==";
+assert.ok(validateConfig(invalidPhoto).some(x=>x.includes("compressed JPEG")),"profile photos must be normalised to JPEG");
+const oversizedPhoto=structuredClone(c);
+oversizedPhoto.staff[0].photoDataUrl="data:image/jpeg;base64,"+"A".repeat(180001);
+assert.ok(validateConfig(oversizedPhoto).some(x=>x.includes("compressed JPEG")),"oversized profile photos must be rejected");
 console.log("Universal configuration, validation, migration and persistence: PASS");
