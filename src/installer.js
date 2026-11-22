@@ -103,8 +103,7 @@ function renderWorkspace(){
       const errors=validateConfig(restoredConfig);
       if(errors.length)return {ok:false,error:errors.join(" ")};
       if(restoredConfig.installationId!==config.installationId)return {ok:false,error:"Backup installation ID does not match this workspace."};
-      const saved=saveInstalledConfig(restoredConfig);
-      if(!saved.ok)return {ok:false,error:saved.error};
+      /* restoreWorkspaceBackup has already committed both local storage records atomically. */
       for(const key of Object.keys(config))delete config[key];
       Object.assign(config,JSON.parse(JSON.stringify(restoredConfig)));
       return {ok:true};
