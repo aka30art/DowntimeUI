@@ -93,7 +93,10 @@ function saveDraftState() {
   const r=saveDraft(config); saveMessage=r.ok?"Draft saved on this device.":"Local save unavailable: "+r.error;
   const n=document.getElementById("setupSaveState"); if(n)n.textContent=saveMessage;
 }
-function render() { if(screen==="installed")renderInstalled(); else renderWizard(); }
+function renderPreviewBar(){
+  root.innerHTML='<div class="setup-preview-bar"><div class="setup-preview-copy"><b>PREVIEW LAB · MOCK DATA ONLY</b><span>'+esc(config.identity.companyName)+' · '+esc(config.site.siteName)+' — operational functions are not connected in this prototype.</span></div><div class="setup-preview-actions"><button type="button" class="setup-preview-export" data-action="export-config">Export JSON</button><button type="button" class="setup-preview-edit" data-action="edit-config">Edit workspace configuration</button></div></div>';
+}
+function render() { if(screen==="installed")renderInstalled(); else if(screen==="preview")renderPreviewBar(); else renderWizard(); }
 function addItem(type) {
   const base={
     area:{id:createId("area"),name:""},
@@ -152,10 +155,13 @@ root.addEventListener("click",e=>{
   else if(a==="edit-config"){step=1;screen="wizard";render();}
   else if(a==="export-config")exportConfig();
   else if(a==="open-preview"){
-    root.remove();
     const shell=document.querySelector(".shell");
-    if(shell)shell.insertAdjacentHTML("afterbegin",'<div class="tenant-preview-banner"><span><b>'+esc(config.identity.companyName)+'</b> · '+esc(config.site.siteName)+'<small>LOCAL CONFIG · PREVIEW DATA ONLY</small></span><button type="button" id="tenantEditConfig">Edit configuration</button></div>');
-    document.getElementById("tenantEditConfig")?.addEventListener("click",()=>window.location.reload());
+    if(shell){
+      shell.classList.add("preview-inert");
+      shell.querySelectorAll("input,select,textarea,button").forEach(el=>{el.disabled=true;el.setAttribute("aria-disabled","true")});
+      shell.querySelectorAll("a").forEach(el=>{el.setAttribute("aria-disabled","true");el.setAttribute("tabindex","-1");el.addEventListener("click",event=>event.preventDefault())});
+    }
+    screen="preview";render();
   }
   else if(a.startsWith("add-")){addItem(a.slice(4));render();saveDraftState();}
   else if(a.startsWith("remove-")){removeItem(a.slice(7),Number(b.dataset.index));render();saveDraftState();}
