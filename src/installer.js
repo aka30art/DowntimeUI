@@ -96,7 +96,7 @@ function saveDraftState() {
 }
 function renderWorkspace(){
   mountWorkspace(root,config,{
-    onEditConfiguration:()=>{screen="wizard";step=1;config.setup.currentStep=1;render();},
+    onEditConfiguration:(nextStep=1)=>{screen="wizard";step=Math.max(1,Math.min(7,Number(nextStep)||1));config.setup.currentStep=step;render();},
     onExportConfiguration:exportConfig
   });
 }
