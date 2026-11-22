@@ -41,7 +41,8 @@ function saveOperations(storage,state){
 }
 function fileDownload(name,mime,body){
   const blob=new Blob([body],{type:mime}),url=URL.createObjectURL(blob),anchor=document.createElement("a");
-  anchor.href=url;anchor.download=name;document.body.appendChild(anchor);anchor.click();anchor.remove();URL.revokeObjectURL(url);
+  anchor.href=url;anchor.download=name;document.body.appendChild(anchor);anchor.click();anchor.remove();
+  globalThis.setTimeout(()=>URL.revokeObjectURL(url),1500);
 }
 function labelForDay(date){
   const dateObject=fromIso(date);
