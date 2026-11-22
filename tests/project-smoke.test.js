@@ -38,3 +38,7 @@ assert.match(workspace, /validateWorkspaceBackup/);
 assert.match(workspace, /data-backup-file/);
 assert.match(moduleSource, /onRestoreConfiguration/);
 assert.match(backup, /restoreWorkspaceBackup/);
+
+assert.match(workspace, /data-shift-start/);
+assert.match(workspace, /save-shift-times/);
+assert.match(workspace, /clear-shift-times/);
