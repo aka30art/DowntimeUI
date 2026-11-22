@@ -15,7 +15,7 @@ assert.doesNotMatch(content,/supabase\.co|sb_publishable_|service_role|SUPABASE_
 assert.match(content,/No company, operator, plant, station or downtime data has been pre-filled/);
 assert.match(content,/LOCAL MODE · SINGLE DEVICE/);
 assert.match(content,/Restore backup JSON/);
-assert.match(content,/Restore workspace configuration/);
+assert.match(content,/restoreWorkspaceBackup/);
 const core=await readFile(new URL("../src/config-core.js",import.meta.url),"utf8");
 assert.match(core,/companyName: ""/);
 assert.match(core,/areas: \[\], stations: \[\]/);
