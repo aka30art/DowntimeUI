@@ -71,8 +71,13 @@ assert.equal(root.fields['[name="entry-area"]'].value,"Production");
 assert.equal(root.fields['[name="entry-station"]'].value,"s1");
 assert.equal(root.fields['[name="entry-reason"]'].value,"Mechanical");
 assert.equal(root.fields['[name="entry-minutes"]'].value,"25");
+storage.failNext=true;
 click("save-entry");
 const days=Object.values(api.getState().weeks)[0].days;
+assert.equal(days[0].entries.length,0,"A failed local storage write must roll back an unsaved downtime entry.");
+assert.match(root.innerHTML,/unsaved changes were rolled back/i,"The workspace must report that the unsaved change was rejected.");
+click("save-entry");
+
 assert.equal(days[0].entries.length,1);
 assert.equal(days[0].entries[0].minutes,25);
 assert.equal(days[0].operatorId,"");
