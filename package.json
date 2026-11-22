@@ -3,6 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node tests/config-core.test.js"
+    "test": "node tests/config-core.test.js && node tests/project-smoke.test.js",
+    "check": "node --check src/config-core.js && node --check src/installer.js && npm test"
   }
 }
