@@ -3,6 +3,7 @@ import {calculateDayMetrics,calculateWeekMetrics,getEntryDurationMinutes,rankDow
 import {saveAndLockDailyTasks,setTaskCompletion,visibleDailyTasks,completedTaskCount,createDailyTaskState} from "./domain/daily-tasks.js";
 import {calculateScheduleForDate,formatMinutes} from "./domain/schedule.js";
 import {buildWeeklyReport} from "./domain/reports.js";
+import {assignStationOperator,createPlantState,getPlantSummary,getStationOperationalState,setPlantStatus,setStationStatus} from "./domain/plant.js";
 
 const STORE_PREFIX="downtimeui:operations:v1:";
 const DAY_NAMES=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
@@ -26,7 +27,7 @@ function readOperations(storage,installationId){
   try{
     const parsed=JSON.parse(read.value);
     if(parsed?.installationId!==installationId||parsed?.schemaVersion!==1)return {state:empty,error:"Saved operations data did not match this workspace. A fresh local workspace was started."};
-    return {state:{...empty,...parsed,weeks:parsed.weeks||{},reports:Array.isArray(parsed.reports)?parsed.reports:[]},error:null};
+    return {state:{...empty,...parsed,weeks:parsed.weeks||{},reports:Array.isArray(parsed.reports)?parsed.reports:[],plant:parsed.plant||createPlantState(),activity:Array.isArray(parsed.activity)?parsed.activity:[]},error:null};
   }catch{return {state:empty,error:"Saved local operations data could not be read. A fresh local workspace was started."};}
 }
 function saveOperations(storage,state){
@@ -196,6 +197,34 @@ export function mountWorkspace(root,config,{onEditConfiguration=()=>{},onExportC
       '<article><span>HIGHEST DOWNTIME</span><b>'+(worst&&worst.metrics.downtimeMinutes?esc(dayName(worst.day.date)):"—")+'</b><small>'+(worst?formatMinutes(worst.metrics.downtimeMinutes):"No downtime recorded")+'</small></article></div>'+
       '<div class="workspace-two-col"><div class="workspace-panel"><div class="workspace-panel-head"><div><h2>Day-by-day performance</h2><p>Weekly rates use aggregate minutes, not an average of daily percentages.</p></div></div><div class="workspace-table-wrap"><table><thead><tr><th>Day</th><th>Operator</th><th>Date</th><th>Net</th><th>Downtime</th><th>Running</th><th>Downtime %</th><th>Running %</th></tr></thead><tbody>'+body+'</tbody></table></div></div>'+
       '<div class="workspace-panel"><div class="workspace-panel-head"><div><h2>Downtime causes</h2><p>Share of total recorded downtime.</p></div></div>'+causesBody+'</div></div></section>';
+  }
+  function renderPlant(){
+    const stations=Array.isArray(config.site.stations)?config.site.stations:[];
+    const staff=Array.isArray(config.staff)?config.staff:[];
+    const summary=getPlantSummary(state.plant,stations);
+    const cards=stations.map(station=>{
+      const area=config.site.areas.find(item=>item.id===station.areaId);
+      const assignedId=state.plant.stationAssignments[station.id]||"";
+      const assigned=staff.find(person=>person.id===assignedId);
+      const operational=getStationOperationalState(state.plant,station.id);
+      const statusLabel=operational==="running"?"RUNNING":operational==="stopped"?"STOPPED":"SUSPENDED";
+      const options='<option value="">Unassigned</option>'+staff.map(person=>'<option value="'+esc(person.id)+'" '+(person.id===assignedId?"selected":"")+'>'+esc(person.name)+'</option>').join("");
+      return '<article class="workspace-station-card"><div class="workspace-station-top"><span class="workspace-eyebrow">'+esc(area?.name||"UNASSIGNED AREA")+'</span><span class="workspace-station-state '+operational+'">'+statusLabel+'</span></div><h3>'+esc(station.name)+'</h3><p>'+(assigned?esc(assigned.name):"No operator assigned")+'</p><label class="workspace-station-assignment"><span>Assigned operator</span><select data-station-assignment data-station-id="'+esc(station.id)+'">'+options+'</select></label><div class="workspace-station-actions"><button type="button" data-action="toggle-station" data-station-id="'+esc(station.id)+'" '+(!state.plant.plantOn?"disabled":"")+'>'+ (operational==="running"?"Stop station":"Start station")+'</button></div></article>';
+    }).join("");
+    const history=state.plant.transitions.slice().reverse().slice(0,8).map(event=>{
+      const station=config.site.stations.find(item=>item.id===event.stationId);
+      const detail=event.type==="plant-status"?"Plant "+(event.to?"started":"stopped"):
+        event.type==="station-status"?(station?.name||"Station")+" "+(event.to==="running"?"started":"stopped"):
+        (station?.name||"Station")+" operator assignment "+(event.to?"updated":"cleared");
+      return '<div class="workspace-transition"><span>'+esc(detail)+'</span><small>'+esc(new Date(event.at).toLocaleString("en-GB"))+'</small></div>';
+    }).join("");
+    return '<section class="workspace-section"><div class="workspace-eyebrow">SITE CONTROL</div><div class="workspace-section-head"><div><h1>Plant overview</h1><p>Live state for the configured areas, stations and staff on this installation.</p></div><button type="button" class="workspace-primary workspace-plant-toggle" data-action="toggle-plant">'+(state.plant.plantOn?"Switch plant OFF":"Switch plant ON")+'</button></div>'+
+      '<div class="workspace-plant-status '+(state.plant.plantOn?"on":"off")+'"><div><span>PLANT STATUS</span><strong>'+(state.plant.plantOn?"PLANT ON":"PLANT OFF")+'</strong><small>'+(state.plant.plantOn?"Stations can be started and stopped individually.":"All configured stations are suspended while the plant is off.")+'</small></div><span class="workspace-plant-lamp"></span></div>'+
+      '<div class="workspace-metrics">'+metricCard("TOTAL STATIONS",String(summary.totalStations))+metricCard("RUNNING",String(summary.runningStations))+metricCard("STOPPED",String(summary.stoppedStations))+metricCard("ASSIGNED OPERATORS",String(summary.assignedStations))+'</div>'+
+      '<div class="workspace-panel"><div class="workspace-panel-head"><div><h2>Station assignments</h2><p>Assign the configured staff roster to the configured stations.</p></div><span class="workspace-count">'+summary.assignedStations+" / "+summary.totalStations+" ASSIGNED"+'</span></div>'+
+      (cards?'<div class="workspace-station-grid">'+cards+'</div>':'<div class="workspace-empty">No stations are configured yet. Add areas and stations in workspace setup to populate this view.</div>')+
+      '<div class="workspace-note">LOCAL MODE · SINGLE DEVICE. Plant and station status changes are stored in this browser only; they are not a shared control signal and do not operate physical machinery.</div></div>'+
+      '<div class="workspace-panel"><div class="workspace-panel-head"><div><h2>Recent plant activity</h2><p>Local status and assignment transitions.</p></div></div>'+(history||'<div class="workspace-empty">No plant changes recorded yet.</div>')+'</div></section>';
   }
   function renderReports(){
     const reports=state.reports.slice().sort((a,b)=>String(b.generatedAt).localeCompare(String(a.generatedAt)));
