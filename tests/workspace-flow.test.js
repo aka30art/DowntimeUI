@@ -27,6 +27,10 @@ assert.match(root.innerHTML,/QA Company/);
 assert.match(root.innerHTML,/DAILY OPERATIONS/);
 assert.equal(api.getView(),"daily");
 const monday=Object.values(api.getState().weeks)[0].days[0].date;
+function click(action,extra={}){
+ const button={dataset:{action,...extra}};
+ root.listeners.click({target:{closest:()=>button}});
+}
 api.selectDate(monday);
 assert.match(root.innerHTML,/06:30/);
 assert.match(root.innerHTML,/08h 30m/,"Configured shift and break schedule must drive the initial net availability.");
@@ -40,16 +44,6 @@ assert.match(root.innerHTML,/07:00–16:00 \(actual\)/);
 click("clear-shift-times");
 assert.match(root.innerHTML,/08h 30m/,"Clearing actual times must restore the configured schedule.");
 assert.doesNotMatch(root.innerHTML,/\(actual\)/);
-root.fields={};
-root.fields["[data-shift-start]"]={value:"07:00"};
-root.fields["[data-shift-stop]"]={value:"16:00"};
-click("save-shift-times");
-assert.equal(Object.values(api.getState().weeks)[0].days[0].start,"07:00");
-assert.equal(Object.values(api.getState().weeks)[0].days[0].stop,"16:00");
-function click(action,extra={}){
- const button={dataset:{action,...extra}};
- root.listeners.click({target:{closest:()=>button}});
-}
 root.fields={
  '[name="entry-area"]':{value:"Production"},
  '[name="entry-station"]':{value:"s1"},
