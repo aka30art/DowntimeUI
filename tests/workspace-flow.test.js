@@ -29,6 +29,11 @@ assert.equal(api.getView(),"daily");
 const monday=Object.values(api.getState().weeks)[0].days[0].date;
 api.selectDate(monday);
 assert.match(root.innerHTML,/06:30/);
+root.fields["[data-shift-start]"]={value:"07:00"};
+root.fields["[data-shift-stop]"]={value:"16:00"};
+click("save-shift-times");
+assert.equal(Object.values(api.getState().weeks)[0].days[0].start,"07:00");
+assert.equal(Object.values(api.getState().weeks)[0].days[0].stop,"16:00");
 function click(action,extra={}){
  const button={dataset:{action,...extra}};
  root.listeners.click({target:{closest:()=>button}});
