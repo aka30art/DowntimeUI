@@ -95,9 +95,14 @@ try{
   await page.locator('[name="entry-minutes"]').fill("30");
   await page.locator('[data-action="save-entry"]').click();
   await page.getByText("Mechanical fault",{exact:true}).waitFor();
+  await page.locator('[data-action="edit-entry"]').click();
+  await page.locator('[name="entry-reason"]').fill("Mechanical repair");
+  await page.locator('[name="entry-minutes"]').fill("45");
+  await page.locator('[data-action="save-entry"]').click();
+  await page.getByText("Mechanical repair",{exact:true}).waitFor();
   await page.locator("[data-operator]").selectOption({label:"Operator One"});
 
-  await page.locator('[data-view="tasks"]').click();
+  await page.locator('.workspace-navigation [data-view="tasks"]').click();
   const taskChecks=page.locator("input[data-task]");
   assert.equal(await taskChecks.count(),2);
   await taskChecks.nth(0).check();
@@ -110,18 +115,24 @@ try{
   assert.equal(await page.locator("input[data-task]").nth(0).isDisabled(),true,"Locked checklist must remain immutable after reload.");
   assert.equal(await page.locator("input[data-task]").nth(0).isChecked(),true,"Task completion must persist after reload.");
 
-  await page.locator('[data-view="weekly"]').click();
+  await page.locator('.workspace-navigation [data-view="weekly"]').click();
   await page.getByRole("heading",{name:"Weekly summary"}).waitFor();
   assert.match(await page.locator(".workspace-root").innerText(),/Mechanical fault/);
   await page.screenshot({path:"artifacts/workspace-weekly-desktop.png",fullPage:true});
 
-  await page.locator('[data-view="reports"]').click();
+  await page.locator('.workspace-navigation [data-view="reports"]').click();
   await page.locator('[data-action="generate-report"]').click();
   await page.getByText(/Week starting/).waitFor();
   assert.match(await page.locator(".workspace-root").innerText(),/Print \/ PDF/);
+  assert.match(await page.locator(".workspace-root").innerText(),/00h 45m/);
+  await page.locator('.workspace-navigation [data-view="daily"]').click();
+  await page.locator('[data-action="delete-entry"]').click();
+  assert.doesNotMatch(await page.locator(".workspace-root").innerText(),/Mechanical repair/);
+  await page.locator('.workspace-navigation [data-view="reports"]').click();
+  assert.match(await page.locator(".workspace-root").innerText(),/00h 45m/,"Archived report must remain unchanged after deleting the source entry.");
 
   await page.setViewportSize({width:390,height:844});
-  await page.locator('[data-view="daily"]').click();
+  await page.locator('.workspace-navigation [data-view="daily"]').click();
   const mobileMetrics=await page.evaluate(()=>({viewport:innerWidth,document:document.documentElement.scrollWidth,body:document.body.scrollWidth}));
   assert.ok(mobileMetrics.document<=mobileMetrics.viewport+1,"Mobile layout must not overflow horizontally: "+JSON.stringify(mobileMetrics));
   await page.screenshot({path:"artifacts/workspace-mobile.png",fullPage:true});
