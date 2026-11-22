@@ -29,6 +29,7 @@ assert.equal(api.getView(),"daily");
 const monday=Object.values(api.getState().weeks)[0].days[0].date;
 api.selectDate(monday);
 assert.match(root.innerHTML,/06:30/);
+root.fields={};
 root.fields["[data-shift-start]"]={value:"07:00"};
 root.fields["[data-shift-stop]"]={value:"16:00"};
 click("save-shift-times");
