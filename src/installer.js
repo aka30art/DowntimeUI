@@ -32,6 +32,43 @@ function selectField(label,path,value,opts) {
 function title(kicker,heading,intro) { return '<div class="setup-kicker">'+kicker+'</div><h1>'+heading+'</h1><p class="setup-intro">'+intro+'</p>'; }
 function add(type,label) { return '<button type="button" class="setup-add" data-action="add-'+type+'">+ '+label+'</button>'; }
 function remove(type,i) { return '<button type="button" class="setup-remove" data-action="remove-'+type+'" data-index="'+i+'">Remove</button>'; }
+function staffRows(){
+  return config.staff.map((member,index)=>{
+    const preview=member.photoDataUrl
+      ?'<img src="'+esc(member.photoDataUrl)+'" alt="'+esc(member.name||"Staff photo")+'">'
+      :'<span>'+esc((member.name||"").trim().split(/\\s+/).filter(Boolean).slice(0,2).map(part=>part[0].toUpperCase()).join("")||"—")+'</span>';
+    return '<div class="setup-staff-row"><div class="setup-staff-name">'+field("Staff member","staff."+index+".name",member.name,"Full name")+'</div>'+
+      '<div class="setup-staff-photo"><div class="setup-staff-preview">'+preview+'</div><label><span>Profile photo (optional)</span><input type="file" accept="image/jpeg,image/png,image/webp" data-staff-photo="'+index+'"></label>'+
+      (member.photoDataUrl?'<button type="button" class="setup-photo-remove" data-action="remove-staff-photo" data-index="'+index+'">Remove photo</button>':'')+'</div>'+
+      remove("staff",index)+'</div>';
+  }).join("") || '<div class="setup-empty">No staff added. You can create the roster later in Settings.</div>';
+}
+async function compressStaffPhoto(file){
+  if(!file||!["image/jpeg","image/png","image/webp"].includes(file.type))throw new Error("Choose a JPEG, PNG or WebP image.");
+  if(file.size>8*1024*1024)throw new Error("Original image must be 8 MB or smaller.");
+  const source=await new Promise((resolve,reject)=>{
+    const reader=new FileReader();
+    reader.onerror=()=>reject(new Error("The selected image could not be read."));
+    reader.onload=()=>resolve(String(reader.result||""));
+    reader.readAsDataURL(file);
+  });
+  const image=await new Promise((resolve,reject)=>{
+    const value=new Image();
+    value.onload=()=>resolve(value);
+    value.onerror=()=>reject(new Error("The selected file is not a valid image."));
+    value.src=source;
+  });
+  const size=320,scale=Math.min(size/image.width,size/image.height);
+  const width=Math.max(1,Math.round(image.width*scale)),height=Math.max(1,Math.round(image.height*scale));
+  const canvas=document.createElement("canvas");canvas.width=size;canvas.height=size;
+  const context=canvas.getContext("2d");
+  if(!context)throw new Error("Image compression is unavailable in this browser.");
+  context.fillStyle="#172b38";context.fillRect(0,0,size,size);
+  context.drawImage(image,Math.round((size-width)/2),Math.round((size-height)/2),width,height);
+  const result=canvas.toDataURL("image/jpeg",0.72);
+  if(result.length>180000)throw new Error("Compressed profile photo is still too large. Choose a simpler or smaller image.");
+  return result;
+}
 function itemRows(arr,path,type,label,placeholder) {
   return arr.map((x,i)=>'<div class="setup-list-row">'+field(label,path+'.'+i+'.name',x.name,placeholder)+remove(type,i)+'</div>').join("") || '<div class="setup-empty">Nothing added yet. This section can be completed later in Settings.</div>';
 }
@@ -62,9 +99,9 @@ function content(errors) {
     '<div class="setup-subsection"><h2>Operating days</h2><p>Select the days on which this site normally operates.</p><div class="setup-days">'+days.map(d=>'<label class="setup-day"><input type="checkbox" data-day="'+d[0]+'" '+(config.schedule.workDays.includes(d[0])?"checked":"")+'><span>'+d[1]+'</span></label>').join("")+'</div></div>'+
     '<div class="setup-subsection"><div class="setup-subhead"><div><h2>Shifts</h2><p>Times use the selected time zone. An end time earlier than the start time represents an overnight period.</p></div>'+add("shift","Add shift")+'</div>'+shiftRows(config.schedule.shifts,"schedule.shifts","shift","Shift name")+'</div>'+
     '<div class="setup-subsection"><div class="setup-subhead"><div><h2>Break periods</h2><p>Breaks are defined separately for reporting and calculations.</p></div>'+add("break","Add break")+'</div>'+shiftRows(config.schedule.breaks,"schedule.breaks","break","Break name")+'</div>';
-  if(step===5) return title("STEP 05 / 08 · OPTIONAL","Staff and operators","Add an initial roster if required. This does not create user accounts or login credentials.")+
-    '<div class="setup-subsection"><div class="setup-subhead"><div><h2>Staff roster</h2><p>Names only at this stage.</p></div>'+add("staff","Add person")+'</div>'+itemRows(config.staff,"staff","staff","Staff member","Full name")+'</div>'+
-    '<div class="setup-note"><b>Account security</b><span>Do not enter PINs or passwords here. Authentication and account provisioning are separate work.</span></div>';
+  if(step===5) return title("STEP 05 / 08 · OPTIONAL","Staff and operators","Add the roster used for station assignments. Profile photos are compressed and saved locally with this browser workspace.")+
+    '<div class="setup-subsection"><div class="setup-subhead"><div><h2>Staff roster</h2><p>Names and optional profile photos. Adding a staff member does not create a login account.</p></div>'+add("staff","Add person")+'</div>'+staffRows()+'</div>'+
+    '<div class="setup-note"><b>Account security</b><span>Do not enter PINs or passwords here. Authentication and account provisioning are separate work. Photos remain in this browser until a secure private file-storage service is implemented.</span></div>';
   if(step===6) {
     const roles=config.roles.map((x,i)=>'<div class="setup-role"><div class="setup-role-head">'+field("Role name","roles."+i+".name",x.name,"e.g. Supervisor")+remove("role",i)+'</div><div class="setup-permissions">'+perms.map(p=>'<label><input type="checkbox" data-path="roles.'+i+'.permissions.'+p[0]+'" '+(x.permissions?.[p[0]]?"checked":"")+'><span>'+p[1]+'</span></label>').join("")+'</div></div>').join("")||'<div class="setup-empty">No roles defined. You can configure access later.</div>';
     return title("STEP 06 / 08 · OPTIONAL","Access roles","Define the permission groups your organisation needs. Server-side enforcement and user assignment are not part of this installer.")+
@@ -170,6 +207,20 @@ async function restoreInitialBackup(file){
 }
 root.addEventListener("change",async e=>{
   const el=e.target;
+  if(el.matches("[data-staff-photo]")){
+    const index=Number(el.dataset.staffPhoto),member=config.staff[index],file=el.files?.[0];
+    if(!member||!file)return;
+    try{
+      member.photoDataUrl=await compressStaffPhoto(file);
+      saveMessage="Profile photo compressed and saved to the local workspace.";
+      saveDraftState();
+      render();
+    }catch(error){
+      saveMessage=error?.message||"Profile photo could not be uploaded.";
+      render();
+    }
+    return;
+  }
   if(el.matches("[data-initial-backup]")){
     const file=el.files?.[0];
     if(file)await restoreInitialBackup(file);
@@ -194,6 +245,7 @@ root.addEventListener("click",e=>{
   else if(a==="resume"){screen="wizard";render();}
   else if(a==="edit-config"){step=1;screen="wizard";render();}
   else if(a==="export-config")exportConfig();
+  else if(a==="remove-staff-photo"){const member=config.staff[Number(b.dataset.index)];if(member){delete member.photoDataUrl;saveMessage="Profile photo removed.";render();saveDraftState();}}
   else if(a==="choose-restore")root.querySelector("[data-initial-backup]")?.click?.();
   else if(a==="open-preview"){screen="preview";render();}
   else if(a.startsWith("add-")){addItem(a.slice(4));render();saveDraftState();}
