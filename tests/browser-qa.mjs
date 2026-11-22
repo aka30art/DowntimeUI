@@ -263,6 +263,13 @@ try{
   });
   assert.ok(mobileMetrics.document<=mobileMetrics.viewport+1,"Mobile layout must not overflow horizontally: "+JSON.stringify(mobileMetrics));
   assert.ok(mobileMetrics.controls.every(control=>control.right<=mobileMetrics.viewport+1&&(!control.panelRight||control.right<=control.panelRight+1)),"Mobile controls must fit their viewport and containing panels: "+JSON.stringify(mobileMetrics.controls));
+  const mobileNavigation=await page.evaluate(()=>{
+    const nav=document.querySelector(".workspace-navigation"),navRect=nav.getBoundingClientRect();
+    const buttons=[...nav.querySelectorAll(".workspace-nav")].map(el=>{const r=el.getBoundingClientRect();return {label:el.textContent.trim(),left:r.left,right:r.right,top:r.top,bottom:r.bottom,width:r.width,scrollWidth:el.scrollWidth,clientWidth:el.clientWidth,scrollHeight:el.scrollHeight,clientHeight:el.clientHeight};});
+    return {viewport:innerWidth,nav:{left:navRect.left,right:navRect.right},buttons};
+  });
+  assert.equal(mobileNavigation.buttons.length,6,"Mobile navigation must expose all six destinations.");
+  assert.ok(mobileNavigation.buttons.every(button=>button.left>=0&&button.right<=mobileNavigation.viewport+1&&button.width>0&&button.scrollWidth<=button.clientWidth+1&&button.scrollHeight<=button.clientHeight+1),"Mobile navigation labels must remain visible, un-clipped and inside the viewport: "+JSON.stringify(mobileNavigation));
   await page.screenshot({path:"artifacts/workspace-mobile.png",fullPage:true});
   assert.deepEqual(failures,[],"Browser runtime errors: "+failures.join(" | "));
   console.log("PASS: Chromium installer, daily operations, plant overview, task-lock persistence, reports, Settings edits, backup/restore and 390px mobile layout");
