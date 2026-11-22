@@ -129,6 +129,12 @@ export function validateConfig(c) {
     uniqueNamed(c.roles, "Role", e);
     c.roles.forEach((x, i) => { if (!isObject(x.permissions) || Object.values(x.permissions).some(v => typeof v !== "boolean")) e.push("Role " + (i + 1) + " permissions must be explicit true/false values."); });
   }
+  if (Array.isArray(c.staff) && Array.isArray(c.roles)) {
+    const roleIds = new Set(c.roles.map(role => role?.id).filter(id => typeof id === "string"));
+    c.staff.forEach((member, i) => {
+      if (member?.roleId && !roleIds.has(member.roleId)) e.push("Staff member " + (i + 1) + " refers to an access role that does not exist.");
+    });
+  }
   if (!Array.isArray(c.dailyTasks)) e.push("Daily task templates must be a list."); else uniqueNamed(c.dailyTasks, "Daily task", e);
   if (!isObject(c.setup) || !Array.isArray(c.setup.completedSteps) || !Number.isInteger(c.setup.currentStep)) e.push("Setup progress data is invalid.");
   return [...new Set(e)];
