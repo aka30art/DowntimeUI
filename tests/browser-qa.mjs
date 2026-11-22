@@ -92,12 +92,12 @@ try{
   await page.locator('[name="entry-hours"]').fill("0");
   await page.locator('[name="entry-minutes"]').fill("30");
   await page.locator('[data-action="save-entry"]').click();
-  await page.getByText("Mechanical fault",{exact:true}).waitFor();
+  await page.locator(".workspace-entry-copy span").filter({hasText:"Mechanical fault"}).waitFor();
   await page.locator('[data-action="edit-entry"]').click();
   await page.locator('[name="entry-reason"]').fill("Mechanical repair");
   await page.locator('[name="entry-minutes"]').fill("45");
   await page.locator('[data-action="save-entry"]').click();
-  await page.getByText("Mechanical repair",{exact:true}).waitFor();
+  await page.locator(".workspace-entry-copy span").filter({hasText:"Mechanical repair"}).waitFor();
   await page.locator("[data-operator]").selectOption({label:"Operator One"});
 
   await page.locator('.workspace-navigation [data-view="plant"]').click();
