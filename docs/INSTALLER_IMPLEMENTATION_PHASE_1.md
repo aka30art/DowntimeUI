@@ -12,8 +12,9 @@ Configuration includes organisation identity, locale/time zone, configurable sit
 
 After installation the application opens a tenant-configured local operations workspace.
 
-- **Daily Sheet:** date/day selection, downtime entry create/edit/delete, area/station selection, free-text or configured reason, duration, operator-of-day assignment, actual daily shift start/finish overrides, schedule/break deduction, net available, downtime/running totals and rates.
-- **Plant Overview:** station cards grouped by configured area, station states (running/down/maintenance/idle), station/operator assignments, overall plant running/stopped state, issue alerts and local transition history. This is an operational record only; it is not connected to machinery controls.
+- **Daily Sheet:** date/day selection, downtime entry create/edit/delete, area/station selection, free-text or configured reason, duration, operator-of-day assignment, live Start Shift / Stop Shift using the tenant time zone, manual actual daily shift start/finish overrides, schedule/break deduction, net available, downtime/running totals and rates.
+- **Plant Overview:** station cards grouped by configured area, station states (running/down/maintenance/idle), station/operator assignments, overall plant running/stopped state, issue alerts, local transition history, and operator portrait cards showing photo, name and assigned station.
+- **Staff photos:** optional JPEG/PNG/WebP upload, 8 MB source-file limit, 320 × 320 crop/resize, JPEG compression and 180 KB data-URL cap. This remains local browser storage pending secure private backend storage. This is an operational record only; it is not connected to machinery controls.
 - **Daily Tasks:** checklist completion, per-day immutable task snapshot and **SAVE & LOCK FOR TODAY**. Completion and lock state persist locally after reload.
 - **Weekly Intelligence:** aggregate weighted weekly calculations, cause ranking, best running day/highest downtime day and prior-week comparison.
 - **Reports:** dated weekly snapshots, local report archive, browser print/PDF and JSON export. A stored report snapshot is not changed when the underlying downtime entries are later edited or deleted.
@@ -35,7 +36,7 @@ The Playwright Chromium suite drives the installer and workspace in a real brows
 - There is no dedicated DOWNTIMEUI backend connected yet. Existing Main production and Main staging Supabase projects are not used.
 - No live Auth integration, user invitation/account lifecycle, secure multi-tenant persistence, server-enforced authorization, read-only spectator flow, cross-device/realtime synchronization or compare-and-swap concurrency is active.
 - Role configuration is stored as local definitions; client-side helpers are not a security boundary.
-- Central audit history, staff profile/photo management, signed private file storage, backup retention and server-side recovery remain backend work.
+- Central audit history, staff-to-account linking, private photo storage/signed URL lifecycle, backup retention and server-side recovery remain backend work. Local optional photo upload/display is implemented.
 - Company logo URL is configurable; managed upload/storage is not yet implemented.
 - PDF printing uses the browser print-to-PDF path; cloud report archival is not connected.
 
