@@ -27,10 +27,18 @@ const config={
   },
   staff:[],roles:[],dailyTasks:[]
 };
+const originalSetInterval=globalThis.setInterval;
+const originalClearInterval=globalThis.clearInterval;
+let refreshCallback=null,refreshMilliseconds=0,clearedTimer=null;
+globalThis.setInterval=(callback,milliseconds)=>{refreshCallback=callback;refreshMilliseconds=milliseconds;return "live-shift-refresh";};
+globalThis.clearInterval=timerId=>{clearedTimer=timerId;};
 const api=mountWorkspace(root,config,{},{
+
   storage:new MemoryStorage(),
   now:()=>now
 });
+assert.equal(refreshMilliseconds,30000,"Live shift refresh should run every 30 seconds.");
+assert.equal(typeof refreshCallback,"function");
 assert.match(root.innerHTML,/Start shift now/,"Current operating date should offer a live shift start.");
 function click(action){
   const button={dataset:{action}};
