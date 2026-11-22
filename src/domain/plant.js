@@ -19,6 +19,7 @@ export function assignStationOperator(state,{stationId,staffId,stationIds=[],sta
   const current=normalize(state);
   if(!stationIds.includes(stationId))return {ok:false,code:"STATION_NOT_FOUND",state:current};
   if(staffId&&!staffIds.includes(staffId))return {ok:false,code:"STAFF_NOT_FOUND",state:current};
+  if(staffId&&Object.entries(current.stationAssignments).some(([otherStation,personId])=>otherStation!==stationId&&personId===staffId))return {ok:false,code:"OPERATOR_ALREADY_ASSIGNED",message:"This operator is already assigned to another station.",state:current};
   const assignments={...current.stationAssignments};
   const previous=assignments[stationId]||null;
   if(staffId)assignments[stationId]=staffId;else delete assignments[stationId];
