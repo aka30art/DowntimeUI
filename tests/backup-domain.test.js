@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
-import {validateWorkspaceBackup} from "../src/domain/backup.js";
+import {createWorkspaceBackup,restoreWorkspaceBackup,validateWorkspaceBackup} from "../src/domain/backup.js";
+import {DRAFT_STORAGE_KEY,TENANT_STORAGE_KEY} from "../src/config-core.js";
 const configuration={
  schemaVersion:2,installed:true,installedAt:"2026-11-22T05:00:00.000Z",installationId:"install-1",
  identity:{companyName:"Example",logoUrl:"",locale:"en-GB",timezone:"Europe/London"},
@@ -27,4 +28,44 @@ const badStation={...operations,plant:{...operations.plant,assignments:{missing:
 assert.ok(validateWorkspaceBackup({configuration,operations:badStation},"install-1").errors.some(x=>x.includes("unknown station")));
 const badTask={...operations,weeks:{"2026-11-23":{days:[{...day,dailyTasks:{...day.dailyTasks,completedTaskIds:["missing"]}}]}}};
 assert.ok(validateWorkspaceBackup({configuration,operations:badTask},"install-1").errors.some(x=>x.includes("completion refers")));
-console.log("Tenant-scoped backup validation and recovery integrity: PASS");
+
+const backup=createWorkspaceBackup(configuration,operations,{exportedAt:"2026-11-23T15:00:00Z"});
+assert.equal(backup.format,"downtimeui-workspace-backup");
+assert.equal(backup.backupVersion,1);
+class MemoryStorage{
+  values=new Map();
+  getItem(key){return this.values.has(key)?this.values.get(key):null;}
+  setItem(key,value){this.values.set(key,String(value));}
+  removeItem(key){this.values.delete(key);}
+}
+const storage=new MemoryStorage();
+storage.setItem(TENANT_STORAGE_KEY,JSON.stringify({installed:true,installationId:"install-1",identity:{companyName:"Before"}}));
+storage.setItem("downtimeui:operations:v1:install-1",JSON.stringify({schemaVersion:1,installationId:"install-1",weeks:{},reports:[],plant:{status:"running",stationStates:{},assignments:{},history:[]}}));
+storage.setItem(DRAFT_STORAGE_KEY,"old draft");
+const restored=restoreWorkspaceBackup(backup,"install-1",{storage});
+assert.equal(restored.ok,true,restored.errors.join("; "));
+assert.equal(JSON.parse(storage.getItem(TENANT_STORAGE_KEY)).identity.companyName,"Example");
+assert.equal(JSON.parse(storage.getItem("downtimeui:operations:v1:install-1")).weeks["2026-11-23"].days[0].entries[0].minutes,20);
+assert.equal(storage.getItem(DRAFT_STORAGE_KEY),null);
+const before=storage.getItem(TENANT_STORAGE_KEY);
+const wrongTenant=restoreWorkspaceBackup(backup,"another-install",{storage});
+assert.equal(wrongTenant.ok,false);
+assert.equal(storage.getItem(TENANT_STORAGE_KEY),before,"Cross-installation restore must not overwrite the current tenant.");
+class FailingStorage extends MemoryStorage{
+  failKey="downtimeui:operations:v1:install-1";
+  didFail=false;
+  setItem(key,value){
+    if(key===this.failKey&&!this.didFail){this.didFail=true;throw new Error("simulated quota error");}
+    super.setItem(key,value);
+  }
+}
+const failing=new FailingStorage();
+failing.setItem(TENANT_STORAGE_KEY,JSON.stringify({installed:true,installationId:"install-1",identity:{companyName:"Original"}}));
+failing.setItem("downtimeui:operations:v1:install-1",JSON.stringify({original:true}));
+const originalConfig=failing.getItem(TENANT_STORAGE_KEY),originalOps=failing.getItem("downtimeui:operations:v1:install-1");
+const failedRestore=restoreWorkspaceBackup(backup,"install-1",{storage:failing});
+assert.equal(failedRestore.ok,false);
+assert.equal(failing.getItem(TENANT_STORAGE_KEY),originalConfig,"Failed restore must roll configuration back.");
+assert.equal(failing.getItem("downtimeui:operations:v1:install-1"),originalOps,"Failed restore must retain previous operations.");
+
+console.log("Tenant-scoped backup validation, restore, rollback and recovery integrity: PASS");
