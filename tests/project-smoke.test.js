@@ -22,3 +22,8 @@ assert.match(workspace, /SAVE &amp; LOCK FOR TODAY/);
 assert.match(workspace, /calculateWeekMetrics/);
 assert.match(workspace, /generateReport/);
 assert.match(workspaceCss, /@media print/);
+
+assert.match(workspace, /function renderPlantOverview/);
+assert.match(workspace, /data-station-status/);
+assert.match(workspace, /data-station-operator/);
+assert.match(workspaceCss, /workspace-station-grid/);
