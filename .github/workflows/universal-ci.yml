@@ -1,0 +1,17 @@
+name: Universal App Foundation CI
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [feature/universal-app-foundation]
+permissions:
+  contents: read
+jobs:
+  config-core:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm test
