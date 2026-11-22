@@ -14,7 +14,7 @@ const weekStartFor=value=>{const date=typeof value==="string"?fromIso(value):new
 const addDays=(date,count)=>{const value=new Date(date);value.setDate(value.getDate()+count);return value;};
 const dayName=value=>DAY_NAMES[(fromIso(value).getDay()+6)%7];
 const keyFor=installationId=>STORE_PREFIX+installationId;
-function makeEmptyOperations(installationId){return {schemaVersion:1,installationId,weeks:{},reports:[],updatedAt:null};}
+function makeEmptyOperations(installationId){return {schemaVersion:1,installationId,weeks:{},reports:[],plant:{status:"running",stationStates:{},assignments:{},history:[]},updatedAt:null};}
 function makeDay(date,config){
   return {date,start:"",stop:"",operatorId:"",entries:[],dailyTasks:createDailyTaskState(),createdAt:new Date().toISOString()};
 }
@@ -55,6 +55,14 @@ export function mountWorkspace(root,config,{onEditConfiguration=()=>{},onExportC
   const loaded=readOperations(storage,config.installationId);
   let state=loaded.state,view="daily",selectedWeek=weekStartFor(new Date()),selectedDate=localIso(new Date()),status=loaded.error||"Local workspace ready.",editingEntryId=null;
   function getWeekKey(){return localIso(selectedWeek);}
+  function ensurePlantState(){
+    if(!state.plant||typeof state.plant!=="object")state.plant={status:"running",stationStates:{},assignments:{},history:[]};
+    state.plant.status=state.plant.status==="stopped"?"stopped":"running";
+    state.plant.stationStates=state.plant.stationStates||{};
+    state.plant.assignments=state.plant.assignments||{};
+    state.plant.history=Array.isArray(state.plant.history)?state.plant.history:[];
+    return state.plant;
+  }
   function ensureWeek(){
     const key=getWeekKey();
     if(!state.weeks[key])state.weeks[key]={days:Array.from({length:7},(_,i)=>makeDay(localIso(addDays(selectedWeek,i)),config))};
@@ -80,7 +88,7 @@ export function mountWorkspace(root,config,{onEditConfiguration=()=>{},onExportC
     return result.ok;
   }
   function nav(){
-    return [["daily","Daily sheet"],["tasks","Daily tasks"],["weekly","Weekly summary"],["reports","Reports"],["people","People & settings"]].map(([id,name])=>'<button type="button" class="workspace-nav '+(view===id?"active":"")+'" data-view="'+id+'">'+name+'</button>').join("");
+    return [["daily","Daily sheet"],["plant","Plant overview"],["tasks","Daily tasks"],["weekly","Weekly summary"],["reports","Reports"],["people","People & settings"]].map(([id,name])=>'<button type="button" class="workspace-nav '+(view===id?"active":"")+'" data-view="'+id+'">'+name+'</button>').join("");
   }
   function metricCard(label,value,sub=""){
     return '<article class="workspace-metric"><span>'+label+'</span><strong>'+value+'</strong>'+(sub?'<small>'+sub+'</small>':'')+'</article>';
@@ -121,6 +129,41 @@ export function mountWorkspace(root,config,{onEditConfiguration=()=>{},onExportC
       '<label class="workspace-operator"><span>Assign operator</span><select data-operator><option value="">Not assigned</option>'+operatorOptions+'</select></label>'+
       (metrics.exceedsNetTime?'<div class="workspace-alert">Recorded downtime exceeds net available time. Check the entry durations.</div>':'')+
       '<div class="workspace-inline-actions"><button type="button" data-view="tasks">Open daily tasks</button><button type="button" data-view="weekly">View weekly summary</button></div></aside></div></section>';
+  }
+  function renderPlantOverview(){
+    const plant=ensurePlantState(),stations=Array.isArray(config.site.stations)?config.site.stations:[],areas=Array.isArray(config.site.areas)?config.site.areas:[],staff=Array.isArray(config.staff)?config.staff:[];
+    const statusNames={running:"Running",down:"Down",maintenance:"Maintenance",idle:"Idle"};
+    const stationCards=new Map();
+    stations.forEach(station=>{
+      const status=plant.stationStates[station.id]||"running",assigned=plant.assignments[station.id]||"";
+      const area=areas.find(item=>item.id===station.areaId);
+      const card='<article class="workspace-station-card status-'+status+'"><div class="workspace-station-heading"><div><span class="workspace-station-indicator"></span><b>'+esc(station.name)+'</b></div><span class="workspace-status-label">'+statusNames[status]+'</span></div>'+
+        '<small>'+esc(area?.name||"Unassigned area")+'</small>'+
+        '<label><span>Station status</span><select data-station-status="'+esc(station.id)+'">'+Object.entries(statusNames).map(([key,label])=>'<option value="'+key+'" '+(status===key?"selected":"")+'>'+label+'</option>').join("")+'</select></label>'+
+        '<label><span>Assigned operator</span><select data-station-operator="'+esc(station.id)+'"><option value="">Not assigned</option>'+staff.map(person=>'<option value="'+esc(person.id)+'" '+(assigned===person.id?"selected":"")+'>'+esc(person.name)+'</option>').join("")+'</select></label></article>';
+      stationCards.set(station.id,card);
+    });
+    const down=stations.filter(x=>(plant.stationStates[x.id]||"running")==="down");
+    const maintenance=stations.filter(x=>(plant.stationStates[x.id]||"running")==="maintenance");
+    const unassigned=stations.filter(x=>!plant.assignments[x.id]);
+    const alerts=[];
+    if(plant.status==="stopped")alerts.push('<div class="workspace-plant-alert critical"><b>Site stopped</b><span>The overall site status is set to stopped.</span></div>');
+    if(down.length)alerts.push('<div class="workspace-plant-alert critical"><b>'+down.length+' station'+(down.length===1?"":"s")+' down</b><span>'+down.map(x=>esc(x.name)).join(", ")+'</span></div>');
+    if(maintenance.length)alerts.push('<div class="workspace-plant-alert warning"><b>Maintenance status</b><span>'+maintenance.map(x=>esc(x.name)).join(", ")+'</span></div>');
+    if(unassigned.length)alerts.push('<div class="workspace-plant-alert neutral"><b>Unassigned stations</b><span>'+unassigned.map(x=>esc(x.name)).join(", ")+'</span></div>');
+    const history=plant.history.slice(-8).reverse().map(item=>'<div class="workspace-history-row"><span>'+esc(item.label)+'</span><small>'+new Date(item.at).toLocaleString("en-GB")+'</small></div>').join("");
+    const areaGroups=areas.map(area=>{
+      const group=stations.filter(station=>station.areaId===area.id);
+      if(!group.length)return "";
+      return '<section class="workspace-area-group"><div class="workspace-area-head"><h2>'+esc(area.name)+'</h2><span>'+group.length+' STATION'+(group.length===1?"":"S")+'</span></div><div class="workspace-station-grid">'+group.map(station=>stationCards.get(station.id)).join("")+'</div></section>';
+    }).filter(Boolean);
+    const ungrouped=stations.filter(station=>!areas.some(area=>area.id===station.areaId));
+    if(ungrouped.length)areaGroups.push('<section class="workspace-area-group"><div class="workspace-area-head"><h2>Other stations</h2><span>'+ungrouped.length+' STATION'+(ungrouped.length===1?"":"S")+'</span></div><div class="workspace-station-grid">'+ungrouped.map(station=>stationCards.get(station.id)).join("")+'</div></section>');
+    return '<section class="workspace-section"><div class="workspace-section-head"><div><div class="workspace-eyebrow">SITE STATUS</div><h1>Plant overview</h1><p>'+esc(config.site.siteName)+' · '+stations.length+' configured station'+(stations.length===1?"":"s")+'</p></div><button type="button" class="workspace-plant-toggle '+(plant.status==="running"?"on":"off")+'" data-action="toggle-plant">'+(plant.status==="running"?"PLANT RUNNING · SET STOPPED":"PLANT STOPPED · SET RUNNING")+'</button></div>'+
+      (alerts.length?'<div class="workspace-plant-alerts">'+alerts.join("")+'</div>':'<div class="workspace-plant-alert neutral"><b>All clear</b><span>No active station issues are recorded.</span></div>')+
+      (stations.length?areaGroups.join(""):'<div class="workspace-panel"><div class="workspace-empty">No stations have been configured. Add stations in workspace setup to populate Plant Overview.</div></div>')+
+      '<div class="workspace-panel workspace-history"><div class="workspace-panel-head"><div><h2>Recent status changes</h2><p>Local audit trail for plant and station changes.</p></div></div>'+(history||'<div class="workspace-empty">No status changes recorded yet.</div>')+'</div>'+
+      '<div class="workspace-message" role="status">'+esc(status)+'</div></section>';
   }
   function renderTasks(){
     const day=currentDay(),templates=Array.isArray(config.dailyTasks)?config.dailyTasks:[],locked=Boolean(day.dailyTasks?.lockedAt);
@@ -176,7 +219,7 @@ export function mountWorkspace(root,config,{onEditConfiguration=()=>{},onExportC
   }
   function render(){
     const week=ensureWeek();
-    const content=view==="daily"?renderDaily():view==="tasks"?renderTasks():view==="weekly"?renderWeekly():view==="reports"?renderReports():renderPeople();
+    const content=view==="daily"?renderDaily():view==="plant"?renderPlantOverview():view==="tasks"?renderTasks():view==="weekly"?renderWeekly():view==="reports"?renderReports():renderPeople();
     root.innerHTML='<div class="workspace-app"><header class="workspace-header"><div class="workspace-brand"><span class="workspace-brand-mark">D</span><div><b>'+esc(config.identity.companyName)+'</b><small>'+esc(config.site.siteName)+' · DOWNTIMEUI</small></div></div><div class="workspace-header-actions"><span class="workspace-local-tag">LOCAL MODE · SINGLE DEVICE</span><button type="button" data-action="export-backup">Backup</button></div></header>'+
       '<nav class="workspace-navigation">'+nav()+'</nav><div class="workspace-content">'+content+'</div><footer class="workspace-footer"><span>'+esc(status)+'</span><span>Data is stored in this browser. Shared access and server sync are not active.</span></footer></div>';
   }
@@ -237,6 +280,11 @@ export function mountWorkspace(root,config,{onEditConfiguration=()=>{},onExportC
       if(editingEntryId===button.dataset.entryId)editingEntryId=null;
       if(persist("Downtime entry removed."))render();
     }
+    else if(action==="toggle-plant"){
+      const plant=ensurePlantState();plant.status=plant.status==="running"?"stopped":"running";
+      plant.history.push({id:createId("plant-event"),kind:"plant",at:new Date().toISOString(),label:"Plant status changed to "+plant.status});plant.history=plant.history.slice(-100);
+      if(persist("Overall plant status updated locally."))render();
+    }
     else if(action==="lock-tasks"){
       const day=currentDay(),before=day.dailyTasks;
       const result=saveAndLockDailyTasks(before,config.dailyTasks||[],{actorId:null,now:new Date()});
@@ -267,6 +315,22 @@ export function mountWorkspace(root,config,{onEditConfiguration=()=>{},onExportC
     } else if(control.matches("[data-operator]")){
       currentDay().operatorId=control.value||"";
       if(persist("Operator assignment saved locally."))render();
+    } else if(control.matches("[data-station-status]")){
+      const plant=ensurePlantState(),id=control.dataset.stationStatus,next=control.value,previous=plant.stationStates[id]||"running";
+      if(previous!==next){
+        const station=config.site.stations.find(item=>item.id===id);
+        plant.stationStates[id]=next;
+        plant.history.push({id:createId("plant-event"),kind:"station",stationId:id,previous,next,at:new Date().toISOString(),label:(station?.name||"Station")+" · "+previous+" → "+next});
+        plant.history=plant.history.slice(-100);
+        if(persist("Station status updated locally."))render();
+      }
+    } else if(control.matches("[data-station-operator]")){
+      const plant=ensurePlantState(),id=control.dataset.stationOperator;
+      plant.assignments[id]=control.value||"";
+      const station=config.site.stations.find(item=>item.id===id),person=config.staff.find(item=>item.id===control.value);
+      plant.history.push({id:createId("plant-event"),kind:"assignment",stationId:id,at:new Date().toISOString(),label:(station?.name||"Station")+" assigned to "+(person?.name||"Unassigned")});
+      plant.history=plant.history.slice(-100);
+      if(persist("Station assignment saved locally."))render();
     }
   });
   selectedWeek=weekStartFor(selectedDate);
