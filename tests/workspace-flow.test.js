@@ -16,10 +16,10 @@ const config={installed:true,installationId:"test-install",identity:{companyName
 const api=mountWorkspace(root,config,{}, {storage});
 assert.match(root.innerHTML,/QA Company/);
 assert.match(root.innerHTML,/DAILY OPERATIONS/);
-assert.match(root.innerHTML,/06:30/);
 assert.equal(api.getView(),"daily");
 const monday=Object.values(api.getState().weeks)[0].days[0].date;
 api.selectDate(monday);
+assert.match(root.innerHTML,/06:30/);
 function click(action,extra={}){
  const button={dataset:{action,...extra}};
  root.listeners.click({target:{closest:()=>button}});
