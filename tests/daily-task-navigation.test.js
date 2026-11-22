@@ -45,6 +45,7 @@ assert.deepEqual(monday.dailyTasks.completedTaskIds,["t1"]);
 assert.match(root.innerHTML,/Saved and locked/);
 
 api.selectDate("2026-11-24");
+now=new Date("2026-11-24T08:00:00.000Z");
 assert.match(root.innerHTML,/TUE/);
 assert.doesNotMatch(root.innerHTML,/Saved and locked/);
 changeTask("t2",true);
