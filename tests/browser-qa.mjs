@@ -45,6 +45,12 @@ try{
 
   await page.locator('[data-action="add-reason"]').click();
   await page.locator('[data-path="downtime.reasons.0.name"]').fill("Mechanical fault");
+  await page.locator('[data-action="add-preset"]').click();
+  await page.locator('[data-path="downtime.presets.0.name"]').fill("Line 1 mechanical");
+  await page.locator('[data-path="downtime.presets.0.areaId"]').selectOption({label:"Production"});
+  await page.locator('[data-path="downtime.presets.0.stationId"]').selectOption({label:"Line 1"});
+  await page.locator('[data-path="downtime.presets.0.reasonId"]').selectOption({label:"Mechanical fault"});
+  await page.locator('[data-path="downtime.presets.0.defaultDurationMinutes"]').fill("30");
   await page.locator('[data-action="next"]').click();
 
   for(const day of ["mon","tue","wed","thu","fri","sat","sun"]){
@@ -108,11 +114,12 @@ try{
   await page.locator('[data-action="clear-shift-times"]').click();
   assert.match(await page.locator(".workspace-metrics").innerText(),/09h 00m/,"Resetting actual shift times must restore configured schedule calculations.");
 
-  await page.locator('[name="entry-area"]').fill("Production");
-  await page.locator('[name="entry-station"]').selectOption({label:"Line 1"});
-  await page.locator('[name="entry-reason"]').fill("Mechanical fault");
-  await page.locator('[name="entry-hours"]').fill("0");
-  await page.locator('[name="entry-minutes"]').fill("30");
+  await page.locator('[data-entry-preset]').selectOption({label:"Line 1 mechanical"});
+  await page.locator('[data-action="apply-entry-preset"]').click();
+  assert.equal(await page.locator('[name="entry-area"]').inputValue(),"Production");
+  assert.equal(await page.locator('[name="entry-station"]').inputValue(),"s1");
+  assert.equal(await page.locator('[name="entry-reason"]').inputValue(),"Mechanical fault");
+  assert.equal(await page.locator('[name="entry-minutes"]').inputValue(),"30");
   await page.locator('[data-action="save-entry"]').click();
   await page.locator(".workspace-entry-copy span").filter({hasText:"Mechanical fault"}).waitFor();
   await page.locator('[data-action="edit-entry"]').click();
