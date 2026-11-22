@@ -168,6 +168,9 @@ try{
   });
   assert.match(backupJson,/downtimeui-workspace-backup/);
   await writeFile("artifacts/workspace-backup.json",backupJson,"utf8");
+  const backupObject=JSON.parse(backupJson);
+  const lockedDate=Object.values(backupObject.operations.weeks).flatMap(week=>week.days).find(day=>day.dailyTasks?.lockedAt)?.date;
+  assert.ok(lockedDate,"Backup fixture must contain a locked daily task snapshot.");
 
   await page.locator('[data-step="4"]').click();
   await page.locator('[data-path="schedule.shifts.0.start"]').fill("08:00");
@@ -199,7 +202,8 @@ try{
   await cleanRestorePage.locator(".workspace-daystrip [data-day]").first().click();
   assert.match(await cleanRestorePage.locator(".workspace-root").innerText(),/07:00/,"A clean installation must be able to recover the backed-up schedule.");
   await cleanRestorePage.locator('.workspace-navigation [data-view="tasks"]').click();
-  assert.equal(await cleanRestorePage.locator("input[data-task]").nth(0).isDisabled(),true,"Backup recovery must preserve the daily task lock.");
+  await cleanRestorePage.locator('.workspace-daystrip [data-day="'+lockedDate+'"]').click();
+  assert.equal(await cleanRestorePage.locator("input[data-task]").nth(0).isDisabled(),true,"Backup recovery must preserve the daily task lock on the original task date.");
   await cleanRestorePage.locator('.workspace-navigation [data-view="reports"]').click();
   assert.match(await cleanRestorePage.locator(".workspace-root").innerText(),/00h 45m/,"Clean-install recovery must restore the report archive.");
   await cleanRestorePage.close();
