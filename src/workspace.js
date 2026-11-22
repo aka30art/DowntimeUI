@@ -70,7 +70,7 @@ export function mountWorkspace(root,config,{onEditConfiguration=()=>{},onExportC
   const bindingController=new AbortController();
   WORKSPACE_BINDINGS.set(root,()=>bindingController.abort());
   const loaded=readOperations(storage,config.installationId);
-  let state=loaded.state,view="daily",selectedWeek=weekStartFor(new Date()),selectedDate=localIso(new Date()),status=loaded.error||"Local workspace ready.",editingEntryId=null;
+  let state=loaded.state,view="daily",selectedWeek=weekStartFor(new Date()),selectedDate=localIso(new Date()),status=loaded.error||"Local workspace ready.",editingEntryId=null;\n  const getNow=()=>options.now?new Date(options.now()):new Date();\n  const getLocalClock=()=>{const parts=new Intl.DateTimeFormat("en-GB",{timeZone:config.identity.timezone||"UTC",hour:"2-digit",minute:"2-digit",hourCycle:"h23"}).formatToParts(getNow());return parts.find(x=>x.type==="hour").value+":"+parts.find(x=>x.type==="minute").value;};\n  const getLocalDate=()=>{const parts=new Intl.DateTimeFormat("en-CA",{timeZone:config.identity.timezone||"UTC",year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(getNow());return parts.find(x=>x.type==="year").value+"-"+parts.find(x=>x.type==="month").value+"-"+parts.find(x=>x.type==="day").value;};
   function getWeekKey(){return localIso(selectedWeek);}
   function ensurePlantState(){
     state.plant=normalizePlantState(state.plant);
@@ -90,10 +90,17 @@ export function mountWorkspace(root,config,{onEditConfiguration=()=>{},onExportC
     return week;
   }
   function currentDay(){return ensureWeek().days.find(x=>x.date===selectedDate)||ensureWeek().days[0];}
-  function currentMetrics(){return calculateDayMetrics(currentDay(),config.schedule);}
+  function metricsForDay(day){
+    if(day.start&&!day.stop&&day.date===getLocalDate()){
+      const liveEnd=getLocalClock();
+      return calculateDayMetrics({...day,stop:liveEnd,breakMinutes:undefined},config.schedule);
+    }
+    return calculateDayMetrics(day,config.schedule);
+  }
+  function currentMetrics(){return metricsForDay(currentDay());}
   function weekMetrics(key=getWeekKey()){
     const monday=fromIso(key),week=state.weeks[key]||{days:Array.from({length:7},(_,i)=>makeDay(localIso(addDays(monday,i)),config))};
-    return calculateWeekMetrics(week.days,config.schedule);
+    return calculateWeekMetrics(week.days.map(day=>day.start&&!day.stop&&day.date===getLocalDate()?{...day,stop:getLocalClock(),breakMinutes:undefined}:day),config.schedule);
   }
   function persist(message="Saved on this device."){
     const result=saveOperations(storage,state);
@@ -107,10 +114,10 @@ export function mountWorkspace(root,config,{onEditConfiguration=()=>{},onExportC
     return '<article class="workspace-metric"><span>'+label+'</span><strong>'+value+'</strong>'+(sub?'<small>'+sub+'</small>':'')+'</article>';
   }
   function renderDaily(){
-    const week=ensureWeek(),metrics=currentMetrics(),day=currentDay(),selectedSchedule=scheduleLabel(selectedDate,config.schedule),displayedSchedule=day.start&&day.stop?[day.start+"–"+day.stop+" (actual)"]:selectedSchedule;
+    const week=ensureWeek(),metrics=currentMetrics(),day=currentDay(),selectedSchedule=scheduleLabel(selectedDate,config.schedule),isLiveShift=Boolean(day.start&&!day.stop&&selectedDate===getLocalDate()),displayedSchedule=day.start&&day.stop?[day.start+"–"+day.stop+" (actual)"]:isLiveShift?[day.start+"–"+getLocalClock()+" (LIVE)"]:selectedSchedule;
     const kpis=[["NET AVAILABLE",formatMinutes(metrics.netMinutes)],["DOWNTIME",formatMinutes(metrics.downtimeMinutes)],["RUNNING",formatMinutes(metrics.runningMinutes)],["DOWNTIME RATE",metrics.downtimeRate.toFixed(1)+"%"]];
     const days=week.days.map(item=>{
-      const m=calculateDayMetrics(item,config.schedule),d=labelForDay(item.date);
+      const m=metricsForDay(item),d=labelForDay(item.date);
       return '<button type="button" data-day="'+item.date+'" class="workspace-day '+(item.date===selectedDate?"selected":"")+'"><b>'+d.short+'</b><span>'+d.date+'</span><small>'+formatMinutes(m.downtimeMinutes)+'</small>'+(item.dailyTasks?.lockedAt?'<i>LOCKED</i>':'')+'</button>';
     }).join("");
     const people=Array.isArray(config.staff)?config.staff:[];
@@ -363,6 +370,20 @@ export function mountWorkspace(root,config,{onEditConfiguration=()=>{},onExportC
       if(!result.ok){status=result.errors.join(" ");render();return;}
       day.dailyTasks=result.state;
       if(persist("Daily tasks saved and locked for this day."))render();else day.dailyTasks=before;
+    }
+    else if(action==="start-shift-now"){
+      const day=currentDay(),previousStart=day.start,previousStop=day.stop,previousBreak=day.breakMinutes;
+      if(selectedDate!==getLocalDate()||day.start){status="A shift can only be started for today when no actual start is recorded.";render();return;}
+      day.start=getLocalClock();delete day.stop;delete day.breakMinutes;
+      if(persist("Shift started at "+day.start+" local time."))render();
+      else{day.start=previousStart;day.stop=previousStop;if(previousBreak===undefined)delete day.breakMinutes;else day.breakMinutes=previousBreak;render();}
+    }
+    else if(action==="stop-shift-now"){
+      const day=currentDay(),previousStop=day.stop,previousBreak=day.breakMinutes,nowTime=getLocalClock();
+      if(selectedDate!==getLocalDate()||!day.start||day.stop||nowTime===day.start){status="A live shift cannot be stopped with an empty or zero-length time window.";render();return;}
+      day.stop=nowTime;delete day.breakMinutes;
+      if(persist("Shift stopped at "+day.stop+" local time."))render();
+      else{day.stop=previousStop;if(previousBreak===undefined)delete day.breakMinutes;else day.breakMinutes=previousBreak;render();}
     }
     else if(action==="save-shift-times"){
       const start=root.querySelector("[data-shift-start]")?.value||"",stop=root.querySelector("[data-shift-stop]")?.value||"";
