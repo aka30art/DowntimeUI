@@ -1,12 +1,12 @@
 /* Universal tenant config. No company-specific defaults or credentials. */
-export const CONFIG_SCHEMA_VERSION = 2;
+export const CONFIG_SCHEMA_VERSION = 3;
 export const TENANT_STORAGE_KEY = "downtimeui:tenant:v1";
 export const DRAFT_STORAGE_KEY = "downtimeui:setup:draft:v1";
 export const DEFAULT_CONFIG = Object.freeze({
   schemaVersion: CONFIG_SCHEMA_VERSION, installed: false, installedAt: null, installationId: null,
   identity: { companyName: "", logoUrl: "", locale: "en-GB", timezone: "" },
   site: { siteName: "", hierarchy: ["Area", "Station"], areas: [], stations: [] },
-  downtime: { reasons: [] }, schedule: { workDays: [], shifts: [], breaks: [] },
+  downtime: { reasons: [], presets: [] }, schedule: { workDays: [], shifts: [], breaks: [] },
   staff: [], roles: [], dailyTasks: [],
   setup: { currentStep: 0, completedSteps: [], updatedAt: null }
 });
@@ -68,8 +68,28 @@ export function validateConfig(c) {
       c.site.stations.forEach((station, i) => { if (station?.areaId && !areaIds.has(station.areaId)) e.push("Station " + (i + 1) + " refers to an area that does not exist."); });
     }
   }
-  if (!isObject(c.downtime) || !Array.isArray(c.downtime.reasons)) e.push("Downtime reasons must be a list.");
-  else uniqueNamed(c.downtime.reasons, "Downtime reason", e);
+  if (!isObject(c.downtime) || !Array.isArray(c.downtime.reasons) || !Array.isArray(c.downtime.presets)) {
+    e.push("Downtime reasons and presets must be lists.");
+  } else {
+    uniqueNamed(c.downtime.reasons, "Downtime reason", e);
+    uniqueNamed(c.downtime.presets, "Downtime preset", e);
+    const reasonIds=new Set(c.downtime.reasons.map(x=>x.id));
+    const areaIds=new Set((c.site?.areas||[]).map(x=>x.id));
+    const stations=c.site?.stations||[];
+    const stationIds=new Set(stations.map(x=>x.id));
+    c.downtime.presets.forEach((preset,i)=>{
+      if(preset.areaId&&!areaIds.has(preset.areaId))e.push("Downtime preset "+(i+1)+" refers to an area that does not exist.");
+      if(preset.stationId&&!stationIds.has(preset.stationId))e.push("Downtime preset "+(i+1)+" refers to a station that does not exist.");
+      if(preset.stationId&&preset.areaId){
+        const station=stations.find(x=>x.id===preset.stationId);
+        if(station&&station.areaId&&station.areaId!==preset.areaId)e.push("Downtime preset "+(i+1)+" station is outside its selected area.");
+      }
+      if(preset.reasonId&&!reasonIds.has(preset.reasonId))e.push("Downtime preset "+(i+1)+" refers to a reason that does not exist.");
+      if(preset.defaultDurationMinutes!==undefined&&preset.defaultDurationMinutes!==null&&
+         (!Number.isInteger(preset.defaultDurationMinutes)||preset.defaultDurationMinutes<1||preset.defaultDurationMinutes>1440))
+        e.push("Downtime preset "+(i+1)+" default duration must be between 1 and 1440 minutes.");
+    });
+  }
   if (!isObject(c.schedule)) e.push("Schedule settings are missing.");
   else {
     const s = c.schedule;
@@ -132,7 +152,7 @@ export function upgradeConfig(input) {
   const d = cloneDefaultConfig(), c = { ...d, ...clone(input), schemaVersion: CONFIG_SCHEMA_VERSION };
   c.identity = { ...d.identity, ...(input.identity || {}) };
   c.site = { ...d.site, ...(input.site || {}) };
-  c.downtime = { reasons: input.downtime?.reasons || [] };
+  c.downtime = { ...d.downtime, ...(input.downtime || {}), reasons: input.downtime?.reasons || [], presets: input.downtime?.presets || [] };
   c.schedule = { ...d.schedule, ...(input.schedule || {}) };
   c.staff = input.staff || []; c.roles = input.roles || []; c.dailyTasks = input.dailyTasks || [];
   c.setup = { ...d.setup, ...(input.setup || {}) };
