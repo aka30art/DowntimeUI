@@ -45,5 +45,7 @@ assert.match(workspace, /clear-shift-times/);
 
 assert.match(moduleSource,/compressStaffPhoto/);
 assert.match(moduleSource,/data-staff-photo/);
+assert.match(moduleSource,/compressStaffPhoto/);
 assert.match(workspace,/workspace-operator-card/);
 assert.match(workspaceCss,/workspace-operator-photo/);
+assert.match(workspace,/workspace-operator-card/);
