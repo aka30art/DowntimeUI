@@ -160,7 +160,7 @@ try{
   await page.locator('.workspace-navigation [data-view="people"]').click();
   page.once("dialog",dialog=>dialog.accept());
   await page.locator('[data-backup-file]').setInputFiles("artifacts/workspace-backup.json");
-  await page.getByText("Workspace backup restored successfully.",{exact:true}).waitFor();
+  await page.locator(".workspace-message").filter({hasText:"Workspace backup restored successfully"}).waitFor();
   await page.locator(".workspace-daystrip [data-day]").first().click();
   assert.match(await page.locator(".workspace-root").innerText(),/07:00/,"Restoring the backup must return the prior schedule configuration.");
   await page.locator('.workspace-navigation [data-view="reports"]').click();
