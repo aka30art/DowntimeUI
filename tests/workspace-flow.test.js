@@ -1,6 +1,5 @@
 import assert from "node:assert/strict";
 import {mountWorkspace} from "../src/workspace.js";
-import {TENANT_STORAGE_KEY} from "../src/config-core.js";
 class Storage{
  data=new Map();getItem(k){return this.data.has(k)?this.data.get(k):null;}setItem(k,v){this.data.set(k,String(v));}
 }
@@ -36,6 +35,20 @@ const days=Object.values(api.getState().weeks)[0].days;
 assert.equal(days[0].entries.length,1);
 assert.equal(days[0].entries[0].minutes,25);
 assert.equal(days[0].operatorId,"");
+const originalId=days[0].entries[0].id;
+click("edit-entry",{entryId:originalId});
+root.fields['[name="entry-area"]'].value="Production";
+root.fields['[name="entry-station"]'].value="s1";
+root.fields['[name="entry-reason"]'].value="Mechanical repair";
+root.fields['[name="entry-hours"]'].value="0";
+root.fields['[name="entry-minutes"]'].value="40";
+assert.match(root.innerHTML,/Save changes/);
+click("save-entry");
+assert.equal(days[0].entries.length,1);
+assert.equal(days[0].entries[0].id,originalId,"editing must preserve the original downtime entry ID");
+assert.equal(days[0].entries[0].reason,"Mechanical repair");
+assert.equal(days[0].entries[0].minutes,40);
+assert.ok(days[0].entries[0].updatedAt);
 assert.ok(storage.data.size>0);
 const taskControl={dataset:{task:"t1"},checked:true,matches:selector=>selector==="[data-task]"};
 root.listeners.change({target:taskControl});
@@ -49,6 +62,10 @@ root.listeners.change({target:blocked});
 assert.deepEqual(api.getState().weeks[Object.keys(api.getState().weeks)[0]].days[0].dailyTasks.completedTaskIds,["t1"]);
 click("generate-report");
 assert.equal(api.getState().reports.length,1);
+assert.equal(api.getState().reports[0].totals.downtimeMinutes,40,"report snapshot must include the edited entry");
 assert.equal(api.getView(),"reports");
+click("delete-entry",{entryId:originalId});
+assert.equal(days[0].entries.length,0,"deleting an entry must remove it from the selected day");
+assert.equal(api.getState().reports[0].totals.downtimeMinutes,40,"archived report snapshots must not change after later record edits");
 click("edit-config");
-console.log("Local operations, downtime entry, task lock, weekly report and workspace actions: PASS");
+console.log("Local operations, downtime CRUD, task lock and weekly report snapshot: PASS");
