@@ -27,7 +27,7 @@ const api=mountWorkspace(root,config,{
 assert.match(root.innerHTML,/QA Company/);
 assert.match(root.innerHTML,/DAILY OPERATIONS/);
 assert.equal(api.getView(),"daily");
-const monday=Object.values(api.getState().weeks)[0].days()[0].date;
+const monday=Object.values(api.getState().weeks)[0].days[0].date;
 function click(action,extra={}){
  const button={dataset:{action,...extra}};
  root.listeners.click({target:{closest:()=>button}});
