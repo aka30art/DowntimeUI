@@ -4,7 +4,7 @@ const paths=[
   "index.html","src/config-core.js","src/installer.js","src/workspace.js",
   "src/workspace.css","src/installer.css","src/domain/schedule.js",
   "src/domain/downtime.js","src/domain/daily-tasks.js","src/domain/permissions.js",
-  "src/domain/reports.js"
+  "src/domain/reports.js","src/domain/backup.js"
 ];
 const content=(await Promise.all(paths.map(p=>readFile(new URL("../"+p,import.meta.url),"utf8")))).join("\n");
 for(const name of ["Jan","Mick","Gigi","Daz","Shayne","L&C Skip Hire","Feeder","Picking line","Magnet 1","Mick/360"]){
@@ -14,6 +14,8 @@ assert.doesNotMatch(content,/supabase\.co|sb_publishable_|service_role|SUPABASE_
   "The local workspace must not include a connected Supabase project or production credential.");
 assert.match(content,/No company, operator, plant, station or downtime data has been pre-filled/);
 assert.match(content,/LOCAL MODE · SINGLE DEVICE/);
+assert.match(content,/Restore backup JSON/);
+assert.match(content,/Restore workspace configuration/);
 const core=await readFile(new URL("../src/config-core.js",import.meta.url),"utf8");
 assert.match(core,/companyName: ""/);
 assert.match(core,/areas: \[\], stations: \[\]/);
