@@ -140,6 +140,7 @@ export function mountWorkspace(root,config,{onEditConfiguration=()=>{},onExportC
     const areaOptions=(config.site.areas||[]).map(x=>'<option value="'+esc(x.name)+'">'+esc(x.name)+'</option>').join("");
     const stationOptions=(config.site.stations||[]).map(x=>'<option value="'+esc(x.id)+'">'+esc(x.name)+'</option>').join("");
     const reasonOptions=(config.downtime.reasons||[]).map(x=>'<option value="'+esc(x.name)+'">'+esc(x.name)+'</option>').join("");
+    const presetOptions=(config.downtime.presets||[]).map(x=>'<option value="'+esc(x.id)+'">'+esc(x.name)+'</option>').join("");
     const operatorOptions=people.map(x=>'<option value="'+esc(x.id)+'" '+(day.operatorId===x.id?"selected":"")+'>'+esc(x.name)+'</option>').join("");
     return '<section class="workspace-section">'+
       '<div class="workspace-section-head"><div><div class="workspace-eyebrow">DAILY OPERATIONS</div><h1>'+esc(dayName(selectedDate))+'</h1><p>'+fromIso(selectedDate).toLocaleDateString("en-GB",{day:"numeric",month:"long",year:"numeric"})+'</p></div><div class="workspace-day-lock">'+(day.dailyTasks?.lockedAt?'<span>DAILY TASKS LOCKED</span>':'<span>DAILY TASKS OPEN</span>')+'</div></div>'+
@@ -147,6 +148,7 @@ export function mountWorkspace(root,config,{onEditConfiguration=()=>{},onExportC
       '<div class="workspace-metrics">'+kpis.map(x=>metricCard(x[0],x[1])).join("")+'</div>'+
       '<div class="workspace-two-col"><div class="workspace-panel"><div class="workspace-panel-head"><div><h2>Downtime entries</h2><p>Record time lost against an area and reason.</p></div><span class="workspace-count">'+day.entries.length+' ENTRIES</span></div>'+
       '<div class="workspace-entry-list">'+entries+'</div>'+
+      ((config.downtime.presets||[]).length?'<div class="workspace-preset-apply"><label><span>Quick-entry preset</span><select data-entry-preset><option value="">Choose a saved preset</option>'+presetOptions+'</select></label><button type="button" data-action="apply-entry-preset">Apply preset</button><small>Check the populated fields before saving.</small></div>':'')+
       '<div class="workspace-add-form"><h3>'+(editingEntry?"Edit downtime entry":"Add downtime entry")+'</h3><div class="workspace-form-grid">'+
       '<label><span>Area / location *</span><input name="entry-area" list="workspace-areas" placeholder="Enter or select an area" value="'+esc(editingEntry?.area||"")+'"></label><datalist id="workspace-areas">'+areaOptions+'</datalist>'+
       '<label><span>Station (optional)</span><select name="entry-station"><option value="">No station selected</option>'+stationOptions.replace('value="'+esc(editingEntry?.stationId||"")+'"','value="'+esc(editingEntry?.stationId||"")+'" selected')+'</select></label>'+
@@ -380,7 +382,24 @@ export function mountWorkspace(root,config,{onEditConfiguration=()=>{},onExportC
     if(button.dataset.view){view=button.dataset.view;render();return;}
     if(button.dataset.day){selectedDate=button.dataset.day;render();return;}
     const action=button.dataset.action;if(!action)return;
-    if(action==="save-entry")saveEntry();
+    if(action==="apply-entry-preset"){
+      const presetId=root.querySelector("[data-entry-preset]")?.value||"";
+      const preset=(config.downtime.presets||[]).find(item=>item.id===presetId);
+      if(!preset){status="Select a quick-entry preset first.";const message=root.querySelector(".workspace-message");if(message)message.textContent=status;return;}
+      const area=(config.site.areas||[]).find(item=>item.id===preset.areaId);
+      const reason=(config.downtime.reasons||[]).find(item=>item.id===preset.reasonId);
+      const setValue=(selector,value)=>{const input=root.querySelector(selector);if(input&&value!==undefined&&value!==null)input.value=String(value);};
+      if(area)setValue('[name="entry-area"]',area.name);
+      if(preset.stationId)setValue('[name="entry-station"]',preset.stationId);
+      if(reason)setValue('[name="entry-reason"]',reason.name);
+      if(Number.isInteger(preset.defaultDurationMinutes)){
+        setValue('[name="entry-hours"]',Math.floor(preset.defaultDurationMinutes/60));
+        setValue('[name="entry-minutes"]',preset.defaultDurationMinutes%60);
+      }
+      status="Preset applied. Review the values before saving.";
+      const message=root.querySelector(".workspace-message");if(message)message.textContent=status;
+    }
+    else if(action==="save-entry")saveEntry();
     else if(action==="edit-entry"){
       const entry=currentDay().entries.find(item=>item.id===button.dataset.entryId);
       if(!entry)return;
