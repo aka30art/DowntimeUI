@@ -4,6 +4,7 @@ import {saveAndLockDailyTasks,setTaskCompletion,visibleDailyTasks,completedTaskC
 import {calculateScheduleForDate,formatMinutes} from "./domain/schedule.js";
 import {buildWeeklyReport} from "./domain/reports.js";
 import {assignStationOperator,createPlantState,normalizePlantState,setPlantStatus,setStationStatus} from "./domain/plant.js";
+import {validateWorkspaceBackup} from "./domain/backup.js";
 
 const STORE_PREFIX="downtimeui:operations:v1:";
 const DAY_NAMES=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
@@ -235,7 +236,7 @@ export function mountWorkspace(root,config,{onEditConfiguration=()=>{},onExportC
       section("Access and rights","Configure permission groups. Account authentication and server-side enforcement are separate.",6,roles)+
       section("Daily task presets","Maintain reusable task templates for the daily checklist.",7,(config.dailyTasks||[]).map(x=>esc(x.name)).join(" · ")||"No task templates defined")+
       '</div>'+
-      '<div class="workspace-panel"><div class="workspace-panel-head"><div><h2>Data and recovery</h2><p>Export a copy of this installation’s configuration and local records.</p></div></div><p class="workspace-muted">Operational records, checklist locks and report snapshots are stored in browser storage, namespaced by this installation ID. This is not a central backup or a multi-user sync service.</p><div class="workspace-button-row"><button type="button" data-action="export-backup">Export full workspace backup</button><button type="button" data-action="export-config">Export configuration JSON</button></div></div>'+
+      '<div class="workspace-panel"><div class="workspace-panel-head"><div><h2>Data and recovery</h2><p>Export a copy of this installation’s configuration and local records.</p></div></div><p class="workspace-muted">Operational records, checklist locks and report snapshots are stored in browser storage, namespaced by this installation ID. This is not a central backup or a multi-user sync service.</p><div class="workspace-button-row"><button type="button" data-action="export-backup">Export full workspace backup</button><button type="button" data-action="import-backup">Import workspace backup</button><button type="button" data-action="export-config">Export configuration JSON</button></div><input type="file" accept=".json,application/json" data-backup-file hidden></div>'+
       '<div class="workspace-message" role="status">'+esc(status)+'</div></section>';
   }
   function render(){
@@ -283,6 +284,41 @@ export function mountWorkspace(root,config,{onEditConfiguration=()=>{},onExportC
   function exportBackup(){
     fileDownload("downtimeui-workspace-backup.json","application/json",JSON.stringify({configuration:config,operations:state,exportedAt:new Date().toISOString()},null,2));
   }
+  async function restoreBackup(file){
+    if(!file)return;
+    let backup;
+    try{backup=JSON.parse(await file.text());}
+    catch{status="Backup rejected: file is not valid JSON.";render();return;}
+    const validation=validateWorkspaceBackup(backup,config.installationId);
+    if(!validation.ok){status="Backup rejected: "+validation.errors.join(" ");render();return;}
+    if(typeof globalThis.confirm!=="function"||!globalThis.confirm("Replace this local workspace configuration and all local records with the selected backup? This cannot be undone.")){
+      status="Backup restore cancelled.";render();return;
+    }
+    const operationsKey=keyFor(config.installationId);
+    const previousOperations=safeGet(storage,operationsKey);
+    if(!previousOperations.ok){status="Backup restore failed: "+previousOperations.error;render();return;}
+    const previousState=state;
+    const importedState=JSON.parse(JSON.stringify(backup.operations));
+    const savedOperations=saveOperations(storage,importedState);
+    if(!savedOperations.ok){status="Backup restore failed: "+savedOperations.error;render();return;}
+    const restoredConfiguration=JSON.parse(JSON.stringify(backup.configuration));
+    const configurationResult=onRestoreConfiguration(restoredConfiguration);
+    if(!configurationResult?.ok){
+      try{if(previousOperations.value===null)storage.removeItem(operationsKey);else storage.setItem(operationsKey,previousOperations.value);}catch{}
+      state=previousState;
+      status="Backup restore failed: "+(configurationResult?.error||"configuration could not be saved.");
+      render();return;
+    }
+    state=importedState;
+    selectedWeek=weekStartFor(new Date());
+    selectedDate=localIso(selectedWeek);
+    editingEntryId=null;
+    view="daily";
+    status="Workspace backup restored successfully.";
+    ensureWeek();
+    render();
+  }
+
   root.addEventListener("click",event=>{
     const button=event.target.closest("button");if(!button)return;
     if(button.dataset.view){view=button.dataset.view;render();return;}
@@ -322,12 +358,19 @@ export function mountWorkspace(root,config,{onEditConfiguration=()=>{},onExportC
       if(action==="print-report")printReport(report);else downloadReport(report);
     }
     else if(action==="export-backup")exportBackup();
+    else if(action==="import-backup")root.querySelector("[data-backup-file]")?.click?.();
     else if(action==="export-config")onExportConfiguration();
     else if(action==="edit-config")editConfig();
     else if(action==="edit-section")onEditConfiguration(Number(button.dataset.step));
   });
-  root.addEventListener("change",event=>{
+  root.addEventListener("change",async event=>{
     const control=event.target;
+    if(control.matches("[data-backup-file]")){
+      const file=control.files?.[0];
+      if(file)await restoreBackup(file);
+      control.value="";
+      return;
+    }
     if(control.matches("[data-task]")){
       const day=currentDay(),result=setTaskCompletion(day.dailyTasks,control.dataset.task,control.checked,config.dailyTasks||[]);
       if(!result.ok){status=result.message;render();return;}
