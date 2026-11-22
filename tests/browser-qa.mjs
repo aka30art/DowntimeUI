@@ -123,6 +123,11 @@ try{
   await page.locator('[data-station-status]').selectOption("down");
   await page.getByText(/1 station down/).waitFor();
   await page.locator('[data-station-operator]').selectOption({label:"Operator One"});
+  const operatorCard=page.locator(".workspace-operator-card");
+  assert.equal(await operatorCard.count(),1,"Plant Overview must show one card for the configured operator.");
+  assert.equal(await operatorCard.locator("b").innerText(),"Operator One");
+  assert.equal(await operatorCard.locator("span").innerText(),"Line 1");
+  assert.equal(await operatorCard.locator("img").count(),1,"Compressed staff photo must render on the operator card.");
   await page.locator('[data-action="toggle-plant"]').click();
   await page.getByText("Site stopped",{exact:true}).waitFor();
   await page.screenshot({path:"artifacts/plant-overview-desktop.png",fullPage:true});
