@@ -5,7 +5,7 @@ export function buildWeeklyReport({weekStart,days=[],previousDays=[],schedule=nu
   return {
     weekStart:weekStart||null,companyName,siteName,
     generatedAt:generatedAt instanceof Date?generatedAt.toISOString():new Date(generatedAt).toISOString(),
-    days:summary.daily,totals:{
+    days:summary.daily.map(day=>({...day,name:day.date?new Date(day.date+"T12:00:00.000Z").toLocaleDateString("en-GB",{weekday:"long",timeZone:"UTC"}):""})),totals:{
       scheduledMinutes:summary.scheduledMinutes,breakMinutes:summary.breakMinutes,netMinutes:summary.netMinutes,
       downtimeMinutes:summary.downtimeMinutes,runningMinutes:summary.runningMinutes,
       downtimeRate:summary.downtimeRate,runningRate:summary.runningRate
