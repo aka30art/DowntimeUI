@@ -71,7 +71,8 @@ export function mountWorkspace(root,config,{onEditConfiguration=()=>{},onExportC
   WORKSPACE_BINDINGS.set(root,()=>bindingController.abort());
   const loaded=readOperations(storage,config.installationId);
   const getNow=()=>options.now?new Date(options.now()):new Date();
-  let state=loaded.state,view="daily",selectedWeek=weekStartFor(new Date()),selectedDate=localIso(new Date()),status=loaded.error||"Local workspace ready.",editingEntryId=null;\n  const getNow=()=>options.now?new Date(options.now()):new Date();
+  let state=loaded.state,view="daily",selectedWeek=weekStartFor(new Date()),selectedDate=localIso(new Date()),status=loaded.error||"Local workspace ready.",editingEntryId=null;
+  const getNow=()=>options.now?new Date(options.now()):new Date();
   const getLocalClock=()=>{const parts=new Intl.DateTimeFormat("en-GB",{timeZone:config.identity.timezone||"UTC",hour:"2-digit",minute:"2-digit",hourCycle:"h23"}).formatToParts(getNow());return parts.find(x=>x.type==="hour").value+":"+parts.find(x=>x.type==="minute").value;};
   const getLocalDate=()=>{const parts=new Intl.DateTimeFormat("en-CA",{timeZone:config.identity.timezone||"UTC",year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(getNow());return parts.find(x=>x.type==="year").value+"-"+parts.find(x=>x.type==="month").value+"-"+parts.find(x=>x.type==="day").value;};
   function getWeekKey(){return localIso(selectedWeek);}
