@@ -99,6 +99,7 @@ assert.equal(requestedSettingsStep,4,"Settings must open the requested setup sec
 const originalConfirm=globalThis.confirm;
 globalThis.confirm=()=>true;
 const backup=createWorkspaceBackup(config,api.getState());
+config.identity.companyName="Local edit that should be replaced by restore";
 let pickerOpened=false;
 root.fields["[data-backup-file]"]={click(){pickerOpened=true;},value:""};
 click("import-backup");
@@ -111,6 +112,7 @@ const validFile={text:async()=>JSON.stringify(backup)};
 await root.listeners.change({target:{matches:selector=>selector==="[data-backup-file]",files:[validFile],value:"valid.json"}});
 assert.match(root.innerHTML,/Workspace backup restored successfully/);
 assert.equal(JSON.parse(storage.getItem(TENANT_STORAGE_KEY)).identity.companyName,"QA Company");
+assert.equal(config.identity.companyName,"QA Company","Installer configuration must be refreshed from the restored backup.");
 assert.equal(api.getState().reports.length,1);
 assert.equal(api.getView(),"daily","Restore returns to the daily workspace.");
 globalThis.confirm=originalConfirm;
