@@ -202,17 +202,31 @@ export function mountWorkspace(root,config,{onEditConfiguration=()=>{},onExportC
       (rows||'<div class="workspace-empty">No reports generated yet.</div>')+'</div></section>';
   }
   function renderPeople(){
-    const staff=(config.staff||[]).map(item=>'<div class="workspace-person"><span>'+esc(item.name)+'</span><small>STAFF ROSTER</small></div>').join("");
-    const areas=(config.site.areas||[]).map(item=>'<span class="workspace-chip">'+esc(item.name)+'</span>').join("")||'<span class="workspace-muted">No areas configured</span>';
-    const stations=(config.site.stations||[]).map(item=>'<span class="workspace-chip">'+esc(item.name)+'</span>').join("")||'<span class="workspace-muted">No stations configured</span>';
-    const reasons=(config.downtime.reasons||[]).map(item=>'<span class="workspace-chip">'+esc(item.name)+'</span>').join("")||'<span class="workspace-muted">No downtime reasons configured</span>';
-    const tasks=(config.dailyTasks||[]).map(item=>'<span class="workspace-chip">'+esc(item.name)+'</span>').join("")||'<span class="workspace-muted">No daily task templates configured</span>';
-    return '<section class="workspace-section workspace-narrow"><div class="workspace-eyebrow">WORKSPACE CONFIGURATION</div><h1>People & settings</h1><p class="workspace-lead">Company-specific setup can be changed at any time. This local installation does not provide secure user accounts or server-side role enforcement.</p>'+
-      '<div class="workspace-panel"><div class="workspace-panel-head"><div><h2>Company identity</h2><p>Workspace identity and location.</p></div><button type="button" data-action="edit-config">Edit configuration</button></div><div class="workspace-config-pair"><span>Company</span><b>'+esc(config.identity.companyName)+'</b></div><div class="workspace-config-pair"><span>Site</span><b>'+esc(config.site.siteName)+'</b></div><div class="workspace-config-pair"><span>Time zone</span><b>'+esc(config.identity.timezone)+'</b></div></div>'+
-      '<div class="workspace-panel"><h2>Staff roster</h2><div class="workspace-chip-list">'+(staff||'<span class="workspace-muted">No staff configured</span>')+'</div></div>'+
-      '<div class="workspace-panel"><h2>Areas and stations</h2><div class="workspace-config-pair"><span>Areas</span><div class="workspace-chip-list">'+areas+'</div></div><div class="workspace-config-pair"><span>Stations</span><div class="workspace-chip-list">'+stations+'</div></div></div>'+
-      '<div class="workspace-panel"><h2>Downtime and daily tasks</h2><div class="workspace-config-pair"><span>Reasons</span><div class="workspace-chip-list">'+reasons+'</div></div><div class="workspace-config-pair"><span>Task templates</span><div class="workspace-chip-list">'+tasks+'</div></div></div>'+
-      '<div class="workspace-panel"><h2>Local data controls</h2><p class="workspace-muted">Operational records and reports are stored in this browser, isolated by this installation ID.</p><div class="workspace-button-row"><button type="button" data-action="export-backup">Export full workspace backup</button><button type="button" data-action="export-config">Export configuration JSON</button></div></div></section>';
+    const section=(title,description,step,details,actionLabel="Edit section")=>
+      '<article class="workspace-setting-card"><div class="workspace-setting-copy"><span>'+esc(title)+'</span><p>'+esc(description)+'</p><small>'+details+'</small></div><button type="button" data-action="edit-section" data-step="'+step+'">'+actionLabel+' →</button></article>';
+    const counts=[
+      ["Areas",config.site.areas.length],["Stations",config.site.stations.length],
+      ["Downtime reasons",config.downtime.reasons.length],["Operating days",config.schedule.workDays.length],
+      ["Shifts",config.schedule.shifts.length],["Breaks",config.schedule.breaks.length],
+      ["Staff",config.staff.length],["Access roles",config.roles.length],["Daily task templates",config.dailyTasks.length]
+    ];
+    const staff=(config.staff||[]).map(person=>'<span class="workspace-chip">'+esc(person.name)+'</span>').join("")||'<span class="workspace-muted">No staff configured</span>';
+    const roles=(config.roles||[]).map(role=>'<span class="workspace-chip">'+esc(role.name)+'</span>').join("")||'<span class="workspace-muted">No roles configured</span>';
+    const stat=counts.map(([label,count])=>'<div class="workspace-setting-stat"><b>'+count+'</b><span>'+label+'</span></div>').join("");
+    return '<section class="workspace-section workspace-narrow"><div class="workspace-eyebrow">WORKSPACE ADMINISTRATION</div><h1>Settings</h1><p class="workspace-lead">All company, site and operational configuration is maintained here after installation. Changes are saved to this browser workspace.</p>'+
+      '<div class="workspace-settings-stats">'+stat+'</div>'+
+      '<div class="workspace-panel"><div class="workspace-panel-head"><div><h2>Company and site identity</h2><p>Organisation name, branding, regional format and site hierarchy.</p></div></div>'+
+      '<div class="workspace-config-pair"><span>Company</span><b>'+esc(config.identity.companyName)+'</b></div><div class="workspace-config-pair"><span>Site</span><b>'+esc(config.site.siteName)+'</b></div><div class="workspace-config-pair"><span>Time zone</span><b>'+esc(config.identity.timezone)+'</b></div>'+
+      '<div class="workspace-settings-edit"><button type="button" data-action="edit-section" data-step="1">Edit company identity →</button><button type="button" data-action="edit-section" data-step="2">Edit site structure →</button></div></div>'+
+      '<div class="workspace-settings-grid">'+
+      section("Downtime reasons","Configure the reasons operators can select when recording downtime.",3,(config.downtime.reasons||[]).map(x=>esc(x.name)).join(" · ")||"No reasons defined")+
+      section("Schedule and breaks","Set work days, shift windows, break periods and local time settings.",4,config.schedule.workDays.length+" work days · "+config.schedule.shifts.length+" shifts · "+config.schedule.breaks.length+" breaks")+
+      section("Staff and operators","Maintain the roster used for assignments and operational reporting.",5,staff)+
+      section("Access and rights","Configure permission groups. Account authentication and server-side enforcement are separate.",6,roles)+
+      section("Daily task presets","Maintain reusable task templates for the daily checklist.",7,(config.dailyTasks||[]).map(x=>esc(x.name)).join(" · ")||"No task templates defined")+
+      '</div>'+
+      '<div class="workspace-panel"><div class="workspace-panel-head"><div><h2>Data and recovery</h2><p>Export a copy of this installation’s configuration and local records.</p></div></div><p class="workspace-muted">Operational records, checklist locks and report snapshots are stored in browser storage, namespaced by this installation ID. This is not a central backup or a multi-user sync service.</p><div class="workspace-button-row"><button type="button" data-action="export-backup">Export full workspace backup</button><button type="button" data-action="export-config">Export configuration JSON</button></div></div>'+
+      '<div class="workspace-message" role="status">'+esc(status)+'</div></section>';
   }
   function render(){
     const week=ensureWeek();
@@ -300,6 +314,7 @@ export function mountWorkspace(root,config,{onEditConfiguration=()=>{},onExportC
     else if(action==="export-backup")exportBackup();
     else if(action==="export-config")onExportConfiguration();
     else if(action==="edit-config")editConfig();
+    else if(action==="edit-section")onEditConfiguration(Number(button.dataset.step));
   });
   root.addEventListener("change",event=>{
     const control=event.target;
