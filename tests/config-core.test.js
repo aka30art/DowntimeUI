@@ -68,6 +68,11 @@ const legacy=upgradeConfig({schemaVersion:1,identity:{companyName:"Legacy",timez
 assert.equal(legacy.schemaVersion,CONFIG_SCHEMA_VERSION);
 assert.equal(legacy.identity.locale,"en-GB");
 assert.deepEqual(legacy.site.areas,[]);
+assert.deepEqual(legacy.downtime.presets,[]);
+const schema2=upgradeConfig({schemaVersion:2,identity:{companyName:"Version Two",timezone:"Europe/London"},site:{siteName:"Version Two Site"},downtime:{reasons:[{id:"r1",name:"Mechanical"}]}});
+assert.equal(schema2.schemaVersion,CONFIG_SCHEMA_VERSION);
+assert.deepEqual(schema2.downtime.presets,[],"Schema v2 configurations must migrate with an empty tenant preset list.");
+assert.equal(schema2.downtime.reasons[0].name,"Mechanical");
 const invalid=validateConfig({...c,identity:{...c.identity,timezone:"Not/A_Zone"}});
 assert.ok(invalid.some(x=>x.includes("valid IANA time zone")));
 assert.ok(validateConfig({...c,site:{...c.site,stations:[{id:"s1",name:"Orphan",areaId:"missing"}]}}).some(x=>x.includes("area that does not exist")));
