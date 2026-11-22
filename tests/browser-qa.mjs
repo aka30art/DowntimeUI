@@ -165,6 +165,23 @@ try{
   await page.locator('.workspace-navigation [data-view="reports"]').click();
   assert.match(await page.locator(".workspace-root").innerText(),/00h 45m/,"Restoring the backup must reinstate the archived report snapshot.");
 
+  const cleanRestorePage=await browser.newPage({viewport:{width:1280,height:900},deviceScaleFactor:1});
+  cleanRestorePage.on("pageerror",error=>failures.push(error.message));
+  await cleanRestorePage.goto("http://127.0.0.1:"+address.port,{waitUntil:"networkidle"});
+  await cleanRestorePage.getByRole("heading",{name:"Set up your workspace."}).waitFor();
+  await cleanRestorePage.locator('[data-action="choose-restore"]').click();
+  cleanRestorePage.once("dialog",dialog=>dialog.accept());
+  await cleanRestorePage.locator("[data-initial-backup]").setInputFiles("artifacts/workspace-backup.json");
+  await cleanRestorePage.getByRole("heading",{name:"Workspace configured."}).waitFor();
+  await cleanRestorePage.locator('[data-action="open-preview"]').click();
+  await cleanRestorePage.locator(".workspace-daystrip [data-day]").first().click();
+  assert.match(await cleanRestorePage.locator(".workspace-root").innerText(),/07:00/,"A clean installation must be able to recover the backed-up schedule.");
+  await cleanRestorePage.locator('.workspace-navigation [data-view="tasks"]').click();
+  assert.equal(await cleanRestorePage.locator("input[data-task]").nth(0).isDisabled(),true,"Backup recovery must preserve the daily task lock.");
+  await cleanRestorePage.locator('.workspace-navigation [data-view="reports"]').click();
+  assert.match(await cleanRestorePage.locator(".workspace-root").innerText(),/00h 45m/,"Clean-install recovery must restore the report archive.");
+  await cleanRestorePage.close();
+
   await page.setViewportSize({width:390,height:844});
   await page.locator('.workspace-navigation [data-view="daily"]').click();
   const mobileMetrics=await page.evaluate(()=>({viewport:innerWidth,document:document.documentElement.scrollWidth,body:document.body.scrollWidth}));
