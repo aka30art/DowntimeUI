@@ -272,7 +272,19 @@ try{
   assert.ok(mobileNavigation.buttons.every(button=>button.left>=0&&button.right<=mobileNavigation.viewport+1&&button.width>0&&button.scrollWidth<=button.clientWidth+1&&button.scrollHeight<=button.clientHeight+1),"Mobile navigation labels must remain visible, un-clipped and inside the viewport: "+JSON.stringify(mobileNavigation));
   await page.screenshot({path:"artifacts/workspace-mobile.png",fullPage:true});
   assert.deepEqual(failures,[],"Browser runtime errors: "+failures.join(" | "));
-  console.log("PASS: Chromium installer, daily operations, plant overview, task-lock persistence, reports, Settings edits, backup/restore and 390px mobile layout");
+  await page.locator('.workspace-navigation [data-view="people"]').click();
+  let resetDialogIndex=0;
+  page.on("dialog",async dialog=>{
+    resetDialogIndex++;
+    if(resetDialogIndex===2)await dialog.dismiss(); // choose NO backup; continue empty reset
+    else await dialog.accept();
+  });
+  await page.locator('[data-action="factory-reset"]').click();
+  await page.getByRole("heading",{name:"Set up your workspace."}).waitFor();
+  const remainingAppKeys=await page.evaluate(()=>Object.keys(localStorage).filter(key=>key.startsWith("downtimeui:")));
+  assert.deepEqual(remainingAppKeys,[],"Factory reset must remove all DOWNTIMEUI-owned local storage and return to empty installer.");
+  assert.equal(resetDialogIndex,3,"WIPE OUT must require three explicit confirmation choices.");
+  console.log("PASS: Chromium installer, daily operations, plant overview, task-lock persistence, reports, Settings edits, backup/restore, 390px mobile layout and WIPE OUT reset");
 }finally{
   await browser.close();
   await new Promise(resolve=>server.close(resolve));

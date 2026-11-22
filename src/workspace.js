@@ -5,6 +5,7 @@ import {calculateScheduleForDate,formatMinutes,parseClock} from "./domain/schedu
 import {buildWeeklyReport} from "./domain/reports.js";
 import {assignStationOperator,createPlantState,normalizePlantState,setPlantStatus,setStationStatus} from "./domain/plant.js";
 import {createWorkspaceBackup,restoreWorkspaceBackup,validateWorkspaceBackup} from "./domain/backup.js";
+import {factoryResetStorage} from "./domain/factory-reset.js";
 
 const STORE_PREFIX="downtimeui:operations:v1:";
 const WORKSPACE_BINDINGS=new WeakMap();
@@ -307,7 +308,7 @@ export function mountWorkspace(root,config,{onEditConfiguration=()=>{},onExportC
       section("Daily task presets","Maintain reusable task templates for the daily checklist.",7,tasksList.map(x=>esc(x.name)).join(" · ")||"No task templates defined")+
       '</div>'+
       '<div class="workspace-panel"><div class="workspace-panel-head"><div><h2>Data and recovery</h2><p>Export a copy of this installation’s configuration and local records.</p></div></div><p class="workspace-muted">Operational records, checklist locks and report snapshots are stored in browser storage, namespaced by this installation ID. This is not a central backup or a multi-user sync service.</p><div class="workspace-button-row"><button type="button" data-action="export-backup">Export full workspace backup</button><button type="button" data-action="import-backup">Import workspace backup</button><button type="button" data-action="export-config">Export configuration JSON</button></div><input type="file" accept=".json,application/json" data-backup-file hidden></div>'+
-      '<div class="workspace-message" role="status">'+esc(status)+'</div></section>';
+      '<div class="workspace-panel workspace-danger-zone"><div class="workspace-panel-head"><div><h2>WIPE OUT</h2><p>Factory reset this browser workspace.</p></div></div><p class="workspace-muted">This removes this installation’s configuration, operational records, task locks, reports, and saved setup draft from this browser. You can optionally restore a JSON backup instead.</p><button type="button" class="workspace-danger-button" data-action="factory-reset">WIPE OUT — Factory reset</button></div><div class="workspace-message" role="status">'+esc(status)+'</div></section>';
   }
   function render(){
     const week=ensureWeek();
@@ -472,6 +473,15 @@ export function mountWorkspace(root,config,{onEditConfiguration=()=>{},onExportC
     else if(action==="print-report"||action==="export-report"){
       const report=state.reports.find(x=>x.id===button.dataset.reportId);
       if(action==="print-report")printReport(report);else downloadReport(report);
+    }
+    else if(action==="factory-reset"){
+      if(typeof globalThis.confirm!=="function"||!globalThis.confirm("WIPE OUT will permanently clear this DOWNTIMEUI workspace from this browser. Continue?")){status="Factory reset cancelled.";render();return;}
+      const restoreFirst=typeof globalThis.confirm==="function"&&globalThis.confirm("DO YOU WANT TO RESTORE A BACKUP JSON FILE instead of starting empty?\n\nChoose OK to select and restore a backup. Choose Cancel to continue with an empty factory reset.");
+      if(restoreFirst){status="Select a valid backup JSON file to restore. No data has been wiped.";render();root.querySelector("[data-backup-file]")?.click?.();return;}
+      if(typeof globalThis.confirm!=="function"||!globalThis.confirm("Confirm final WIPE OUT? This will return to the empty installation screen.")){status="Factory reset cancelled.";render();return;}
+      const wiped=factoryResetStorage(storage);
+      if(!wiped.ok){status="Factory reset failed; local data was retained where rollback allowed: "+wiped.error;render();return;}
+      globalThis.location?.reload?.();
     }
     else if(action==="export-backup")exportBackup();
     else if(action==="import-backup")root.querySelector("[data-backup-file]")?.click?.();
