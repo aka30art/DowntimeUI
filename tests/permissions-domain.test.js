@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import {authorizeAction,canAccessSection,hasPermission,resolveRole,validateRole} from "../src/domain/permissions.js";
+import {authorizeAction,authorizeCentralDataBank,canAccessCentralDataBank,canAccessSection,hasPermission,resolveRole,validateRole} from "../src/domain/permissions.js";
 const roles=[{id:"supervisor",name:"Supervisor",permissions:{view:true,record:true,manageDailyTasks:false,exportReports:true}}];
 assert.equal(resolveRole(roles,"supervisor").name,"Supervisor");
 assert.equal(hasPermission(roles,"supervisor","record"),true);
@@ -11,3 +11,12 @@ assert.equal(authorizeAction(roles,"supervisor","manageDailyTasks").code,"FORBID
 assert.equal(validateRole(roles[0]).length,0);
 assert.ok(validateRole({id:"x",name:"Bad",permissions:{manage:"yes"}}).length>0);
 console.log("Configurable roles and least-privilege permission helpers: PASS");
+
+const tenantAdmin=[{id:"tenant-admin",name:"Tenant Admin",permissions:{accessCentralDataBank:true,manageSettings:true}}];
+assert.equal(canAccessCentralDataBank({userId:"u1",active:true,systemRole:"tenant-admin"}),false,"Tenant administration must not imply platform data-bank access.");
+assert.equal(canAccessCentralDataBank({userId:"u1",active:true,systemRole:"operator"}),false);
+assert.equal(canAccessCentralDataBank({userId:"u1",active:false,systemRole:"platform-admin"}),false);
+assert.equal(canAccessCentralDataBank({userId:"u1",active:true,systemRole:"platform-admin"}),true);
+assert.equal(authorizeCentralDataBank({userId:"u1",active:true,systemRole:"platform-admin"}).ok,true);
+assert.equal(authorizeCentralDataBank({userId:"u2",active:true,systemRole:"tenant-admin"}).code,"PLATFORM_ADMIN_REQUIRED");
+assert.equal(hasPermission(tenantAdmin,"tenant-admin","accessCentralDataBank"),true,"Even a configured tenant permission with that string must not substitute for the platform-admin claim.");
