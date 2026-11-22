@@ -60,8 +60,10 @@ class FailingStorage extends MemoryStorage{
   }
 }
 const failing=new FailingStorage();
+failing.failKey=null;
 failing.setItem(TENANT_STORAGE_KEY,JSON.stringify({installed:true,installationId:"install-1",identity:{companyName:"Original"}}));
 failing.setItem("downtimeui:operations:v1:install-1",JSON.stringify({original:true}));
+failing.failKey="downtimeui:operations:v1:install-1";
 const originalConfig=failing.getItem(TENANT_STORAGE_KEY),originalOps=failing.getItem("downtimeui:operations:v1:install-1");
 const failedRestore=restoreWorkspaceBackup(backup,"install-1",{storage:failing});
 assert.equal(failedRestore.ok,false);
