@@ -267,6 +267,7 @@ export function mountWorkspace(root,config,{onEditConfiguration=()=>{},onExportC
     const areasList=Array.isArray(config.site.areas)?config.site.areas:[];
     const stationsList=Array.isArray(config.site.stations)?config.site.stations:[];
     const reasonsList=Array.isArray(config.downtime?.reasons)?config.downtime.reasons:[];
+    const presetsList=Array.isArray(config.downtime?.presets)?config.downtime.presets:[];
     const workDays=Array.isArray(config.schedule?.workDays)?config.schedule.workDays:[];
     const shiftsList=Array.isArray(config.schedule?.shifts)?config.schedule.shifts:[];
     const breaksList=Array.isArray(config.schedule?.breaks)?config.schedule.breaks:[];
@@ -277,7 +278,7 @@ export function mountWorkspace(root,config,{onEditConfiguration=()=>{},onExportC
       '<article class="workspace-setting-card"><div class="workspace-setting-copy"><span>'+esc(title)+'</span><p>'+esc(description)+'</p><small>'+details+'</small></div><button type="button" data-action="edit-section" data-step="'+step+'">'+actionLabel+' →</button></article>';
     const counts=[
       ["Areas",areasList.length],["Stations",stationsList.length],
-      ["Downtime reasons",reasonsList.length],["Operating days",workDays.length],
+      ["Downtime reasons",reasonsList.length],["Quick-entry presets",presetsList.length],["Operating days",workDays.length],
       ["Shifts",shiftsList.length],["Breaks",breaksList.length],
       ["Staff",staffList.length],["Access roles",rolesList.length],["Daily task templates",tasksList.length]
     ];
@@ -290,7 +291,7 @@ export function mountWorkspace(root,config,{onEditConfiguration=()=>{},onExportC
       '<div class="workspace-config-pair"><span>Company</span><b>'+esc(config.identity.companyName)+'</b></div><div class="workspace-config-pair"><span>Site</span><b>'+esc(config.site.siteName)+'</b></div><div class="workspace-config-pair"><span>Time zone</span><b>'+esc(config.identity.timezone)+'</b></div>'+
       '<div class="workspace-settings-edit"><button type="button" data-action="edit-section" data-step="1">Edit company identity →</button><button type="button" data-action="edit-section" data-step="2">Edit site structure →</button></div></div>'+
       '<div class="workspace-settings-grid">'+
-      section("Downtime reasons","Configure the reasons operators can select when recording downtime.",3,reasonsList.map(x=>esc(x.name)).join(" · ")||"No reasons defined")+
+      section("Downtime reasons and presets","Manage reason names and reusable area, station, reason and duration combinations for quick entry.",3,reasonsList.length+" reasons · "+presetsList.length+" quick-entry presets"+(presetsList.length?": "+presetsList.map(x=>esc(x.name)).join(" · "):""))+
       section("Schedule and breaks","Set work days, shift windows, break periods and local time settings.",4,workDays.length+" work days · "+shiftsList.length+" shifts · "+breaksList.length+" breaks")+
       section("Staff and operators","Maintain the roster used for assignments and operational reporting.",5,staff)+
       section("Access and rights","Configure permission groups. Account authentication and server-side enforcement are separate.",6,roles)+
