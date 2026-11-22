@@ -13,6 +13,7 @@ class Root{
 }
 globalThis.document={querySelector(){return null;}};
 const storage=new Storage(),root=new Root();root.fields={};
+let clockNow=new Date();clockNow.setHours(7,0,0,0);
 const config={schemaVersion:2,installed:true,installedAt:"2026-11-22T05:00:00.000Z",installationId:"test-install",identity:{companyName:"QA Company",logoUrl:"",locale:"en-GB",timezone:"Europe/London"},site:{siteName:"Test Site",hierarchy:["Area","Station"],areas:[{id:"a1",name:"Production"}],stations:[{id:"s1",name:"Line 1",areaId:"a1"}]},downtime:{reasons:[{id:"r1",name:"Mechanical"}]},schedule:{workDays:["mon","tue","wed","thu","fri"],shifts:[{id:"sh1",name:"Day",start:"06:30",end:"16:00"}],breaks:[{id:"b1",name:"Break",start:"12:00",end:"13:00"}]},staff:[{id:"p1",name:"Operator A"}],roles:[],dailyTasks:[{id:"t1",name:"Safety check"},{id:"t2",name:"Equipment check"}],setup:{currentStep:8,completedSteps:[0,1,2,3,4,5,6,7,8],updatedAt:"2026-11-22T05:00:00.000Z"}};
 let requestedSettingsStep=null;
 const api=mountWorkspace(root,config,{
@@ -22,7 +23,7 @@ const api=mountWorkspace(root,config,{
    Object.assign(config,JSON.parse(JSON.stringify(restored)));
    return {ok:true};
  }
-}, {storage});
+}, {storage,now:()=>clockNow});
 assert.match(root.innerHTML,/QA Company/);
 assert.match(root.innerHTML,/DAILY OPERATIONS/);
 assert.equal(api.getView(),"daily");
@@ -44,6 +45,19 @@ assert.match(root.innerHTML,/07:00–16:00 \(actual\)/);
 click("clear-shift-times");
 assert.match(root.innerHTML,/08h 30m/,"Clearing actual times must restore the configured schedule.");
 assert.doesNotMatch(root.innerHTML,/\(actual\)/);
+const todayDate=new Intl.DateTimeFormat("en-CA",{timeZone:"Europe/London",year:"numeric",month:"2-digit",day:"2-digit"}).format(clockNow);
+api.selectDate(todayDate);
+const expectedStart=new Intl.DateTimeFormat("en-GB",{timeZone:"Europe/London",hour:"2-digit",minute:"2-digit",hourCycle:"h23"}).format(clockNow);
+click("start-shift-now");
+assert.equal(Object.values(api.getState().weeks).flatMap(x=>x.days).find(x=>x.date===todayDate).start,expectedStart,"Start shift now must store the current configured-zone time.");
+clockNow=new Date(clockNow.getTime()+120*60*1000);
+const expectedStop=new Intl.DateTimeFormat("en-GB",{timeZone:"Europe/London",hour:"2-digit",minute:"2-digit",hourCycle:"h23"}).format(clockNow);
+click("stop-shift-now");
+const liveDay=Object.values(api.getState().weeks).flatMap(x=>x.days).find(x=>x.date===todayDate);
+assert.equal(liveDay.stop,expectedStop,"Stop shift now must store the current configured-zone time.");
+assert.equal(liveDay.start,expectedStart);
+api.selectDate(monday);
+
 root.fields={
  '[name="entry-area"]':{value:"Production"},
  '[name="entry-station"]':{value:"s1"},
