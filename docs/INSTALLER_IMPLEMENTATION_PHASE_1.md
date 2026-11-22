@@ -30,3 +30,6 @@ The installer now opens a tenant-configured operations workspace with:
 - local backup export and access to edit workspace configuration.
 
 All operational state is namespaced by the installation ID. This is a single-browser local mode. It is not shared across devices, and the configured role permissions are not yet server-enforced. Do not use it as a secure multi-user production system.
+
+- Actual daily shift start and finish overrides; configured break periods are clipped to the recorded interval, including overnight actual shifts.
+- Validated full workspace backup restore with installation identity checks, explicit confirmation, storage rollback on failure and recovery into a clean browser installation.
