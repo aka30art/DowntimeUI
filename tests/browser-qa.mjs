@@ -111,7 +111,7 @@ try{
   assert.equal(await taskChecks.count(),2);
   await taskChecks.nth(0).check();
   await page.locator('[data-action="lock-tasks"]').click();
-  await page.getByText("Saved and locked",{exact:false}).waitFor();
+  await page.locator(".workspace-lock-banner b").waitFor();
   assert.equal(await taskChecks.nth(0).isDisabled(),true);
 
   await page.reload({waitUntil:"networkidle"});
