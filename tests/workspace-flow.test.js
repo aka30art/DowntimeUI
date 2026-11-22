@@ -15,7 +15,7 @@ const storage=new Storage(),root=new Root();
 const config={installed:true,installationId:"test-install",identity:{companyName:"QA Company",timezone:"Europe/London"},site:{siteName:"Test Site",areas:[{id:"a1",name:"Production"}],stations:[{id:"s1",name:"Line 1"}]},downtime:{reasons:[{id:"r1",name:"Mechanical"}]},schedule:{workDays:["mon","tue","wed","thu","fri"],shifts:[{id:"sh1",name:"Day",start:"06:30",end:"16:00"}],breaks:[{id:"b1",name:"Break",start:"12:00",end:"13:00"}]},staff:[{id:"p1",name:"Operator A"}],dailyTasks:[{id:"t1",name:"Safety check"},{id:"t2",name:"Equipment check"}]};
 const api=mountWorkspace(root,config,{}, {storage});
 assert.match(root.innerHTML,/QA Company/);
-assert.match(root.innerHTML,/Daily operations/);
+assert.match(root.innerHTML,/DAILY OPERATIONS/);
 assert.match(root.innerHTML,/06:30/);
 assert.equal(api.getView(),"daily");
 const monday=Object.values(api.getState().weeks)[0].days[0].date;
