@@ -146,13 +146,32 @@ try{
   await page.locator(".workspace-daystrip [data-day]").first().click();
   assert.match(await page.locator(".workspace-root").innerText(),/07:00/,"Settings changes must persist to the installed workspace.");
 
+  await page.locator('.workspace-navigation [data-view="people"]').click();
+  const backupDownload=page.waitForEvent("download");
+  await page.locator('[data-action="export-backup"]').click();
+  const backupFile=await backupDownload;
+  await backupFile.saveAs("artifacts/workspace-backup.json");
+
+  await page.locator('[data-step="4"]').click();
+  await page.locator('[data-path="schedule.shifts.0.start"]').fill("08:00");
+  await page.locator('[data-action="save-exit"]').click();
+  await page.locator('[data-action="open-preview"]').click();
+  await page.locator('.workspace-navigation [data-view="people"]').click();
+  page.once("dialog",dialog=>dialog.accept());
+  await page.locator('[data-backup-file]').setInputFiles("artifacts/workspace-backup.json");
+  await page.getByText("Workspace backup restored successfully.",{exact:true}).waitFor();
+  await page.locator(".workspace-daystrip [data-day]").first().click();
+  assert.match(await page.locator(".workspace-root").innerText(),/07:00/,"Restoring the backup must return the prior schedule configuration.");
+  await page.locator('.workspace-navigation [data-view="reports"]').click();
+  assert.match(await page.locator(".workspace-root").innerText(),/00h 45m/,"Restoring the backup must reinstate the archived report snapshot.");
+
   await page.setViewportSize({width:390,height:844});
   await page.locator('.workspace-navigation [data-view="daily"]').click();
   const mobileMetrics=await page.evaluate(()=>({viewport:innerWidth,document:document.documentElement.scrollWidth,body:document.body.scrollWidth}));
   assert.ok(mobileMetrics.document<=mobileMetrics.viewport+1,"Mobile layout must not overflow horizontally: "+JSON.stringify(mobileMetrics));
   await page.screenshot({path:"artifacts/workspace-mobile.png",fullPage:true});
   assert.deepEqual(failures,[],"Browser runtime errors: "+failures.join(" | "));
-  console.log("PASS: Chromium installer, daily operations, plant overview, task-lock persistence, reports, Settings edits and 390px mobile layout");
+  console.log("PASS: Chromium installer, daily operations, plant overview, task-lock persistence, reports, Settings edits, backup/restore and 390px mobile layout");
 }finally{
   await browser.close();
   await new Promise(resolve=>server.close(resolve));
