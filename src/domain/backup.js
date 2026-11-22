@@ -34,10 +34,21 @@ export function validateWorkspaceBackup(backup,currentInstallationId){
       if(!validDate(weekKey))errors.push("Weekly archive contains an invalid week date: "+weekKey+".");
       if(!isObject(week)||!Array.isArray(week.days)){errors.push("Week "+weekKey+" must contain a day list.");continue;}
       if(week.days.length>7)errors.push("Week "+weekKey+" contains more than seven day records.");
+      const expectedWeekStart=validDate(weekKey)?new Date(weekKey+"T12:00:00.000Z"):null;
       for(let dayIndex=0;dayIndex<week.days.length;dayIndex++){
         const day=week.days[dayIndex];
         if(!isObject(day)){errors.push("Week "+weekKey+" day "+(dayIndex+1)+" is invalid.");continue;}
         if(!validDate(day.date))errors.push("Week "+weekKey+" day "+(dayIndex+1)+" has an invalid date.");
+        if(expectedWeekStart&&dayIndex<7){
+          const expectedDate=new Date(expectedWeekStart);
+          expectedDate.setUTCDate(expectedDate.getUTCDate()+dayIndex);
+          if(day.date!==expectedDate.toISOString().slice(0,10))errors.push("Week "+weekKey+" day "+(dayIndex+1)+" is not in the expected calendar position.");
+        }
+        if(Boolean(day.start)!==Boolean(day.stop))errors.push("Day "+day.date+" must have both actual shift start and finish times, or neither.");
+        if(day.start&&day.stop){
+          const validClock=value=>typeof value==="string"&&/^([01]\\d|2[0-3]):[0-5]\\d$/.test(value);
+          if(!validClock(day.start)||!validClock(day.stop)||day.start===day.stop)errors.push("Day "+day.date+" contains invalid actual shift times.");
+        }
         if(!Array.isArray(day.entries))errors.push("Day "+day.date+" downtime entries must be a list.");
         else{
           const entryIds=new Set();
