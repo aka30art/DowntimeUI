@@ -85,4 +85,17 @@ assert.ok(validateConfig(invalidPhoto).some(x=>x.includes("compressed JPEG")),"p
 const oversizedPhoto=structuredClone(c);
 oversizedPhoto.staff[0].photoDataUrl="data:image/jpeg;base64,"+"A".repeat(180001);
 assert.ok(validateConfig(oversizedPhoto).some(x=>x.includes("compressed JPEG")),"oversized profile photos must be rejected");
+
+const presetConfig=createTenantConfig({companyName:"Preset Test",siteName:"Preset Site",timezone:"Europe/London"});
+presetConfig.site.areas=[{id:"area-1",name:"Packing"}];
+presetConfig.site.stations=[{id:"station-1",name:"Line A",areaId:"area-1"}];
+presetConfig.downtime.reasons=[{id:"reason-1",name:"Mechanical"}];
+presetConfig.downtime.presets=[{id:"preset-1",name:"Mechanical stoppage",areaId:"area-1",stationId:"station-1",reasonId:"reason-1",defaultDurationMinutes:25}];
+assert.deepEqual(validateConfig(presetConfig),[],"valid downtime preset references must be accepted");
+assert.ok(validateConfig({...presetConfig,downtime:{...presetConfig.downtime,presets:[{...presetConfig.downtime.presets[0],stationId:"missing"}]}}).some(x=>x.includes("station that does not exist")));
+assert.ok(validateConfig({...presetConfig,downtime:{...presetConfig.downtime,presets:[{...presetConfig.downtime.presets[0],defaultDurationMinutes:0}]}}).some(x=>x.includes("default duration")));
+const migratedV2=upgradeConfig({schemaVersion:2,installed:false,identity:{companyName:"Legacy",locale:"en-GB",timezone:"Europe/London"},site:{siteName:"Legacy Site"},downtime:{reasons:[]}});
+assert.equal(migratedV2.schemaVersion,3);
+assert.deepEqual(migratedV2.downtime.presets,[],"older installations migrate to an empty preset library");
+console.log("Tenant-owned downtime presets: PASS");
 console.log("Universal configuration, validation, migration and persistence: PASS");
