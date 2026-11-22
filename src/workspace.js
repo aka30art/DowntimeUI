@@ -7,6 +7,7 @@ import {assignStationOperator,createPlantState,normalizePlantState,setPlantStatu
 import {createWorkspaceBackup,restoreWorkspaceBackup,validateWorkspaceBackup} from "./domain/backup.js";
 
 const STORE_PREFIX="downtimeui:operations:v1:";
+const WORKSPACE_BINDINGS=new WeakMap();
 const DAY_NAMES=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
 const DAY_CODES=["mon","tue","wed","thu","fri","sat"];
 const esc=value=>String(value??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -52,6 +53,7 @@ function scheduleLabel(date,schedule){
 }
 export function mountWorkspace(root,config,{onEditConfiguration=()=>{},onExportConfiguration=()=>{} }={},options={}){
   if(!root)throw new Error("Workspace mount point is required.");
+  WORKSPACE_BINDINGS.get(root)?.();
   if(!config?.installed||!config.installationId)throw new Error("A validated installed workspace is required.");
   config={
     ...config,
@@ -64,6 +66,8 @@ export function mountWorkspace(root,config,{onEditConfiguration=()=>{},onExportC
     dailyTasks:Array.isArray(config.dailyTasks)?config.dailyTasks:[]
   };
   const storage=options.storage||globalThis.localStorage;
+  const bindingController=new AbortController();
+  WORKSPACE_BINDINGS.set(root,()=>bindingController.abort());
   const loaded=readOperations(storage,config.installationId);
   let state=loaded.state,view="daily",selectedWeek=weekStartFor(new Date()),selectedDate=localIso(new Date()),status=loaded.error||"Local workspace ready.",editingEntryId=null;
   function getWeekKey(){return localIso(selectedWeek);}
@@ -360,9 +364,9 @@ export function mountWorkspace(root,config,{onEditConfiguration=()=>{},onExportC
     else if(action==="export-backup")exportBackup();
     else if(action==="import-backup")root.querySelector("[data-backup-file]")?.click?.();
     else if(action==="export-config")onExportConfiguration();
-    else if(action==="edit-config")editConfig();
-    else if(action==="edit-section")onEditConfiguration(Number(button.dataset.step));
-  });
+    else if(action==="edit-config"){bindingController.abort();editConfig();}
+    else if(action==="edit-section"){bindingController.abort();onEditConfiguration(Number(button.dataset.step));}
+  },{signal:bindingController.signal});
   root.addEventListener("change",async event=>{
     const control=event.target;
     if(control.matches("[data-backup-file]")){
@@ -393,14 +397,14 @@ export function mountWorkspace(root,config,{onEditConfiguration=()=>{},onExportC
       if(!result.ok){status=result.message||"Station assignment could not be saved.";render();return;}
       if(result.changed){state.plant=result.state;if(persist("Station assignment saved locally."))render();else state.plant=previous;}
     }
-  });
+  },{signal:bindingController.signal});
   selectedWeek=weekStartFor(selectedDate);
   ensureWeek();
   root.classList?.add("workspace-root");
   const legacy=document.querySelector(".shell");if(legacy)legacy.hidden=true;
   const notice=document.querySelector(".previewNotice");if(notice)notice.hidden=true;
   render();
-  return {render,getState:()=>state,getSelectedDate:()=>selectedDate,getView:()=>view,
+  return {render,getState:()=>state,getSelectedDate:()=>selectedDate,getView:()=>view,dispose:()=>{bindingController.abort();if(WORKSPACE_BINDINGS.get(root))WORKSPACE_BINDINGS.delete(root);},
     selectDate:date=>{selectedWeek=weekStartFor(date);selectedDate=date;ensureWeek();render();},
     setView:value=>{view=value;render();},save:()=>persist()};
 }
