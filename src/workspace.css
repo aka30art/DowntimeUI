@@ -36,3 +36,7 @@
 @media(max-width:950px){.workspace-operator-grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
 @media(max-width:650px){.workspace-operator-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}.workspace-operator-card{padding:10px 6px}.workspace-operator-photo{width:64px;height:64px}}
 @media(max-width:390px){.workspace-operator-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* Responsive control sizing: prevent form controls' padding/borders from exceeding grid cells. */
+.workspace-root input,.workspace-root select,.workspace-root textarea,.workspace-root button{box-sizing:border-box;max-width:100%;}
+.workspace-root *{min-width:0;}
