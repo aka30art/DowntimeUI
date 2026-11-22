@@ -13,7 +13,14 @@ globalThis.document={querySelector(){return null;}};
 const storage=new Storage(),root=new Root();
 const config={installed:true,installationId:"test-install",identity:{companyName:"QA Company",timezone:"Europe/London"},site:{siteName:"Test Site",areas:[{id:"a1",name:"Production"}],stations:[{id:"s1",name:"Line 1"}]},downtime:{reasons:[{id:"r1",name:"Mechanical"}]},schedule:{workDays:["mon","tue","wed","thu","fri"],shifts:[{id:"sh1",name:"Day",start:"06:30",end:"16:00"}],breaks:[{id:"b1",name:"Break",start:"12:00",end:"13:00"}]},staff:[{id:"p1",name:"Operator A"}],dailyTasks:[{id:"t1",name:"Safety check"},{id:"t2",name:"Equipment check"}]};
 let requestedSettingsStep=null;
-const api=mountWorkspace(root,config,{onEditConfiguration:step=>{requestedSettingsStep=step;}}, {storage});
+const api=mountWorkspace(root,config,{
+ onEditConfiguration:step=>{requestedSettingsStep=step;},
+ onRestoreConfiguration:restored=>{
+   for(const key of Object.keys(config))delete config[key];
+   Object.assign(config,JSON.parse(JSON.stringify(restored)));
+   return {ok:true};
+ }
+}, {storage});
 assert.match(root.innerHTML,/QA Company/);
 assert.match(root.innerHTML,/DAILY OPERATIONS/);
 assert.equal(api.getView(),"daily");
@@ -86,4 +93,24 @@ assert.match(root.innerHTML,/WORKSPACE ADMINISTRATION/);
 assert.match(root.innerHTML,/Schedule and breaks/);
 click("edit-section",{step:"4"});
 assert.equal(requestedSettingsStep,4,"Settings must open the requested setup section directly.");
-console.log("Local operations, downtime CRUD, task lock, report snapshots and direct Settings navigation: PASS");
+
+const originalConfirm=globalThis.confirm;
+globalThis.confirm=()=>true;
+const backup={configuration:JSON.parse(JSON.stringify(config)),operations:JSON.parse(JSON.stringify(api.getState())),exportedAt:new Date().toISOString()};
+let pickerOpened=false;
+root.fields["[data-backup-file]"]={click(){pickerOpened=true;},value:""};
+click("import-backup");
+assert.equal(pickerOpened,true,"Import must open the JSON file picker.");
+const invalidFile={text:async()=>JSON.stringify({...backup,configuration:{...backup.configuration,installationId:"another-install"}})};
+await root.listeners.change({target:{matches:selector=>selector==="[data-backup-file]",files:[invalidFile],value:"invalid.json"}});
+assert.match(root.innerHTML,/Backup rejected/,"Cross-installation backup must be rejected.");
+assert.equal(api.getState().reports.length,1,"Rejected backup must not mutate current records.");
+const validFile={text:async()=>JSON.stringify(backup)};
+await root.listeners.change({target:{matches:selector=>selector==="[data-backup-file]",files:[validFile],value:"valid.json"}});
+assert.match(root.innerHTML,/Workspace backup restored successfully/);
+assert.equal(config.identity.companyName,"QA Company");
+assert.equal(api.getState().reports.length,1);
+assert.equal(api.getView(),"daily","Restore returns to the daily workspace.");
+globalThis.confirm=originalConfirm;
+
+console.log("Local operations, downtime CRUD, immutable task lock, reports, settings and validated backup restore: PASS");
