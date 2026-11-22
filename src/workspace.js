@@ -187,14 +187,6 @@ export function mountWorkspace(root,config,{onEditConfiguration=()=>{},onExportC
         '<label><span>Assigned operator</span><select data-station-operator="'+esc(station.id)+'"><option value="">Not assigned</option>'+staff.map(person=>'<option value="'+esc(person.id)+'" '+(assigned===person.id?"selected":"")+'>'+esc(person.name)+'</option>').join("")+'</select></label></article>';
       stationCards.set(station.id,card);
     });
-    const operatorCards=staff.map(person=>{
-      const station=stations.find(item=>plant.assignments[item.id]===person.id);
-      const initials=String(person.name||"").trim().split(/\s+/).filter(Boolean).slice(0,2).map(part=>part[0].toUpperCase()).join("")||"—";
-      const portrait=person.photoDataUrl
-        ?'<img src="'+esc(person.photoDataUrl)+'" alt="">'
-        :'<span>'+esc(initials)+'</span>';
-      return '<article class="workspace-operator-card"><div class="workspace-operator-photo">'+portrait+'</div><b>'+esc(person.name)+'</b><span>'+esc(station?.name||"Unassigned")+'</span></article>';
-    }).join("");
     const down=stations.filter(x=>(plant.stationStates[x.id]||"running")==="down");
     const maintenance=stations.filter(x=>(plant.stationStates[x.id]||"running")==="maintenance");
     const unassigned=stations.filter(x=>!plant.assignments[x.id]);
