@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="theme-color" content="#0b1721"><title>Plant Downtime Tracker</title>
+<meta name="theme-color" content="#0b1721"><title>DOWNTIMEUI — Universal Operations</title>
 <style>
 :root{--bg:#07131c;--panel:#101f2b;--panel2:#1a2d3b;--line:#334b5d;--text:#f3f6f8;--muted:#9aafbd;--yellow:#ffc400;--blue:#1687f8;--red:#ff725e;--shadow:0 12px 32px #0005}
 *{box-sizing:border-box}
@@ -339,8 +339,8 @@ details[open]>summary .disclosure-chevron{transform:rotate(180deg)}
 @media(max-width:380px){main{padding:9px!important}.side .nav{flex-basis:100%}.fields{grid-template-columns:1fr!important}.top h1{font-size:18px}}
 #authGate,#operatorGate,#spectatorView{display:none!important}
 .previewDisabled{opacity:.72;cursor:not-allowed!important}
-</style></head>
-<body><div class="previewNotice"><b>PREVIEW LAB</b><span>Mirrors the current live DOWNTIME interface · mock-only · changes disabled</span></div><div id="authGate"><div class="authbox"><h2>DOWNTIME · CENTRAL LOGIN</h2><p class="muted">Select your central USER account and enter your PIN.</p><label for="centralUsername">USERNAME</label><select id="centralUsername" class="input" aria-label="Central username"><option value="">Loading central USERS…</option></select><input id="teamPin" type="password" inputmode="numeric" autocomplete="current-password" maxlength="8" placeholder="4–8 digit PIN" aria-label="Central account PIN"><div class="pinpad" data-pinpad="teamPin"><div class="pinpad-grid"><button type="button" data-key="1">1</button><button type="button" data-key="2">2</button><button type="button" data-key="3">3</button><button type="button" data-key="4">4</button><button type="button" data-key="5">5</button><button type="button" data-key="6">6</button><button type="button" data-key="7">7</button><button type="button" data-key="8">8</button><button type="button" data-key="9">9</button><button type="button" data-key="clear">CLEAR</button><button type="button" data-key="0">0</button><button type="button" data-key="back">⌫</button></div></div><button id="unlockBtn" class="primary">SIGN IN</button><button type="button" id="refreshAppBtn" class="quiet" style="width:100%;margin-top:8px">REFRESH USER LIST</button><div id="authMsg" role="status" aria-live="polite"></div><p class="muted" style="font-size:12px;margin-top:12px">OWNER setup and account administration: <a href="central-bank-admin.html" target="_blank" rel="noopener" class=" previewDisabled" aria-disabled="true" tabindex="-1">Central Data Bank</a></p></div></div>
+</style><link rel="stylesheet" href="./src/installer.css"><script type="module" src="./src/installer.js"></script></head>
+<body><div id="installerRoot"></div><div class="previewNotice"><b>PREVIEW LAB</b><span>Mirrors the current live DOWNTIME interface · mock-only · changes disabled</span></div><div id="authGate"><div class="authbox"><h2>DOWNTIME · CENTRAL LOGIN</h2><p class="muted">Select your central USER account and enter your PIN.</p><label for="centralUsername">USERNAME</label><select id="centralUsername" class="input" aria-label="Central username"><option value="">Loading central USERS…</option></select><input id="teamPin" type="password" inputmode="numeric" autocomplete="current-password" maxlength="8" placeholder="4–8 digit PIN" aria-label="Central account PIN"><div class="pinpad" data-pinpad="teamPin"><div class="pinpad-grid"><button type="button" data-key="1">1</button><button type="button" data-key="2">2</button><button type="button" data-key="3">3</button><button type="button" data-key="4">4</button><button type="button" data-key="5">5</button><button type="button" data-key="6">6</button><button type="button" data-key="7">7</button><button type="button" data-key="8">8</button><button type="button" data-key="9">9</button><button type="button" data-key="clear">CLEAR</button><button type="button" data-key="0">0</button><button type="button" data-key="back">⌫</button></div></div><button id="unlockBtn" class="primary">SIGN IN</button><button type="button" id="refreshAppBtn" class="quiet" style="width:100%;margin-top:8px">REFRESH USER LIST</button><div id="authMsg" role="status" aria-live="polite"></div><p class="muted" style="font-size:12px;margin-top:12px">OWNER setup and account administration: <a href="central-bank-admin.html" target="_blank" rel="noopener" class=" previewDisabled" aria-disabled="true" tabindex="-1">Central Data Bank</a></p></div></div>
 <div id="operatorGate" style="display:none"></div>
 <div id="spectatorView" style="display:none"></div>
 <div class="shell">
@@ -495,19 +495,4 @@ details[open]>summary .disclosure-chevron{transform:rotate(180deg)}
 
 
 
-<script>
-(function(){
-document.querySelectorAll('form').forEach(f=>f.addEventListener('submit',e=>e.preventDefault()));
-document.querySelectorAll('input,select,textarea').forEach(el=>{el.disabled=true;el.setAttribute('aria-disabled','true')});
-document.querySelectorAll('button:not(.nav)').forEach(b=>{b.disabled=true;b.classList.add('previewDisabled')});
-const navMenu=document.querySelector('.nav-menu');
-if(navMenu) navMenu.open=window.matchMedia('(min-width: 801px)').matches;
-document.querySelectorAll('.nav').forEach(btn=>btn.addEventListener('click',()=>{
-const target=btn.dataset.view;
-if(!target)return;
-document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active',v.id===target));
-document.querySelectorAll('.nav').forEach(n=>n.classList.toggle('active',n===btn));
-if(navMenu&&window.matchMedia('(max-width: 800px)').matches) navMenu.open=false;
-}));
-})();
-</script></body></html>
+</body></html>
