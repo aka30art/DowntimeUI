@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import {mountWorkspace} from "../src/workspace.js";
 class Storage{
- data=new Map();getItem(k){return this.data.has(k)?this.data.get(k):null;}setItem(k,v){this.data.set(k,String(v));}
+ data=new Map();getItem(k){return this.data.has(k)?this.data.get(k):null;}setItem(k,v){this.data.set(k,String(v));}removeItem(k){this.data.delete(k);}
 }
 class Root{
  listeners={};innerHTML="";classList={add(){}};
