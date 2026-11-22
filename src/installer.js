@@ -97,7 +97,17 @@ function saveDraftState() {
 function renderWorkspace(){
   mountWorkspace(root,config,{
     onEditConfiguration:(nextStep=1)=>{screen="wizard";step=Math.max(1,Math.min(7,Number(nextStep)||1));config.setup.currentStep=step;render();},
-    onExportConfiguration:exportConfig
+    onExportConfiguration:exportConfig,
+    onRestoreConfiguration:(restoredConfig)=>{
+      const errors=validateConfig(restoredConfig);
+      if(errors.length)return {ok:false,error:errors.join(" ")};
+      if(restoredConfig.installationId!==config.installationId)return {ok:false,error:"Backup installation ID does not match this workspace."};
+      const saved=saveInstalledConfig(restoredConfig);
+      if(!saved.ok)return {ok:false,error:saved.error};
+      for(const key of Object.keys(config))delete config[key];
+      Object.assign(config,JSON.parse(JSON.stringify(restoredConfig)));
+      return {ok:true};
+    }
   });
 }
 function render() { if(screen==="installed")renderInstalled(); else if(screen==="preview")renderWorkspace(); else renderWizard(); }
