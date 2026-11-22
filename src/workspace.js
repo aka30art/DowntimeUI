@@ -135,7 +135,6 @@ export function mountWorkspace(root,config,{onEditConfiguration=()=>{},onExportC
   }
   function renderWeekly(){
     const week=ensureWeek(),metrics=weekMetrics(),days=week.days.map(day=>({day,metrics:calculateDayMetrics(day,config.schedule)}));
-    const rows=days.map(({day,m})=>{return "";});
     const body=days.map(({day,metrics:m})=>'<tr><td>'+esc(dayName(day.date))+'</td><td>'+esc(day.operatorId?config.staff.find(x=>x.id===day.operatorId)?.name||"—":"—")+'</td><td>'+day.date+'</td><td>'+formatMinutes(m.netMinutes)+'</td><td>'+formatMinutes(m.downtimeMinutes)+'</td><td>'+formatMinutes(m.runningMinutes)+'</td><td>'+m.downtimeRate.toFixed(1)+'%</td><td>'+m.runningRate.toFixed(1)+'%</td></tr>').join("");
     return '<section class="workspace-section"><div class="workspace-eyebrow">PERFORMANCE</div><h1>Weekly summary</h1><p class="workspace-lead">'+selectedWeek.toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"})+' — '+addDays(selectedWeek,6).toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"})+'</p>'+
       '<div class="workspace-week-nav"><button type="button" data-action="previous-week">← Previous week</button><button type="button" data-action="current-week">Current week</button><button type="button" data-action="next-week">Next week →</button></div>'+
