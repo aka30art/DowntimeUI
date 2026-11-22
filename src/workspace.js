@@ -1,7 +1,7 @@
 import {createId} from "./config-core.js";
 import {calculateDayMetrics,calculateWeekMetrics,getEntryDurationMinutes,rankDowntimeCauses,validateDowntimeEntry} from "./domain/downtime.js";
 import {saveAndLockDailyTasks,setTaskCompletion,visibleDailyTasks,completedTaskCount,createDailyTaskState} from "./domain/daily-tasks.js";
-import {calculateScheduleForDate,formatMinutes} from "./domain/schedule.js";
+import {calculateScheduleForDate,formatMinutes,parseClock} from "./domain/schedule.js";
 import {buildWeeklyReport} from "./domain/reports.js";
 import {assignStationOperator,createPlantState,normalizePlantState,setPlantStatus,setStationStatus} from "./domain/plant.js";
 import {createWorkspaceBackup,restoreWorkspaceBackup,validateWorkspaceBackup} from "./domain/backup.js";
@@ -134,6 +134,7 @@ export function mountWorkspace(root,config,{onEditConfiguration=()=>{},onExportC
       '<label><span>Minutes</span><input name="entry-minutes" type="number" min="0" max="59" step="1" value="'+esc(editingEntry?.minutes??0)+'"></label></div>'+
       '<div class="workspace-form-actions"><span>Entry is saved to this browser only.</span><div class="workspace-form-button-row">'+(editingEntry?'<button type="button" data-action="cancel-edit">Cancel</button>':'')+'<button type="button" class="workspace-primary" data-action="save-entry">'+(editingEntry?"Save changes":"Save downtime")+'</button></div></div><div class="workspace-message" role="status">'+esc(status)+'</div></div></div>'+
       '<aside class="workspace-panel"><div class="workspace-panel-head"><div><h2>Shift summary</h2><p>Configured site schedule for this date.</p></div></div>'+
+      '<div class="workspace-actual-shift"><div><h3>Actual shift times</h3><p>Record this day’s actual start and finish. Leave the values unset to use the configured schedule.</p></div><div class="workspace-shift-inputs"><label><span>Start</span><input type="time" data-shift-start value="'+esc(day.start||"")+'"></label><label><span>Finish</span><input type="time" data-shift-stop value="'+esc(day.stop||"")+'"></label></div><div class="workspace-shift-actions"><button type="button" class="workspace-primary" data-action="save-shift-times">Save actual times</button>'+(day.start&&day.stop?'<button type="button" data-action="clear-shift-times">Use configured schedule</button>':'')+'</div></div>'+
       '<div class="workspace-schedule-line"><span>Shift window</span><strong>'+(selectedSchedule.length?selectedSchedule.map(esc).join("<br>"):"Not configured")+'</strong></div>'+
       '<div class="workspace-schedule-line"><span>Break deduction</span><strong>'+formatMinutes(metrics.breakMinutes)+'</strong></div>'+
       '<div class="workspace-schedule-line"><span>Scheduled time</span><strong>'+formatMinutes(metrics.scheduledMinutes)+'</strong></div>'+
@@ -353,6 +354,20 @@ export function mountWorkspace(root,config,{onEditConfiguration=()=>{},onExportC
       if(!result.ok){status=result.errors.join(" ");render();return;}
       day.dailyTasks=result.state;
       if(persist("Daily tasks saved and locked for this day."))render();else day.dailyTasks=before;
+    }
+    else if(action==="save-shift-times"){
+      const start=root.querySelector("[data-shift-start]")?.value||"",stop=root.querySelector("[data-shift-stop]")?.value||"";
+      if(!start||!stop||parseClock(start)===null||parseClock(stop)===null||start===stop){status="Enter a valid start and finish time. The times cannot be identical.";render();return;}
+      const day=currentDay(),previousStart=day.start,previousStop=day.stop,previousBreak=day.breakMinutes;
+      day.start=start;day.stop=stop;delete day.breakMinutes;
+      if(persist("Actual shift times saved locally."))render();
+      else{day.start=previousStart;day.stop=previousStop;if(previousBreak===undefined)delete day.breakMinutes;else day.breakMinutes=previousBreak;render();}
+    }
+    else if(action==="clear-shift-times"){
+      const day=currentDay(),previousStart=day.start,previousStop=day.stop;
+      delete day.start;delete day.stop;delete day.breakMinutes;
+      if(persist("Configured schedule restored for this day."))render();
+      else{day.start=previousStart;day.stop=previousStop;render();}
     }
     else if(action==="previous-week")selectedWeekMove(-1);
     else if(action==="next-week")selectedWeekMove(1);
