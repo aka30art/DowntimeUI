@@ -1,0 +1,15 @@
+import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
+const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+const moduleSource = await readFile(new URL("../src/installer.js", import.meta.url), "utf8");
+const css = await readFile(new URL("../src/installer.css", import.meta.url), "utf8");
+assert.match(html, /id=["']installerRoot["']/);
+assert.match(html, /src=["']\.\/src\/installer\.js["']/);
+assert.match(html, /href=["']\.\/src\/installer\.css["']/);
+assert.match(moduleSource, /loadInstalledConfig/);
+assert.match(moduleSource, /activateInstall/);
+assert.match(moduleSource, /data-action="install"/);
+assert.match(moduleSource, /saveDraft/);
+assert.match(moduleSource, /exportConfig/);
+assert.match(css, /@media\(max-width:700px\)/);
+console.log("Installer integration smoke checks: PASS");
