@@ -69,12 +69,13 @@ The implementation is a **local single-browser functional build**, not a product
 ### Implemented
 - **Empty tenant installation:** nine-step universal installer; resumable draft; identity/site/schedule/reasons/roster/role/task configuration; section-specific Settings editing.
 - **Downtime entry:** local create/edit/delete; reason, area, station, duration; per-day operator assignment.
-- **Daily metrics:** configured or actual shift start/finish; configured break deduction clipped to actual shift; downtime/running minutes and rates.
+- **Daily metrics:** configured shifts, actual-time override and live Start/Stop Shift controls; configured break deduction clipped to actual shift; downtime/running minutes and rates.
 - **Weekly intelligence:** day-by-day view; weighted weekly rates; cause ranking; best/worst day; previous-week comparison.
 - **Reports:** immutable weekly report snapshots, archive, browser print/PDF and JSON export.
-- **Plant Overview:** tenant-configured area/station cards, station Running/Down/Maintenance/Idle states, operator allocation, alerts and transition history.
+- **Plant Overview:** tenant-configured area/station cards, station Running/Down/Maintenance/Idle states, operator allocation, portrait/name/station operator cards, alerts and transition history.
 - **Daily Tasks:** daily checklist, completion persistence and immutable **SAVE & LOCK FOR TODAY** snapshot.
-- **Settings:** company/site, reasons, schedule, roster, role definitions and task template edit routes.
+- **Staff profiles:** optional JPEG/PNG/WebP photo upload, browser-side crop/resize/compression and local portrait display in operator cards. Photos remain in the local tenant configuration.
+- **Settings:** company/site, reasons, schedule, roster/photos, role definitions and task template edit routes.
 - **Backup and recovery:** schema-checked, installation-scoped JSON backup; validation; rollback-aware restore; clean-install restore path.
 - **QA:** domain/flow regression plus Chromium desktop/mobile browser suite for the implemented paths.
 
@@ -83,7 +84,7 @@ The implementation is a **local single-browser functional build**, not a product
 - Backend-enforced permissions for each protected action and a read-only spectator policy.
 - A separately provisioned DOWNTIMEUI backend, server-side tenant isolation policies, shared persistence, realtime sync and concurrent-edit conflict resolution.
 - Central audit trail with authenticated user attribution.
-- Staff photo/profile upload and account linking.
+- Secure private photo storage, signed upload/download and linking staff profiles to authenticated accounts. The local profile-photo upload and rendering flow is implemented.
 - Server-managed backup, retention, monitoring and tested disaster recovery.
 - Full Main Plant Overview blueprint/visual parity and any remaining uncovered edge cases.
 
