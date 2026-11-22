@@ -2,12 +2,12 @@ import assert from "node:assert/strict";
 import {createWorkspaceBackup,restoreWorkspaceBackup,validateWorkspaceBackup} from "../src/domain/backup.js";
 import {DRAFT_STORAGE_KEY,TENANT_STORAGE_KEY} from "../src/config-core.js";
 const configuration={
- schemaVersion:2,installed:true,installedAt:"2026-11-22T05:00:00.000Z",installationId:"install-1",
+ schemaVersion:3,installed:true,installedAt:"2026-11-22T05:00:00.000Z",installationId:"install-1",
  identity:{companyName:"Example",logoUrl:"",locale:"en-GB",timezone:"Europe/London"},
  site:{siteName:"North",hierarchy:["Area","Station"],areas:[{id:"a1",name:"Production"}],stations:[{id:"s1",name:"Line 1",areaId:"a1"}]},
- downtime:{reasons:[{id:"r1",name:"Mechanical"}]},
+ downtime:{reasons:[{id:"r1",name:"Mechanical"}],presets:[]},
  schedule:{workDays:["mon"],shifts:[{id:"sh1",name:"Day",start:"06:00",end:"15:00"}],breaks:[]},
- staff:[{id:"p1",name:"Operator One"}],
+ staff:[{id:"p1",name:"Operator One",roleId:"role1"}],
  roles:[{id:"role1",name:"Supervisor",permissions:{view:true}}],
  dailyTasks:[{id:"t1",name:"Safety check"}],
  setup:{currentStep:8,completedSteps:[0,1,2,3,4,5,6,7,8],updatedAt:"2026-11-22T05:00:00.000Z"}
