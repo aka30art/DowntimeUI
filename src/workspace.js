@@ -225,8 +225,16 @@ export function mountWorkspace(root,config,{onEditConfiguration=()=>{},onExportC
     if(button.dataset.day){selectedDate=button.dataset.day;render();return;}
     const action=button.dataset.action;if(!action)return;
     if(action==="save-entry")saveEntry();
+    else if(action==="edit-entry"){
+      const entry=currentDay().entries.find(item=>item.id===button.dataset.entryId);
+      if(!entry)return;
+      editingEntryId=entry.id;render();
+      root.querySelector('[name="entry-area"]')?.focus();
+    }
+    else if(action==="cancel-edit"){editingEntryId=null;render();}
     else if(action==="delete-entry"){
       currentDay().entries=currentDay().entries.filter(x=>x.id!==button.dataset.entryId);
+      if(editingEntryId===button.dataset.entryId)editingEntryId=null;
       if(persist("Downtime entry removed."))render();
     }
     else if(action==="lock-tasks"){
