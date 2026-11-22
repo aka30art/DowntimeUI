@@ -18,17 +18,20 @@ const day={date:"2026-11-23",start:"",stop:"",operatorId:"p1",
 const operations={schemaVersion:1,installationId:"install-1",weeks:{"2026-11-23":{days:[day]}},
  reports:[{id:"rpt1",weekStart:"2026-11-23",totals:{downtimeMinutes:20}}],
  plant:{status:"running",stationStates:{s1:"running"},assignments:{s1:"p1"},history:[{id:"h1",at:"2026-11-22T05:00:00Z",label:"Line 1 assigned"}]},updatedAt:"2026-11-23T15:00:00Z"};
-const valid=validateWorkspaceBackup({configuration,operations,exportedAt:"2026-11-23T15:00:00Z"},"install-1");
+const valid=validateWorkspaceBackup({format:"downtimeui-workspace-backup",backupVersion:1,configuration,operations,exportedAt:"2026-11-23T15:00:00Z"},"install-1");
 assert.equal(valid.ok,true,valid.errors.join("; "));
-assert.equal(validateWorkspaceBackup({configuration,operations},"other-install").ok,false);
-assert.ok(validateWorkspaceBackup({configuration:{...configuration,identity:{...configuration.identity,timezone:"Invalid/Zone"}},operations},"install-1").errors.some(x=>x.includes("valid IANA time zone")));
+assert.equal(validateWorkspaceBackup({format:"downtimeui-workspace-backup",backupVersion:1,configuration,operations,exportedAt:"2026-11-23T15:00:00Z"},"other-install").ok,false);
+assert.ok(validateWorkspaceBackup({format:"downtimeui-workspace-backup",backupVersion:1,configuration:{...configuration,identity:{...configuration.identity,timezone:"Invalid/Zone"}},operations,exportedAt:"2026-11-23T15:00:00Z"},"install-1").errors.some(x=>x.includes("valid IANA time zone")));
 const badEntry={...operations,weeks:{"2026-11-23":{days:[{...day,entries:[{id:"e1",area:"",reason:"",minutes:0}]}]}}};
-assert.ok(validateWorkspaceBackup({configuration,operations:badEntry},"install-1").errors.some(x=>x.includes("Downtime duration")));
+assert.ok(validateWorkspaceBackup({format:"downtimeui-workspace-backup",backupVersion:1,configuration,operations:badEntry,exportedAt:"2026-11-23T15:00:00Z"},"install-1").errors.some(x=>x.includes("Downtime duration")));
 const badStation={...operations,plant:{...operations.plant,assignments:{missing:"p1"}}};
-assert.ok(validateWorkspaceBackup({configuration,operations:badStation},"install-1").errors.some(x=>x.includes("unknown station")));
+assert.ok(validateWorkspaceBackup({format:"downtimeui-workspace-backup",backupVersion:1,configuration,operations:badStation,exportedAt:"2026-11-23T15:00:00Z"},"install-1").errors.some(x=>x.includes("unknown station")));
 const badTask={...operations,weeks:{"2026-11-23":{days:[{...day,dailyTasks:{...day.dailyTasks,completedTaskIds:["missing"]}}]}}};
-assert.ok(validateWorkspaceBackup({configuration,operations:badTask},"install-1").errors.some(x=>x.includes("completion refers")));
+assert.ok(validateWorkspaceBackup({format:"downtimeui-workspace-backup",backupVersion:1,configuration,operations:badTask,exportedAt:"2026-11-23T15:00:00Z"},"install-1").errors.some(x=>x.includes("completion refers")));
 
+assert.ok(validateWorkspaceBackup({format:"unknown",backupVersion:1,configuration,operations,exportedAt:"2026-11-23T15:00:00Z"},"install-1").errors.some(x=>x.includes("format is not recognised")));
+assert.ok(validateWorkspaceBackup({format:"downtimeui-workspace-backup",backupVersion:2,configuration,operations,exportedAt:"2026-11-23T15:00:00Z"},"install-1").errors.some(x=>x.includes("Unsupported workspace backup version")));
+assert.ok(validateWorkspaceBackup({format:"downtimeui-workspace-backup",backupVersion:1,configuration,operations,exportedAt:"invalid"},"install-1").errors.some(x=>x.includes("timestamp")));
 const backup=createWorkspaceBackup(configuration,operations,{exportedAt:"2026-11-23T15:00:00Z"});
 assert.equal(backup.format,"downtimeui-workspace-backup");
 assert.equal(backup.backupVersion,1);
