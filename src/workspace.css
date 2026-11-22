@@ -47,3 +47,6 @@
 .workspace-preset-apply button{min-height:40px;padding:9px 13px;border:1px solid #d0a900;border-radius:7px;background:#332e19;color:#ffe274;font-size:10px;font-weight:900}
 .workspace-preset-apply small{grid-column:1/-1;color:#8199a8;font-size:9px}
 @media(max-width:520px){.workspace-preset-apply{grid-template-columns:1fr}.workspace-preset-apply button{width:100%}}
+
+/* Mobile navigation: keep all six destinations legible without compressed or overlapping tabs. */
+@media(max-width:650px){.workspace-navigation{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}.workspace-nav{min-width:0;white-space:normal;text-align:center;line-height:1.25;padding:8px 5px}}
