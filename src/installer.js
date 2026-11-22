@@ -36,7 +36,7 @@ function staffRows(){
   return config.staff.map((member,index)=>{
     const preview=member.photoDataUrl
       ?'<img src="'+esc(member.photoDataUrl)+'" alt="'+esc(member.name||"Staff photo")+'">'
-      :'<span>'+esc((member.name||"").trim().split(/\\s+/).filter(Boolean).slice(0,2).map(part=>part[0].toUpperCase()).join("")||"—")+'</span>';
+      :'<span>'+esc((member.name||"").trim().split(/\s+/).filter(Boolean).slice(0,2).map(part=>part[0].toUpperCase()).join("")||"—")+'</span>';
     return '<div class="setup-staff-row"><div class="setup-staff-name">'+field("Staff member","staff."+index+".name",member.name,"Full name")+'</div>'+
       '<div class="setup-staff-photo"><div class="setup-staff-preview">'+preview+'</div><label><span>Profile photo (optional)</span><input type="file" accept="image/jpeg,image/png,image/webp" data-staff-photo="'+index+'"></label>'+
       (member.photoDataUrl?'<button type="button" class="setup-photo-remove" data-action="remove-staff-photo" data-index="'+index+'">Remove photo</button>':'')+'</div>'+
