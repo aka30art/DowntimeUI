@@ -154,6 +154,14 @@ export function mountWorkspace(root,config,{onEditConfiguration=()=>{},onExportC
   function renderPlantOverview(){
     const plant=ensurePlantState(),stations=Array.isArray(config.site.stations)?config.site.stations:[],areas=Array.isArray(config.site.areas)?config.site.areas:[],staff=Array.isArray(config.staff)?config.staff:[];
     const statusNames={running:"Running",down:"Down",maintenance:"Maintenance",idle:"Idle"};
+    const assignedStationFor=person=>stations.find(station=>plant.assignments[station.id]===person.id)||null;
+    const operatorCards=staff.map(person=>{
+      const station=assignedStationFor(person);
+      const picture=person.photoDataUrl
+        ?'<img src="'+esc(person.photoDataUrl)+'" alt="'+esc(person.name)+'">'
+        :'<span>'+esc((person.name||"").trim().split(/\\s+/).filter(Boolean).slice(0,2).map(part=>part[0].toUpperCase()).join("")||"—")+'</span>';
+      return '<article class="workspace-operator-card"><div class="workspace-operator-photo">'+picture+'</div><b>'+esc(person.name)+'</b><span>'+esc(station?.name||"Unassigned")+'</span></article>';
+    }).join("");
     const stationCards=new Map();
     stations.forEach(station=>{
       const status=plant.stationStates[station.id]||"running",assigned=plant.assignments[station.id]||"";
@@ -182,6 +190,7 @@ export function mountWorkspace(root,config,{onEditConfiguration=()=>{},onExportC
     if(ungrouped.length)areaGroups.push('<section class="workspace-area-group"><div class="workspace-area-head"><h2>Other stations</h2><span>'+ungrouped.length+' STATION'+(ungrouped.length===1?"":"S")+'</span></div><div class="workspace-station-grid">'+ungrouped.map(station=>stationCards.get(station.id)).join("")+'</div></section>');
     return '<section class="workspace-section"><div class="workspace-section-head"><div><div class="workspace-eyebrow">SITE STATUS</div><h1>Plant overview</h1><p>'+esc(config.site.siteName)+' · '+stations.length+' configured station'+(stations.length===1?"":"s")+'</p></div><button type="button" class="workspace-plant-toggle '+(plant.status==="running"?"on":"off")+'" data-action="toggle-plant">'+(plant.status==="running"?"PLANT RUNNING · SET STOPPED":"PLANT STOPPED · SET RUNNING")+'</button></div>'+
       (alerts.length?'<div class="workspace-plant-alerts">'+alerts.join("")+'</div>':'<div class="workspace-plant-alert neutral"><b>All clear</b><span>No active station issues are recorded.</span></div>')+
+      (staff.length?'<section class="workspace-operator-allocation"><div class="workspace-area-head"><h2>Operator allocation</h2><span>'+staff.length+' STAFF</span></div><div class="workspace-operator-grid">'+operatorCards+'</div></section>':'')+
       (stations.length?areaGroups.join(""):'<div class="workspace-panel"><div class="workspace-empty">No stations have been configured. Add stations in workspace setup to populate Plant Overview.</div></div>')+
       '<div class="workspace-panel workspace-history"><div class="workspace-panel-head"><div><h2>Recent status changes</h2><p>Local audit trail for plant and station changes.</p></div></div>'+(history||'<div class="workspace-empty">No status changes recorded yet.</div>')+'</div>'+
       '<div class="workspace-message" role="status">'+esc(status)+'</div></section>';
