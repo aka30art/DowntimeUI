@@ -68,7 +68,12 @@ export function mountWorkspace(root,config,{onEditConfiguration=()=>{},onExportC
   };
   const storage=options.storage||globalThis.localStorage;
   const bindingController=new AbortController();
-  WORKSPACE_BINDINGS.set(root,()=>bindingController.abort());
+  let refreshInterval=null;
+  const disposeBinding=()=>{
+    bindingController.abort();
+    if(refreshInterval!==null){globalThis.clearInterval?.(refreshInterval);refreshInterval=null;}
+  };
+  WORKSPACE_BINDINGS.set(root,disposeBinding);
   const loaded=readOperations(storage,config.installationId);
   const getNow=()=>options.now?new Date(options.now()):new Date();
   const getLocalClock=()=>{
@@ -441,8 +446,8 @@ export function mountWorkspace(root,config,{onEditConfiguration=()=>{},onExportC
     else if(action==="export-backup")exportBackup();
     else if(action==="import-backup")root.querySelector("[data-backup-file]")?.click?.();
     else if(action==="export-config")onExportConfiguration();
-    else if(action==="edit-config"){bindingController.abort();editConfig();}
-    else if(action==="edit-section"){bindingController.abort();onEditConfiguration(Number(button.dataset.step));}
+    else if(action==="edit-config"){disposeBinding();editConfig();}
+    else if(action==="edit-section"){disposeBinding();onEditConfiguration(Number(button.dataset.step));}
   },{signal:bindingController.signal});
   root.addEventListener("change",async event=>{
     const control=event.target;
@@ -484,7 +489,15 @@ export function mountWorkspace(root,config,{onEditConfiguration=()=>{},onExportC
   const legacy=document.querySelector(".shell");if(legacy)legacy.hidden=true;
   const notice=document.querySelector(".previewNotice");if(notice)notice.hidden=true;
   render();
-  return {render,getState:()=>state,getSelectedDate:()=>selectedDate,getView:()=>view,dispose:()=>{bindingController.abort();if(WORKSPACE_BINDINGS.get(root))WORKSPACE_BINDINGS.delete(root);},
+  if(typeof globalThis.setInterval==="function"){
+    refreshInterval=globalThis.setInterval(()=>{
+      if(view!=="daily")return;
+      const day=currentDay();
+      if(day.start&&!day.stop&&selectedDate===getLocalDate())render();
+    },30000);
+    refreshInterval?.unref?.();
+  }
+  return {render,getState:()=>state,getSelectedDate:()=>selectedDate,getView:()=>view,dispose:()=>{disposeBinding();if(WORKSPACE_BINDINGS.get(root))WORKSPACE_BINDINGS.delete(root);},
     selectDate:date=>{selectedWeek=weekStartFor(date);selectedDate=date;ensureWeek();render();},
     setView:value=>{view=value;render();},save:()=>persist()};
 }
