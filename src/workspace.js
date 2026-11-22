@@ -207,7 +207,7 @@ export function mountWorkspace(root,config,{onEditConfiguration=()=>{},onExportC
       (alerts.length?'<div class="workspace-plant-alerts">'+alerts.join("")+'</div>':'<div class="workspace-plant-alert neutral"><b>All clear</b><span>No active station issues are recorded.</span></div>')+
       (staff.length?'<section class="workspace-operator-allocation"><div class="workspace-area-head"><h2>Operator allocation</h2><span>'+staff.length+' STAFF</span></div><div class="workspace-operator-grid">'+operatorCards+'</div></section>':'')+
       (stations.length?areaGroups.join(""):'<div class="workspace-panel"><div class="workspace-empty">No stations have been configured. Add stations in workspace setup to populate Plant Overview.</div></div>')+
-      (staff.length?'<div class="workspace-panel"><div class="workspace-panel-head"><div><h2>Operator board</h2><p>Staff profiles and their currently assigned station.</p></div><span class="workspace-count">'+staff.length+' OPERATORS</span></div><div class="workspace-operator-grid">'+operatorCards+'</div></div>':'')+
+
       '<div class="workspace-panel workspace-history"><div class="workspace-panel-head"><div><h2>Recent status changes</h2><p>Local audit trail for plant and station changes.</p></div></div>'+(history||'<div class="workspace-empty">No status changes recorded yet.</div>')+'</div>'+
       '<div class="workspace-message" role="status">'+esc(status)+'</div></section>';
   }
