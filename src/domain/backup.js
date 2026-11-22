@@ -46,7 +46,7 @@ export function validateWorkspaceBackup(backup,currentInstallationId){
         }
         if(Boolean(day.start)!==Boolean(day.stop))errors.push("Day "+day.date+" must have both actual shift start and finish times, or neither.");
         if(day.start&&day.stop){
-          const validClock=value=>typeof value==="string"&&/^([01]\\d|2[0-3]):[0-5]\\d$/.test(value);
+          const validClock=value=>typeof value==="string"&&/^([01]\d|2[0-3]):[0-5]\d$/.test(value);
           if(!validClock(day.start)||!validClock(day.stop)||day.start===day.stop)errors.push("Day "+day.date+" contains invalid actual shift times.");
         }
         if(!Array.isArray(day.entries))errors.push("Day "+day.date+" downtime entries must be a list.");
@@ -101,13 +101,17 @@ export function validateWorkspaceBackup(backup,currentInstallationId){
           if(!stationIds.has(stationId))errors.push("Plant state references a station outside this installation.");
           if(!["running","down","maintenance","idle"].includes(status))errors.push("Plant station status is invalid.");
         }
+        const assignedStaff=new Set();
         for(const [stationId,staffId] of Object.entries(ops.plant.assignments)){
           if(!stationIds.has(stationId)||!staffIds.has(staffId))errors.push("Plant operator assignment references an unknown station or staff member.");
+          if(assignedStaff.has(staffId))errors.push("A staff member cannot be assigned to more than one station in a backup.");
+          assignedStaff.add(staffId);
         }
       }
       if(!Array.isArray(ops.plant.history))errors.push("Plant history must be a list.");
       else ops.plant.history.forEach((event,index)=>{
         if(!isObject(event)||!validTimestamp(event.at)||typeof event.label!=="string")errors.push("Plant history event "+(index+1)+" is invalid.");
+        else if(event.stationId&&!stationIds.has(event.stationId))errors.push("Plant history event "+(index+1)+" references a station outside this installation.");
       });
     }
   }
