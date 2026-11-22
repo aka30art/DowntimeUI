@@ -1,15 +1,18 @@
-# DowntimeUI
+# DOWNTIMEUI — Universal Edition
 
-Isolated visual development and review environment for DOWNTIME.
+Company-neutral installation and interface development environment for DOWNTIME.
 
-## Safety boundary
-- Standalone static UI only; mock data only.
-- No production database, API, auth, PIN, or central sync connection.
-- No production secrets or credentials.
-- Changes here are design prototypes and must not be integrated into production until explicitly authorized with **DEPLOY ON MAIN APP**.
+## Product boundary
+- New installations begin with an empty tenant configuration.
+- Company identity, site hierarchy, areas, stations, reasons, schedules, staff, roles and daily task templates are configured per installation.
+- Demo content in the preview interface is fictional and must never be treated as operational data.
+- This branch must not contain production credentials, production tenant records or production database connections.
 
-## Preview
-GitHub Pages deployment is configured through Actions. In repository Settings → Pages, select **GitHub Actions** as the build/deployment source.
+## Current development scope
+The universal first-run installer supports local draft persistence, validation, installation and JSON export. The current operational screen remains a preview prototype. Live operational persistence, authentication, user provisioning, server-enforced permissions, cross-device sync, backups and full Main feature parity remain separate implementation gates.
 
-## Workflow
-Prototype → Preview deployment → Visual review/refinement → Acceptance → Explicit production authorization → Separate integration work.
+## Quality and release boundary
+- Development branch: `feature/universal-app-foundation`
+- CI runs configuration tests, JavaScript syntax checks and project integration smoke checks.
+- No merge to `main`, GitHub Pages deployment or production release is authorised until the user gives the exact instruction **DEPLOY & Merge**.
+- A green installer CI result does not mean the complete DOWNTIME application is release-ready.
