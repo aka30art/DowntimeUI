@@ -100,6 +100,12 @@ try{
   await page.getByText("Mechanical repair",{exact:true}).waitFor();
   await page.locator("[data-operator]").selectOption({label:"Operator One"});
 
+  await page.locator('.workspace-navigation [data-view="plant"]').click();
+  await page.locator('[data-station-status]').selectOption("down");
+  await page.getByText(/1 station down/).waitFor();
+  await page.locator('[data-station-operator]').selectOption({label:"Operator One"});
+  await page.locator('[data-action="toggle-plant"]').click();
+  await page.getByText("Site stopped",{exact:true}).waitFor();
   await page.locator('.workspace-navigation [data-view="tasks"]').click();
   const taskChecks=page.locator("input[data-task]");
   assert.equal(await taskChecks.count(),2);
