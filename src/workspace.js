@@ -53,7 +53,7 @@ export function mountWorkspace(root,config,{onEditConfiguration=()=>{},onExportC
   if(!config?.installed||!config.installationId)throw new Error("A validated installed workspace is required.");
   const storage=options.storage||globalThis.localStorage;
   const loaded=readOperations(storage,config.installationId);
-  let state=loaded.state,view="daily",selectedWeek=weekStartFor(new Date()),selectedDate=localIso(new Date()),status=loaded.error||"Local workspace ready.";
+  let state=loaded.state,view="daily",selectedWeek=weekStartFor(new Date()),selectedDate=localIso(new Date()),status=loaded.error||"Local workspace ready.",editingEntryId=null;
   function getWeekKey(){return localIso(selectedWeek);}
   function ensureWeek(){
     const key=getWeekKey();
@@ -93,7 +93,8 @@ export function mountWorkspace(root,config,{onEditConfiguration=()=>{},onExportC
       return '<button type="button" data-day="'+item.date+'" class="workspace-day '+(item.date===selectedDate?"selected":"")+'"><b>'+d.short+'</b><span>'+d.date+'</span><small>'+formatMinutes(m.downtimeMinutes)+'</small>'+(item.dailyTasks?.lockedAt?'<i>LOCKED</i>':'')+'</button>';
     }).join("");
     const people=Array.isArray(config.staff)?config.staff:[];
-    const entries=day.entries.length?day.entries.map((entry,index)=>'<div class="workspace-entry"><div class="workspace-entry-copy"><b>'+esc(entry.area)+'</b><span>'+esc(entry.reason)+(entry.stationId?" · "+esc(config.site.stations.find(x=>x.id===entry.stationId)?.name||"Station"):"")+'</span></div><strong>'+formatMinutes(getEntryDurationMinutes(entry))+'</strong><button type="button" data-action="delete-entry" data-entry-id="'+esc(entry.id)+'" aria-label="Delete downtime entry '+(index+1)+'">×</button></div>').join(""):'<div class="workspace-empty">No downtime has been recorded for this day.</div>';
+    const editingEntry=day.entries.find(entry=>entry.id===editingEntryId)||null;
+    const entries=day.entries.length?day.entries.map((entry,index)=>'<div class="workspace-entry"><div class="workspace-entry-copy"><b>'+esc(entry.area)+'</b><span>'+esc(entry.reason)+(entry.stationId?" · "+esc(config.site.stations.find(x=>x.id===entry.stationId)?.name||"Station"):"")+'</span></div><strong>'+formatMinutes(getEntryDurationMinutes(entry))+'</strong><button type="button" data-action="edit-entry" data-entry-id="'+esc(entry.id)+'" aria-label="Edit downtime entry '+(index+1)+'">Edit</button><button type="button" data-action="delete-entry" data-entry-id="'+esc(entry.id)+'" aria-label="Delete downtime entry '+(index+1)+'">×</button></div>').join(""):'<div class="workspace-empty">No downtime has been recorded for this day.</div>';
     const areaOptions=(config.site.areas||[]).map(x=>'<option value="'+esc(x.name)+'">'+esc(x.name)+'</option>').join("");
     const stationOptions=(config.site.stations||[]).map(x=>'<option value="'+esc(x.id)+'">'+esc(x.name)+'</option>').join("");
     const reasonOptions=(config.downtime.reasons||[]).map(x=>'<option value="'+esc(x.name)+'">'+esc(x.name)+'</option>').join("");
@@ -104,13 +105,13 @@ export function mountWorkspace(root,config,{onEditConfiguration=()=>{},onExportC
       '<div class="workspace-metrics">'+kpis.map(x=>metricCard(x[0],x[1])).join("")+'</div>'+
       '<div class="workspace-two-col"><div class="workspace-panel"><div class="workspace-panel-head"><div><h2>Downtime entries</h2><p>Record time lost against an area and reason.</p></div><span class="workspace-count">'+day.entries.length+' ENTRIES</span></div>'+
       '<div class="workspace-entry-list">'+entries+'</div>'+
-      '<div class="workspace-add-form"><h3>Add downtime entry</h3><div class="workspace-form-grid">'+
-      '<label><span>Area / location *</span><input name="entry-area" list="workspace-areas" placeholder="Enter or select an area"></label><datalist id="workspace-areas">'+areaOptions+'</datalist>'+
-      '<label><span>Station (optional)</span><select name="entry-station"><option value="">No station selected</option>'+stationOptions+'</select></label>'+
-      '<label class="workspace-full"><span>Reason *</span><input name="entry-reason" list="workspace-reasons" placeholder="Enter or select a reason"></label><datalist id="workspace-reasons">'+reasonOptions+'</datalist>'+
-      '<label><span>Hours</span><input name="entry-hours" type="number" min="0" max="999" step="1" value="0"></label>'+
-      '<label><span>Minutes</span><input name="entry-minutes" type="number" min="0" max="59" step="1" value="0"></label></div>'+
-      '<div class="workspace-form-actions"><span>Entry is saved to this browser only.</span><button type="button" class="workspace-primary" data-action="save-entry">Save downtime</button></div><div class="workspace-message" role="status">'+esc(status)+'</div></div></div>'+
+      '<div class="workspace-add-form"><h3>'+(editingEntry?"Edit downtime entry":"Add downtime entry")+'</h3><div class="workspace-form-grid">'+
+      '<label><span>Area / location *</span><input name="entry-area" list="workspace-areas" placeholder="Enter or select an area" value="'+esc(editingEntry?.area||"")+'"></label><datalist id="workspace-areas">'+areaOptions+'</datalist>'+
+      '<label><span>Station (optional)</span><select name="entry-station"><option value="">No station selected</option>'+stationOptions.replace('value="'+esc(editingEntry?.stationId||"")+'"','value="'+esc(editingEntry?.stationId||"")+'" selected')+'</select></label>'+
+      '<label class="workspace-full"><span>Reason *</span><input name="entry-reason" list="workspace-reasons" placeholder="Enter or select a reason" value="'+esc(editingEntry?.reason||"")+'"></label><datalist id="workspace-reasons">'+reasonOptions+'</datalist>'+
+      '<label><span>Hours</span><input name="entry-hours" type="number" min="0" max="999" step="1" value="'+esc(editingEntry?.hours??0)+'"></label>'+
+      '<label><span>Minutes</span><input name="entry-minutes" type="number" min="0" max="59" step="1" value="'+esc(editingEntry?.minutes??0)+'"></label></div>'+
+      '<div class="workspace-form-actions"><span>Entry is saved to this browser only.</span><div class="workspace-form-button-row">'+(editingEntry?'<button type="button" data-action="cancel-edit">Cancel</button>':'')+'<button type="button" class="workspace-primary" data-action="save-entry">'+(editingEntry?"Save changes":"Save downtime")+'</button></div></div><div class="workspace-message" role="status">'+esc(status)+'</div></div></div>'+
       '<aside class="workspace-panel"><div class="workspace-panel-head"><div><h2>Shift summary</h2><p>Configured site schedule for this date.</p></div></div>'+
       '<div class="workspace-schedule-line"><span>Shift window</span><strong>'+(selectedSchedule.length?selectedSchedule.map(esc).join("<br>"):"Not configured")+'</strong></div>'+
       '<div class="workspace-schedule-line"><span>Break deduction</span><strong>'+formatMinutes(metrics.breakMinutes)+'</strong></div>'+
@@ -189,12 +190,14 @@ export function mountWorkspace(root,config,{onEditConfiguration=()=>{},onExportC
     return String(el?.value??"");
   }
   function saveEntry(){
-    const entry={id:createId("entry"),area:findField("entry-area").trim(),stationId:findField("entry-station")||null,reason:findField("entry-reason").trim(),
-      hours:Number(findField("entry-hours"))||0,minutes:Number(findField("entry-minutes"))||0,createdAt:new Date().toISOString()};
+    const previous=currentDay().entries.find(entry=>entry.id===editingEntryId)||null;
+    const entry={id:previous?.id||createId("entry"),area:findField("entry-area").trim(),stationId:findField("entry-station")||null,reason:findField("entry-reason").trim(),
+      hours:Number(findField("entry-hours"))||0,minutes:Number(findField("entry-minutes"))||0,createdAt:previous?.createdAt||new Date().toISOString(),updatedAt:previous?new Date().toISOString():null};
     const errors=validateDowntimeEntry(entry);
     if(errors.length){status=errors.join(" ");render();return;}
-    currentDay().entries.push(entry);
-    if(persist("Downtime entry saved locally."))render();
+    if(previous){currentDay().entries=currentDay().entries.map(item=>item.id===previous.id?entry:item);editingEntryId=null;}
+    else currentDay().entries.push(entry);
+    if(persist(previous?"Downtime entry updated locally.":"Downtime entry saved locally."))render();
   }
   function generateReport(){
     const week=ensureWeek(),previousKey=localIso(addDays(selectedWeek,-7)),previous=state.weeks[previousKey]?.days||[];
