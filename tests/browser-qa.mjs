@@ -81,9 +81,7 @@ try{
   await page.getByRole("heading",{name:"Workspace configured."}).waitFor();
   await page.locator('[data-action="open-preview"]').click();
 
-  await page.getByRole("heading",{name:"Monday",exact:true}).waitFor().catch(async()=>{
-    await page.locator(".workspace-section h1").waitFor();
-  });
+  await page.locator(".workspace-section h1").waitFor();
   assert.match(await page.locator(".workspace-root").innerText(),/LOCAL MODE · SINGLE DEVICE/);
   assert.match(await page.locator(".workspace-root").innerText(),/09h 00m/,"Configured 9h net working time should appear in the daily summary.");
   await page.screenshot({path:"artifacts/workspace-desktop.png",fullPage:true});
@@ -111,13 +109,14 @@ try{
   assert.equal(await taskChecks.nth(0).isDisabled(),true);
 
   await page.reload({waitUntil:"networkidle"});
-  await page.locator('[data-view="tasks"]').click();
+  await page.locator('[data-action="open-preview"]').click();
+  await page.locator('.workspace-navigation [data-view="tasks"]').click();
   assert.equal(await page.locator("input[data-task]").nth(0).isDisabled(),true,"Locked checklist must remain immutable after reload.");
   assert.equal(await page.locator("input[data-task]").nth(0).isChecked(),true,"Task completion must persist after reload.");
 
   await page.locator('.workspace-navigation [data-view="weekly"]').click();
   await page.getByRole("heading",{name:"Weekly summary"}).waitFor();
-  assert.match(await page.locator(".workspace-root").innerText(),/Mechanical fault/);
+  assert.match(await page.locator(".workspace-root").innerText(),/Mechanical repair/);
   await page.screenshot({path:"artifacts/workspace-weekly-desktop.png",fullPage:true});
 
   await page.locator('.workspace-navigation [data-view="reports"]').click();
