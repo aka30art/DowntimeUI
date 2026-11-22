@@ -5,6 +5,7 @@ import {calculateScheduleForDate,formatMinutes,parseClock} from "./domain/schedu
 import {buildWeeklyReport} from "./domain/reports.js";
 import {assignStationOperator,createPlantState,normalizePlantState,setPlantStatus,setStationStatus} from "./domain/plant.js";
 import {createWorkspaceBackup,restoreWorkspaceBackup,validateWorkspaceBackup} from "./domain/backup.js";
+import {factoryResetStorage} from "./domain/factory-reset.js";
 
 const STORE_PREFIX="downtimeui:operations:v1:";
 const WORKSPACE_BINDINGS=new WeakMap();
@@ -164,7 +165,7 @@ export function mountWorkspace(root,config,{onEditConfiguration=()=>{},onExportC
       '<label class="workspace-full"><span>Reason *</span><input name="entry-reason" list="workspace-reasons" placeholder="Enter or select a reason" value="'+esc(editingEntry?.reason||"")+'"></label><datalist id="workspace-reasons">'+reasonOptions+'</datalist>'+
       '<label><span>Hours</span><input name="entry-hours" type="number" min="0" max="999" step="1" value="'+esc(editingEntry?.hours??0)+'"></label>'+
       '<label><span>Minutes</span><input name="entry-minutes" type="number" min="0" max="59" step="1" value="'+esc(editingEntry?.minutes??0)+'"></label></div>'+
-      '<div class="workspace-form-actions"><span>Entry is saved to this browser only.</span><div class="workspace-form-button-row">'+(editingEntry?'<button type="button" data-action="cancel-edit">Cancel</button>':'')+'<button type="button" class="workspace-primary" data-action="save-entry">'+(editingEntry?"Save changes":"Save downtime")+'</button></div></div><div class="workspace-message" role="status">'+esc(status)+'</div></div></div>'+
+      '<div class="workspace-form-actions"><span>Entry is saved to this browser only.</span><div class="workspace-form-button-row">'+(editingEntry?'<button type="button" data-action="cancel-edit">Cancel</button>':'')+'<button type="button" class="workspace-primary" data-action="save-entry">'+(editingEntry?"Save changes":"Save downtime")+'</button></div></div><div class="workspace-panel workspace-danger-zone"><div class="workspace-panel-head"><div><h2>WIPE OUT</h2><p>Factory reset this browser workspace.</p></div></div><p class="workspace-muted">This removes this installation’s configuration, operational records, task locks, reports, and saved setup draft from this browser. You can optionally restore a JSON backup instead.</p><button type="button" class="workspace-danger-button" data-action="factory-reset">WIPE OUT — Factory reset</button></div><div class="workspace-message" role="status">'+esc(status)+'</div></div></div>'+
       '<aside class="workspace-panel"><div class="workspace-panel-head"><div><h2>Shift summary</h2><p>Configured schedule or actual override for this date.</p></div></div>'+
       '<div class="workspace-actual-shift"><div><h3>Actual shift times</h3><p>Record this day’s actual start and finish. Leave the values unset to use the configured schedule.</p></div>'+
       '<div class="workspace-shift-inputs"><label><span>Start</span><input type="time" data-shift-start value="'+esc(day.start||"")+'"></label><label><span>Finish</span><input type="time" data-shift-stop value="'+esc(day.stop||"")+'"></label></div>'+
@@ -472,6 +473,15 @@ export function mountWorkspace(root,config,{onEditConfiguration=()=>{},onExportC
     else if(action==="print-report"||action==="export-report"){
       const report=state.reports.find(x=>x.id===button.dataset.reportId);
       if(action==="print-report")printReport(report);else downloadReport(report);
+    }
+    else if(action==="factory-reset"){
+      if(typeof globalThis.confirm!=="function"||!globalThis.confirm("WIPE OUT will permanently clear this DOWNTIMEUI workspace from this browser. Continue?")){status="Factory reset cancelled.";render();return;}
+      const restoreFirst=typeof globalThis.confirm==="function"&&globalThis.confirm("DO YOU WANT TO RESTORE A BACKUP JSON FILE instead of starting empty?\n\nChoose OK to select and restore a backup. Choose Cancel to continue with an empty factory reset.");
+      if(restoreFirst){root.querySelector("[data-backup-file]")?.click?.();status="Select a valid backup JSON file to restore. No data has been wiped.";render();return;}
+      if(typeof globalThis.confirm!=="function"||!globalThis.confirm("Confirm final WIPE OUT? This will return to the empty installation screen.")){status="Factory reset cancelled.";render();return;}
+      const wiped=factoryResetStorage(storage);
+      if(!wiped.ok){status="Factory reset failed; local data was retained where rollback allowed: "+wiped.error;render();return;}
+      globalThis.location?.reload?.();
     }
     else if(action==="export-backup")exportBackup();
     else if(action==="import-backup")root.querySelector("[data-backup-file]")?.click?.();
