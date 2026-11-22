@@ -107,7 +107,7 @@ export function mountWorkspace(root,config,{onEditConfiguration=()=>{},onExportC
     return '<article class="workspace-metric"><span>'+label+'</span><strong>'+value+'</strong>'+(sub?'<small>'+sub+'</small>':'')+'</article>';
   }
   function renderDaily(){
-    const week=ensureWeek(),metrics=currentMetrics(),day=currentDay(),selectedSchedule=scheduleLabel(selectedDate,config.schedule);
+    const week=ensureWeek(),metrics=currentMetrics(),day=currentDay(),selectedSchedule=scheduleLabel(selectedDate,config.schedule),displayedSchedule=day.start&&day.stop?[day.start+"–"+day.stop+" (actual)"]:selectedSchedule;
     const kpis=[["NET AVAILABLE",formatMinutes(metrics.netMinutes)],["DOWNTIME",formatMinutes(metrics.downtimeMinutes)],["RUNNING",formatMinutes(metrics.runningMinutes)],["DOWNTIME RATE",metrics.downtimeRate.toFixed(1)+"%"]];
     const days=week.days.map(item=>{
       const m=calculateDayMetrics(item,config.schedule),d=labelForDay(item.date);
@@ -133,9 +133,9 @@ export function mountWorkspace(root,config,{onEditConfiguration=()=>{},onExportC
       '<label><span>Hours</span><input name="entry-hours" type="number" min="0" max="999" step="1" value="'+esc(editingEntry?.hours??0)+'"></label>'+
       '<label><span>Minutes</span><input name="entry-minutes" type="number" min="0" max="59" step="1" value="'+esc(editingEntry?.minutes??0)+'"></label></div>'+
       '<div class="workspace-form-actions"><span>Entry is saved to this browser only.</span><div class="workspace-form-button-row">'+(editingEntry?'<button type="button" data-action="cancel-edit">Cancel</button>':'')+'<button type="button" class="workspace-primary" data-action="save-entry">'+(editingEntry?"Save changes":"Save downtime")+'</button></div></div><div class="workspace-message" role="status">'+esc(status)+'</div></div></div>'+
-      '<aside class="workspace-panel"><div class="workspace-panel-head"><div><h2>Shift summary</h2><p>Configured site schedule for this date.</p></div></div>'+
+      '<aside class="workspace-panel"><div class="workspace-panel-head"><div><h2>Shift summary</h2><p>Configured schedule or actual override for this date.</p></div></div>'+
       '<div class="workspace-actual-shift"><div><h3>Actual shift times</h3><p>Record this day’s actual start and finish. Leave the values unset to use the configured schedule.</p></div><div class="workspace-shift-inputs"><label><span>Start</span><input type="time" data-shift-start value="'+esc(day.start||"")+'"></label><label><span>Finish</span><input type="time" data-shift-stop value="'+esc(day.stop||"")+'"></label></div><div class="workspace-shift-actions"><button type="button" class="workspace-primary" data-action="save-shift-times">Save actual times</button>'+(day.start&&day.stop?'<button type="button" data-action="clear-shift-times">Use configured schedule</button>':'')+'</div></div>'+
-      '<div class="workspace-schedule-line"><span>Shift window</span><strong>'+(selectedSchedule.length?selectedSchedule.map(esc).join("<br>"):"Not configured")+'</strong></div>'+
+      '<div class="workspace-schedule-line"><span>Shift window</span><strong>'+(displayedSchedule.length?displayedSchedule.map(esc).join("<br>"):"Not configured")+'</strong></div>'+
       '<div class="workspace-schedule-line"><span>Break deduction</span><strong>'+formatMinutes(metrics.breakMinutes)+'</strong></div>'+
       '<div class="workspace-schedule-line"><span>Scheduled time</span><strong>'+formatMinutes(metrics.scheduledMinutes)+'</strong></div>'+
       '<div class="workspace-schedule-line"><span>Net available</span><strong>'+formatMinutes(metrics.netMinutes)+'</strong></div>'+
