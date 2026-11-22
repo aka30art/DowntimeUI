@@ -13,6 +13,8 @@ for(const name of ["Jan","Mick","Gigi","Daz","Shayne","L&C Skip Hire","Feeder","
 assert.doesNotMatch(content,/supabase\.co|sb_publishable_|service_role|SUPABASE_SERVICE_ROLE_KEY/i,
   "The local workspace must not include a connected Supabase project or production credential.");
 assert.match(content,/No company, operator, plant, station or downtime data has been pre-filled/);
+assert.match(content,/compressStaffPhoto/);
+assert.match(content,/workspace-operator-card/);
 assert.match(content,/LOCAL MODE · SINGLE DEVICE/);
 assert.match(content,/Restore backup JSON/);
 assert.match(content,/restoreWorkspaceBackup/);
