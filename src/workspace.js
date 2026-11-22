@@ -213,16 +213,25 @@ export function mountWorkspace(root,config,{onEditConfiguration=()=>{},onExportC
       (rows||'<div class="workspace-empty">No reports generated yet.</div>')+'</div></section>';
   }
   function renderPeople(){
+    const areasList=Array.isArray(config.site.areas)?config.site.areas:[];
+    const stationsList=Array.isArray(config.site.stations)?config.site.stations:[];
+    const reasonsList=Array.isArray(config.downtime?.reasons)?config.downtime.reasons:[];
+    const workDays=Array.isArray(config.schedule?.workDays)?config.schedule.workDays:[];
+    const shiftsList=Array.isArray(config.schedule?.shifts)?config.schedule.shifts:[];
+    const breaksList=Array.isArray(config.schedule?.breaks)?config.schedule.breaks:[];
+    const staffList=Array.isArray(config.staff)?config.staff:[];
+    const rolesList=Array.isArray(config.roles)?config.roles:[];
+    const tasksList=Array.isArray(config.dailyTasks)?config.dailyTasks:[];
     const section=(title,description,step,details,actionLabel="Edit section")=>
       '<article class="workspace-setting-card"><div class="workspace-setting-copy"><span>'+esc(title)+'</span><p>'+esc(description)+'</p><small>'+details+'</small></div><button type="button" data-action="edit-section" data-step="'+step+'">'+actionLabel+' →</button></article>';
     const counts=[
-      ["Areas",config.site.areas.length],["Stations",config.site.stations.length],
-      ["Downtime reasons",config.downtime.reasons.length],["Operating days",config.schedule.workDays.length],
-      ["Shifts",config.schedule.shifts.length],["Breaks",config.schedule.breaks.length],
-      ["Staff",config.staff.length],["Access roles",config.roles.length],["Daily task templates",config.dailyTasks.length]
+      ["Areas",areasList.length],["Stations",stationsList.length],
+      ["Downtime reasons",reasonsList.length],["Operating days",workDays.length],
+      ["Shifts",shiftsList.length],["Breaks",breaksList.length],
+      ["Staff",staffList.length],["Access roles",rolesList.length],["Daily task templates",tasksList.length]
     ];
-    const staff=(config.staff||[]).map(person=>'<span class="workspace-chip">'+esc(person.name)+'</span>').join("")||'<span class="workspace-muted">No staff configured</span>';
-    const roles=(config.roles||[]).map(role=>'<span class="workspace-chip">'+esc(role.name)+'</span>').join("")||'<span class="workspace-muted">No roles configured</span>';
+    const staff=staffList.map(person=>'<span class="workspace-chip">'+esc(person.name)+'</span>').join("")||'<span class="workspace-muted">No staff configured</span>';
+    const roles=rolesList.map(role=>'<span class="workspace-chip">'+esc(role.name)+'</span>').join("")||'<span class="workspace-muted">No roles configured</span>';
     const stat=counts.map(([label,count])=>'<div class="workspace-setting-stat"><b>'+count+'</b><span>'+label+'</span></div>').join("");
     return '<section class="workspace-section workspace-narrow"><div class="workspace-eyebrow">WORKSPACE ADMINISTRATION</div><h1>Settings</h1><p class="workspace-lead">All company, site and operational configuration is maintained here after installation. Changes are saved to this browser workspace.</p>'+
       '<div class="workspace-settings-stats">'+stat+'</div>'+
@@ -230,11 +239,11 @@ export function mountWorkspace(root,config,{onEditConfiguration=()=>{},onExportC
       '<div class="workspace-config-pair"><span>Company</span><b>'+esc(config.identity.companyName)+'</b></div><div class="workspace-config-pair"><span>Site</span><b>'+esc(config.site.siteName)+'</b></div><div class="workspace-config-pair"><span>Time zone</span><b>'+esc(config.identity.timezone)+'</b></div>'+
       '<div class="workspace-settings-edit"><button type="button" data-action="edit-section" data-step="1">Edit company identity →</button><button type="button" data-action="edit-section" data-step="2">Edit site structure →</button></div></div>'+
       '<div class="workspace-settings-grid">'+
-      section("Downtime reasons","Configure the reasons operators can select when recording downtime.",3,(config.downtime.reasons||[]).map(x=>esc(x.name)).join(" · ")||"No reasons defined")+
-      section("Schedule and breaks","Set work days, shift windows, break periods and local time settings.",4,config.schedule.workDays.length+" work days · "+config.schedule.shifts.length+" shifts · "+config.schedule.breaks.length+" breaks")+
+      section("Downtime reasons","Configure the reasons operators can select when recording downtime.",3,reasonsList.map(x=>esc(x.name)).join(" · ")||"No reasons defined")+
+      section("Schedule and breaks","Set work days, shift windows, break periods and local time settings.",4,workDays.length+" work days · "+shiftsList.length+" shifts · "+breaksList.length+" breaks")+
       section("Staff and operators","Maintain the roster used for assignments and operational reporting.",5,staff)+
       section("Access and rights","Configure permission groups. Account authentication and server-side enforcement are separate.",6,roles)+
-      section("Daily task presets","Maintain reusable task templates for the daily checklist.",7,(config.dailyTasks||[]).map(x=>esc(x.name)).join(" · ")||"No task templates defined")+
+      section("Daily task presets","Maintain reusable task templates for the daily checklist.",7,tasksList.map(x=>esc(x.name)).join(" · ")||"No task templates defined")+
       '</div>'+
       '<div class="workspace-panel"><div class="workspace-panel-head"><div><h2>Data and recovery</h2><p>Export a copy of this installation’s configuration and local records.</p></div></div><p class="workspace-muted">Operational records, checklist locks and report snapshots are stored in browser storage, namespaced by this installation ID. This is not a central backup or a multi-user sync service.</p><div class="workspace-button-row"><button type="button" data-action="export-backup">Export full workspace backup</button><button type="button" data-action="import-backup">Import workspace backup</button><button type="button" data-action="export-config">Export configuration JSON</button></div><input type="file" accept=".json,application/json" data-backup-file hidden></div>'+
       '<div class="workspace-message" role="status">'+esc(status)+'</div></section>';
