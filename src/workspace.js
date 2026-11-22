@@ -174,7 +174,7 @@ export function mountWorkspace(root,config,{onEditConfiguration=()=>{},onExportC
       const station=assignedStationFor(person);
       const picture=person.photoDataUrl
         ?'<img src="'+esc(person.photoDataUrl)+'" alt="'+esc(person.name)+'">'
-        :'<span>'+esc((person.name||"").trim().split(/\\s+/).filter(Boolean).slice(0,2).map(part=>part[0].toUpperCase()).join("")||"—")+'</span>';
+        :'<span>'+esc((person.name||"").trim().split(/\s+/).filter(Boolean).slice(0,2).map(part=>part[0].toUpperCase()).join("")||"—")+'</span>';
       return '<article class="workspace-operator-card"><div class="workspace-operator-photo">'+picture+'</div><b>'+esc(person.name)+'</b><span>'+esc(station?.name||"Unassigned")+'</span></article>';
     }).join("");
     const stationCards=new Map();
