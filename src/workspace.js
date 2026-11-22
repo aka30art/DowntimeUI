@@ -52,7 +52,7 @@ function scheduleLabel(date,schedule){
   const result=calculateScheduleForDate(date,schedule);
   return result.shifts.map(item=>Math.floor(item.startMinute/60).toString().padStart(2,"0")+":"+String(item.startMinute%60).padStart(2,"0")+"–"+Math.floor(item.endMinute%1440/60).toString().padStart(2,"0")+":"+String(item.endMinute%60).padStart(2,"0"));
 }
-export function mountWorkspace(root,config,{onEditConfiguration=()=>{},onExportConfiguration=()=>{} }={},options={}){
+export function mountWorkspace(root,config,{onEditConfiguration=()=>{},onExportConfiguration=()=>{},onRestoreConfiguration=()=>({ok:true}) }={},options={}){
   if(!root)throw new Error("Workspace mount point is required.");
   WORKSPACE_BINDINGS.get(root)?.();
   if(!config?.installed||!config.installationId)throw new Error("A validated installed workspace is required.");
@@ -312,6 +312,8 @@ export function mountWorkspace(root,config,{onEditConfiguration=()=>{},onExportC
     }
     const restored=restoreWorkspaceBackup(backup,config.installationId,{storage});
     if(!restored.ok){status="Backup restore failed: "+restored.errors.join(" ");render();return;}
+    const parentSync=onRestoreConfiguration(restored.configuration);
+    if(parentSync?.ok===false){status="Backup restored to browser storage, but the setup controller could not refresh: "+(parentSync.error||"Configuration handoff failed.");render();return;}
     for(const key of Object.keys(config))delete config[key];
     Object.assign(config,restored.configuration);
     state=restored.operations;
