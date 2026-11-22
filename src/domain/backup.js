@@ -11,6 +11,9 @@ function validDate(value){
 export function validateWorkspaceBackup(backup,currentInstallationId){
   const errors=[];
   if(!isObject(backup))return {ok:false,errors:["Backup file must contain a JSON object."]};
+  if(backup.format!=="downtimeui-workspace-backup")errors.push("Backup format is not recognised.");
+  if(backup.backupVersion!==1)errors.push("Unsupported workspace backup version.");
+  if(!validTimestamp(backup.exportedAt))errors.push("Backup export timestamp is missing or invalid.");
   if(!isObject(backup.configuration))errors.push("Backup configuration is missing.");
   else{
     if(backup.configuration.installed!==true)errors.push("Backup configuration is not an installed workspace.");
