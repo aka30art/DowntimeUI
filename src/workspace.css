@@ -50,3 +50,8 @@
 
 /* Mobile navigation: keep all six destinations legible without compressed or overlapping tabs. */
 @media(max-width:650px){.workspace-navigation{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}.workspace-nav{min-width:0;white-space:normal;text-align:center;line-height:1.25;padding:8px 5px}}
+
+@media(max-width:650px){
+  .workspace-navigation{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;overflow:visible;padding:9px 0 11px}
+  .workspace-nav{display:flex;align-items:center;justify-content:center;min-width:0;min-height:40px;padding:6px 4px;white-space:normal;overflow-wrap:anywhere;text-align:center;font-size:9px;line-height:1.2}
+}
