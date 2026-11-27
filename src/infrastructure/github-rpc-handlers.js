@@ -328,4 +328,225 @@ export const GITHUB_YARDHUB_RPC_HANDLERS = Object.freeze({
       ...rows(tables, "gatelog_visit_waste_types").filter(x => x.visit_id !== visit.id));
     return visit.id;
   }
+
+  downtime_roots_manage_identity({ tables, args, now }) {
+    const userId = cleanText(args.p_user_id, 120), staffId = cleanText(args.p_staff_id, 120);
+    const action = cleanText(args.p_action, 20).toUpperCase();
+    const rootsClass = cleanText(args.p_roots_class, 20).toUpperCase();
+    const actorUserId = cleanText(args.p_actor_user_id, 120);
+    const actorUsername = cleanText(args.p_actor_username, 80);
+    const actorDisplayName = cleanText(args.p_actor_display_name, 120);
+    if (!userId || !staffId || userId === staffId || !["ASSIGN", "RECLASSIFY", "REVOKE"].includes(action) || !actorUserId || !actorUsername || !actorDisplayName) {
+      throw new Error("Invalid protected ROOTS lifecycle request");
+    }
+    if (["ASSIGN", "RECLASSIFY"].includes(action) && !["DEV1", "ADMIN"].includes(rootsClass)) {
+      throw new Error("A protected DEV1 or ADMIN classification is required");
+    }
+    const assignments = rows(tables, "downtime_roots_assignments");
+    let assignment = assignments.find(x => x.user_id === userId || x.staff_id === staffId);
+    let previousClass = null, nextClass = rootsClass, auditAction;
+    const timestamp = now().toISOString();
+    if (!assignment) {
+      if (action !== "ASSIGN") throw new Error("Protected ROOTS assignment does not exist");
+      assignment = {
+        id: id(), user_id: userId, staff_id: staffId, roots_class: rootsClass,
+        status: "ACTIVE", version: 1, assigned_by_user_id: actorUserId,
+        assigned_by_username: actorUsername, assigned_by_display_name: actorDisplayName,
+        assigned_at: timestamp, updated_at: timestamp, revoked_at: null
+      };
+      assignments.push(assignment);
+      auditAction = rootsClass === "DEV1" ? "ROOTS_DEV1_ASSIGNED" : "ROOTS_ADMIN_ASSIGNED";
+    } else {
+      if (assignment.user_id !== userId || assignment.staff_id !== staffId) throw new Error("USER and STAFF IDs are already linked to a different protected ROOTS identity");
+      previousClass = assignment.roots_class;
+      if (action === "ASSIGN") {
+        if (assignment.status === "ACTIVE" && assignment.roots_class === rootsClass) {
+          return { user_id: userId, staff_id: staffId, roots_class: assignment.roots_class, status: assignment.status, version: assignment.version, replayed: true };
+        }
+        if (assignment.status === "ACTIVE") throw new Error("An active ROOTS classification already exists; use an authorised reclassification");
+        if (Number(args.p_expected_version) !== Number(assignment.version)) throw Object.assign(new Error("ROOTS_ASSIGNMENT_VERSION_CONFLICT"), { status: 409 });
+        Object.assign(assignment, { roots_class: rootsClass, status: "ACTIVE", version: assignment.version + 1, revoked_at: null });
+        auditAction = rootsClass === "DEV1" ? "ROOTS_DEV1_ASSIGNED" : "ROOTS_ADMIN_ASSIGNED";
+        nextClass = rootsClass;
+      } else if (action === "RECLASSIFY") {
+        if (assignment.status !== "ACTIVE") throw new Error("Only an active ROOTS identity can be reclassified");
+        if (Number(args.p_expected_version) !== Number(assignment.version)) throw Object.assign(new Error("ROOTS_ASSIGNMENT_VERSION_CONFLICT"), { status: 409 });
+        if (assignment.roots_class === rootsClass) {
+          return { user_id: userId, staff_id: staffId, roots_class: assignment.roots_class, status: assignment.status, version: assignment.version, replayed: true };
+        }
+        Object.assign(assignment, { roots_class: rootsClass, version: assignment.version + 1 });
+        auditAction = "ROOTS_RECLASSIFIED";
+        nextClass = rootsClass;
+      } else {
+        if (assignment.status === "REVOKED") {
+          return { user_id: userId, staff_id: staffId, roots_class: assignment.roots_class, status: assignment.status, version: assignment.version, replayed: true };
+        }
+        if (Number(args.p_expected_version) !== Number(assignment.version)) throw Object.assign(new Error("ROOTS_ASSIGNMENT_VERSION_CONFLICT"), { status: 409 });
+        Object.assign(assignment, { status: "REVOKED", version: assignment.version + 1, revoked_at: timestamp });
+        auditAction = "ROOTS_REVOKED";
+        nextClass = assignment.roots_class;
+      }
+      Object.assign(assignment, {
+        assigned_by_user_id: actorUserId, assigned_by_username: actorUsername,
+        assigned_by_display_name: actorDisplayName, updated_at: timestamp
+      });
+    }
+    rows(tables, "downtime_roots_assignment_audit").push({
+      id: id(), assignment_id: assignment.id, user_id: userId, staff_id: staffId,
+      roots_class: nextClass, actor_user_id: actorUserId, actor_username: actorUsername,
+      actor_display_name: actorDisplayName, action: auditAction, created_at: timestamp
+    });
+    return {
+      user_id: assignment.user_id, staff_id: assignment.staff_id,
+      roots_class: assignment.roots_class, status: assignment.status,
+      version: assignment.version, replayed: false, previous_roots_class: previousClass
+    };
+  },
+
+  yard_role_save_definition({ tables, args, now }) {
+    const roleId = cleanText(args.p_role_id, 120);
+    const name = cleanText(args.p_name, 80);
+    const description = cleanText(args.p_description, 500);
+    const status = cleanText(args.p_status, 20).toUpperCase();
+    const actorUserId = cleanText(args.p_actor_user_id, 120);
+    const actorUsername = cleanText(args.p_actor_username, 80);
+    const actorDisplayName = cleanText(args.p_actor_display_name, 120);
+    const permissions = args.p_permissions;
+    const departments = ["SCPL", "R&M", "Management", "SCFL", "Traffic"];
+    if (!roleId || !name || !["DRAFT", "ACTIVE", "RETIRED"].includes(status) || !actorUserId || !actorUsername || !actorDisplayName || !Array.isArray(permissions) || permissions.length !== 5) {
+      throw new Error("Invalid YARD ROLE definition request");
+    }
+    const seen = new Set();
+    for (const permission of permissions) {
+      if (!permission || !departments.includes(permission.department) || seen.has(permission.department) ||
+          ["can_view", "can_enter", "can_edit", "can_manage"].some(key => typeof permission[key] !== "boolean")) {
+        throw new Error("YARD ROLE permissions must contain exactly one explicit record for each approved department");
+      }
+      seen.add(permission.department);
+    }
+    if (seen.size !== 5) throw new Error("YARD ROLE must define all five approved departments");
+    const roles = rows(tables, "yard_roles");
+    let role = roles.find(x => x.id === roleId);
+    let previous = null, action;
+    if (role) {
+      if (Number(role.version) !== Number(args.p_expected_version)) throw Object.assign(new Error("YARD_ROLE_VERSION_CONFLICT"), { status: 409 });
+      if (status === "RETIRED" && rows(tables, "yard_role_assignments").some(x => x.yard_role_id === roleId && x.status === "ACTIVE")) {
+        throw new Error("Reassign every USER before retiring this YARD ROLE");
+      }
+      const existingPermissions = rows(tables, "yard_role_department_permissions").filter(x => x.yard_role_id === roleId);
+      previous = {
+        id: role.id, name: role.name, description: role.description, status: role.status,
+        version: role.version,
+        permissions: existingPermissions.map(x => ({ department: x.department, can_view: x.can_view, can_enter: x.can_enter, can_edit: x.can_edit, can_manage: x.can_manage }))
+      };
+      action = role.status !== "ACTIVE" && status === "ACTIVE" ? "YARD_ROLE_ACTIVATED" :
+        role.status === "ACTIVE" && status === "RETIRED" ? "YARD_ROLE_RETIRED" : "YARD_ROLE_UPDATED";
+      Object.assign(role, { name, description, status, version: role.version + 1, updated_at: now().toISOString() });
+    } else {
+      if (Number(args.p_expected_version) !== 0) throw Object.assign(new Error("YARD_ROLE_VERSION_CONFLICT"), { status: 409 });
+      role = {
+        id: roleId, name, description, status, version: 1,
+        created_by_user_id: actorUserId, created_by: actorUsername,
+        created_at: now().toISOString(), updated_at: now().toISOString()
+      };
+      roles.push(role);
+      action = status === "ACTIVE" ? "YARD_ROLE_ACTIVATED" : "YARD_ROLE_CREATED";
+    }
+    const permissionRows = rows(tables, "yard_role_department_permissions");
+    const retained = permissionRows.filter(x => x.yard_role_id !== roleId);
+    const nextPermissions = permissions.map(p => ({
+      yard_role_id: roleId, department: p.department,
+      can_view: p.can_view, can_enter: p.can_enter, can_edit: p.can_edit, can_manage: p.can_manage
+    }));
+    permissionRows.splice(0, permissionRows.length, ...retained, ...nextPermissions);
+    const next = {
+      id: role.id, name: role.name, description: role.description, status: role.status,
+      version: role.version,
+      permissions: nextPermissions.map(x => ({ department: x.department, can_view: x.can_view, can_enter: x.can_enter, can_edit: x.can_edit, can_manage: x.can_manage }))
+    };
+    rows(tables, "yard_role_definition_audit").push({
+      id: id(), yard_role_id: roleId, actor_user_id: actorUserId,
+      actor_username: actorUsername, actor_display_name: actorDisplayName,
+      action, previous_definition: previous, next_definition: next, created_at: now().toISOString()
+    });
+    return next;
+  },
+
+  yard_role_assign_user({ tables, args, now }) {
+    const userId = cleanText(args.p_user_id, 120), staffId = cleanText(args.p_staff_id, 120);
+    const roleId = cleanText(args.p_yard_role_id, 120);
+    const actorUserId = cleanText(args.p_actor_user_id, 120);
+    const actorUsername = cleanText(args.p_actor_username, 80);
+    const actorDisplayName = cleanText(args.p_actor_display_name, 120);
+    const role = rows(tables, "yard_roles").find(x => x.id === roleId && x.status === "ACTIVE");
+    if (!userId || !staffId || !roleId || userId === staffId || !actorUserId || !actorUsername || !actorDisplayName) throw new Error("Invalid USER/STAFF/YARD ROLE assignment request");
+    if (!role) throw new Error("Canonical YARD ROLE is missing or inactive");
+    const permissionCount = rows(tables, "yard_role_department_permissions").filter(x => x.yard_role_id === roleId).length;
+    if (permissionCount !== 5) throw new Error("Canonical YARD ROLE requires exactly five department permission records");
+    const assignments = rows(tables, "yard_role_assignments");
+    let assignment = assignments.find(x => x.user_id === userId);
+    let inserted = false;
+    if (!assignment) {
+      assignment = {
+        id: id(), user_id: userId, staff_id: staffId, yard_role_id: roleId,
+        status: "ACTIVE", version: 1, verified_at: now().toISOString(),
+        assigned_by_user_id: actorUserId, assigned_by: actorUsername,
+        created_at: now().toISOString(), updated_at: now().toISOString()
+      };
+      assignments.push(assignment);
+      inserted = true;
+      rows(tables, "yard_role_assignment_audit").push({
+        id: id(), assignment_id: assignment.id, user_id: userId, staff_id: staffId,
+        yard_role_id: roleId, actor_user_id: actorUserId, actor_username: actorUsername,
+        actor_display_name: actorDisplayName, action: "USER_YARD_ROLE_ASSIGNED",
+        details: { version: assignment.version, role_name: role.name }, created_at: now().toISOString()
+      });
+    } else if (assignment.staff_id !== staffId || assignment.yard_role_id !== roleId || assignment.status !== "ACTIVE") {
+      throw new Error("USER already has a different or inactive YARD ROLE assignment");
+    }
+    return {
+      user_id: assignment.user_id, staff_id: assignment.staff_id,
+      yard_role_id: assignment.yard_role_id, status: assignment.status,
+      version: assignment.version, verified_at: assignment.verified_at, replayed: !inserted
+    };
+  },
+
+  yard_role_reassign_user({ tables, args, now }) {
+    const userId = cleanText(args.p_user_id, 120), staffId = cleanText(args.p_staff_id, 120);
+    const roleId = cleanText(args.p_yard_role_id, 120);
+    const actorUserId = cleanText(args.p_actor_user_id, 120);
+    const actorUsername = cleanText(args.p_actor_username, 80);
+    const actorDisplayName = cleanText(args.p_actor_display_name, 120);
+    if (!userId || !staffId || !roleId || userId === staffId || !actorUserId || !actorUsername || !actorDisplayName) {
+      throw new Error("Invalid USER/STAFF/YARD ROLE reassignment request");
+    }
+    const role = rows(tables, "yard_roles").find(x => x.id === roleId && x.status === "ACTIVE");
+    if (!role) throw new Error("Canonical YARD ROLE is missing or inactive");
+    if (rows(tables, "yard_role_department_permissions").filter(x => x.yard_role_id === roleId).length !== 5) {
+      throw new Error("Canonical YARD ROLE requires exactly five department permission records");
+    }
+    const assignment = rows(tables, "yard_role_assignments").find(x => x.user_id === userId);
+    if (!assignment) throw new Error("USER has no existing YARD ROLE assignment");
+    if (assignment.staff_id !== staffId) throw new Error("USER/STAFF assignment does not match immutable linked identity");
+    if (Number(assignment.version) !== Number(args.p_expected_version)) throw Object.assign(new Error("YARD_ROLE_ASSIGNMENT_VERSION_CONFLICT"), { status: 409 });
+    if (assignment.status === "ACTIVE" && assignment.yard_role_id === roleId) {
+      return { user_id: userId, staff_id: staffId, yard_role_id: roleId, status: assignment.status, version: assignment.version, verified_at: assignment.verified_at, replayed: true };
+    }
+    const previousRoleId = assignment.yard_role_id;
+    const action = assignment.status === "REVOKED" ? "USER_YARD_ROLE_RESTORED" : "USER_YARD_ROLE_REASSIGNED";
+    Object.assign(assignment, {
+      yard_role_id: roleId, status: "ACTIVE", version: assignment.version + 1,
+      verified_at: now().toISOString(), assigned_by_user_id: actorUserId,
+      assigned_by: actorUsername, updated_at: now().toISOString()
+    });
+    rows(tables, "yard_role_assignment_audit").push({
+      id: id(), assignment_id: assignment.id, user_id: userId, staff_id: staffId,
+      yard_role_id: roleId, actor_user_id: actorUserId, actor_username: actorUsername,
+      actor_display_name: actorDisplayName, action,
+      details: { previous_yard_role_id: previousRoleId, version: assignment.version },
+      created_at: now().toISOString()
+    });
+    return { user_id: userId, staff_id: staffId, yard_role_id: roleId, status: assignment.status, version: assignment.version, verified_at: assignment.verified_at, replayed: false };
+  }
+
 });
