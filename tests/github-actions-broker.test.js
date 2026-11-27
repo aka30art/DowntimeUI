@@ -136,7 +136,7 @@ test("broker maps GitHub numeric actor to canonical active USER and authorises b
   assert.equal(harness.calls.authorised[0].authorityEpoch, 4);
   assert.equal(harness.calls.executed[0].principal.userId, USER_ID);
   assert.equal(harness.calls.executed[0].service, "gatelog-api");
-  assert.equal(harness.calls.sessions[0].principal.userId, USER_ID);
+  assert.equal(harness.calls.executed[0].sessionToken, "broker-created-short-lived-service-session-token");
   assert.equal(harness.calls.sessionDisposals, 1);
   assert.equal(harness.calls.executed[0].authorityEpoch, 4);
   assert.equal(harness.calls.encrypted[0].requestEnvelope.requestId, REQUEST_ID);
