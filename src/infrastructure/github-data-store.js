@@ -471,6 +471,48 @@ export function createGitHubDataStore({
       };
     },
 
+    async listObjects({ bucket: bucketInput, prefix = "", limit = 1000, offset = 0, sortBy = { column: "name", order: "asc" } } = {}) {
+      const bucket = requiredString(bucketInput, "Storage bucket", /^[a-z0-9][a-z0-9_-]{0,62}$/);
+      const cleanPrefix = String(prefix || "");
+      if (cleanPrefix.split("/").some(segment => segment === "." || segment === ".." || (segment && !/^[A-Za-z0-9._-]+$/.test(segment)))) {
+        throw new TypeError("Storage list prefix contains an invalid segment.");
+      }
+      if (!Number.isInteger(limit) || limit < 1 || limit > 1000 || !Number.isInteger(offset) || offset < 0) {
+        throw new TypeError("Storage list pagination is invalid.");
+      }
+      const headSha = await getHead();
+      const treeSha = await getCommitTree(headSha);
+      const tree = await request("/git/trees/" + encodeURIComponent(treeSha) + "?recursive=1");
+      if (tree.truncated) throw new GitHubStoreError("GitHub repository tree is too large for a complete storage listing.", 413);
+      const root = "storage/" + systemId.toLowerCase() + "/" + bucket + "/";
+      const normalizedPrefix = cleanPrefix.replace(/^\/+|\/+$/g, "");
+      const base = root + (normalizedPrefix ? normalizedPrefix + "/" : "");
+      const children = new Map();
+      for (const entry of tree.tree || []) {
+        if (entry.type !== "blob" || !entry.path.startsWith(base)) continue;
+        const rest = entry.path.slice(base.length);
+        if (!rest) continue;
+        const slash = rest.indexOf("/");
+        const name = slash < 0 ? rest : rest.slice(0, slash);
+        if (!name) continue;
+        if (slash >= 0) {
+          if (!children.has(name)) children.set(name, { name, id: null, metadata: null });
+        } else {
+          const metadataPath = "storage/" + systemId.toLowerCase() + "/metadata/" + bucket + "/" +
+            (normalizedPrefix ? normalizedPrefix + "/" : "") + name + ".json";
+          const metadata = await readJsonAt(metadataPath, headSha);
+          children.set(name, {
+            name, id: entry.sha,
+            metadata: { size: entry.size ?? metadata?.size ?? null, mimetype: metadata?.mimeType || "application/octet-stream", lastModified: metadata?.updatedAt || null }
+          });
+        }
+      }
+      const items = [...children.values()];
+      const descending = String(sortBy?.order || "asc").toLowerCase() === "desc";
+      items.sort((a, b) => (a.name.localeCompare(b.name)) * (descending ? -1 : 1));
+      return items.slice(offset, offset + limit);
+    },
+
     async uploadObject({ bucket: bucketInput, path: pathInput, data, mimeType = "application/octet-stream", upsert = false } = {}) {
       const bucket = requiredString(bucketInput, "Storage bucket", /^[a-z0-9][a-z0-9_-]{0,62}$/);
       const objectName = requiredString(pathInput, "Storage object path");
