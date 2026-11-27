@@ -286,8 +286,9 @@ try{
   assert.equal(resetDialogIndex,3,"WIPE OUT must require three explicit confirmation choices.");
   const yardhubPage=await browser.newPage({viewport:{width:1440,height:900},deviceScaleFactor:1});
   const yardhubRequests=[];
+  const yardhubFailures=[];
   yardhubPage.on("request",request=>yardhubRequests.push(request.url()));
-  yardhubPage.on("pageerror",error=>failures.push("YARDHUB: "+error.message));
+  yardhubPage.on("pageerror",error=>yardhubFailures.push(error.message));
   await yardhubPage.route("https://github-native.invalid/**",route=>route.fulfill({status:503,contentType:"application/json",body:JSON.stringify({error:"Isolated browser QA: no live repository token supplied"})}));
   await yardhubPage.goto("http://127.0.0.1:"+address.port+"/yardhub/runtime/index.html",{waitUntil:"networkidle"});
   await yardhubPage.getByRole("heading",{name:"Connect YARDHUB to GitHub"}).waitFor();
@@ -310,8 +311,9 @@ try{
 
   const rmPage=await browser.newPage({viewport:{width:390,height:844},deviceScaleFactor:1});
   const rmRequests=[];
+  const rmFailures=[];
   rmPage.on("request",request=>rmRequests.push(request.url()));
-  rmPage.on("pageerror",error=>failures.push("R&M: "+error.message));
+  rmPage.on("pageerror",error=>rmFailures.push(error.message));
   await rmPage.route("https://github-native.invalid/**",route=>route.fulfill({status:503,contentType:"application/json",body:JSON.stringify({error:"Isolated browser QA: no live repository token supplied"})}));
   await rmPage.goto("http://127.0.0.1:"+address.port+"/yardhub/runtime/repair-maintenance.html",{waitUntil:"networkidle"});
   await rmPage.getByRole("heading",{name:"Connect YARDHUB to GitHub"}).waitFor();
@@ -322,6 +324,8 @@ try{
   await rmPage.screenshot({path:"artifacts/yardhub-rm-setup-mobile.png",fullPage:true});
   await rmPage.close();
   await yardhubPage.close();
+  assert.deepEqual(yardhubFailures,[],"YARDHUB browser runtime errors: "+yardhubFailures.join(" | "));
+  assert.deepEqual(rmFailures,[],"Standalone R&M browser runtime errors: "+rmFailures.join(" | "));
   console.log("PASS: Chromium installer, daily operations, plant overview, task-lock persistence, reports, Settings edits, backup/restore, 390px mobile layout and WIPE OUT reset, YARDHUB private setup gate, standalone R&M lock and mobile layout");
 }finally{
   await browser.close();
