@@ -47,7 +47,7 @@ A detailed source-backed finding register is maintained in [GITHUB_NATIVE_SECURI
 
 ## Phase 3 — GitHub-native request broker feasibility
 
-GitHub Pages is static and cannot hold a server secret or run request-time authorization. A GitHub Actions broker is asynchronous and is not automatically a secure API. Before adopting it, prove all of the following in a disposable private test repository:
+GitHub Pages is static and cannot hold a server secret or run request-time authorization. A GitHub Actions broker is asynchronous and is not automatically a secure API. A protocol core has been added at `src/infrastructure/github-actions-broker.js`; it parses authenticated issue-comment events, resolves numeric GitHub sender IDs to canonical active USER/STAFF identities, verifies a registered signing key, requires authority epoch and YARD ROLE authorization callbacks, rejects caller-supplied actor/role fields, and requires atomic idempotency plus encrypted response callbacks. Its crypto, key lifecycle, workflow, private data adapter, queueing and real GitHub integration are not implemented. This is protocol scaffolding, not a broker deployment. Before adopting it, prove all of the following in a disposable private test repository:
 
 1. Operators can submit requests without receiving repository Contents access or a reusable privileged credential.
 2. The workflow derives the caller identity from a GitHub-authenticated event, not a caller-supplied actor field.
@@ -136,6 +136,7 @@ The direct fine-grained PAT route should not be the default for staff request su
 
 - PR #3 is open, draft and unmerged. Latest verified PR head at this plan update: `a0f438ad48e21d17117261f471d46b1151625a4c`; any later commits require their own CI result.
 - CI #486 (`46083145309`) passed on exact head `a0f438ad48e21d17117261f471d46b1151625a4c`: `npm run check`, Chromium installation, Playwright browser QA and screenshot artifact upload all passed. This run includes the source-parity test wired into both `npm test` and `npm run check`.
+- CI #487 (`46083261647`) passed on exact head `19eae382113d5b5f0acd5a4251a61dc71d303964`: dependency installation, `npm run check`, Chromium installation, Playwright browser QA and screenshot artifact upload all passed. That run predates the broker protocol and latest runtime hardening commits.
 - Earlier complete CI passes: #479 (`46082765580`) on `521a283534011aef346611facda2fbc39cf17534`; #481 (`46083001679`) on `20234bb505a2576da7d0115234ba5e75a6bb02a2`; #482 (`46083018447`) on `1b1520f4df4e2438d97872e8078c611786a728d9`; #485 (`46083134784`) on `2f23ba7ce32052209657049116c3e5f9a05f5233`. Earlier #476 (`46082619410`) on `a652e7828cc943ab01826ba429e6ff6614fcea9b` also passed.
 - Runtime UI port: `yardhub/runtime/index.html` includes the two source-main STAFF layout changes from source commits `0cbda60f90ee45f8df866e7b36f532498a78ea49` and `939195a1fac26a9a632ab3938f17922985d8cd9d`. STAFF uses the YARD HUB administration heading, directory row layout and responsive toolbar as USERS/ACCESS AND RIGHTS, with a dedicated header return button. `yardhub/reference/` remains pinned to tree `ba99913d1eaff7d99785088fd0931b3815defd4c` and has not been altered.
 - Runtime STAFF static-contract and source table/storage/RPC catalogue assertions are included in `npm test` and `npm run check`. The latter test checks catalogue names and counts only, not RPC semantics or authorization.
@@ -149,3 +150,11 @@ The direct fine-grained PAT route should not be the default for staff request su
 ## Non-negotiable protection boundary
 
 No commits, pull requests, workflow runs, settings changes, deployments, Supabase operations, data exports or credential operations may target `aka30art/DOWNTIME`. All work in this plan is confined to `aka30art/DowntimeUI` and explicitly provisioned disposable/private test infrastructure.
+
+
+## Latest protocol and hardening work
+
+- Runtime hardening commit chain: `103e38b` removed placeholder secret fallbacks and changed canonical-auth readiness to fail closed; `012d41f` removed the synthetic anonymous session; `944d2e1` and `5918ef7` added regression assertions.
+- Broker protocol core: `d1ad377` adds event validation, trusted sender-ID extraction, canonical USER mapping, signature-verification callback, authority epoch check, authorization callback, identity-field rejection, idempotency and encrypted-response callbacks.
+- Broker protocol tests: `19da9e6` adds the test suite; `2ef1096` wires it into `npm test` and `npm run check`.
+- CI #487 on `19eae382` passed before these changes. No CI result has yet been observed for the current head. Phase 3 remains BLOCKED pending real cryptography, key lifecycle, private broker/data infrastructure, workflow and two-account end-to-end proof.
