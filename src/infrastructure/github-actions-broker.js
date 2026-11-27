@@ -8,7 +8,9 @@ const FORBIDDEN_IDENTITY_FIELDS = new Set([
   "actor", "actorId", "actor_id", "actorUserId", "actor_user_id",
   "actorUsername", "actor_username", "actorDisplayName", "actor_display_name",
   "actorRole", "actorTier", "callerRole", "callerTier",
-  "permissions", "isAdmin", "isDev"
+  "permissions", "isAdmin", "isDev",
+  "sessionToken", "session_token", "accessToken", "access_token",
+  "authToken", "auth_token", "authorization"
 ]);
 
 function brokerError(message, status = 400, code = "BROKER_REQUEST_INVALID") {
@@ -86,13 +88,14 @@ export function createGitHubActionsBroker({
   authorizeInboxIssue,
   decryptRequest,
   authorize,
+  createServiceSession,
   execute,
   encryptResponse,
   publishEncryptedResponse,
   idempotencyStore,
   getAuthorityEpoch
 } = {}) {
-  const required = { resolvePrincipal, authorizeInboxIssue, decryptRequest, authorize, execute, encryptResponse, publishEncryptedResponse, getAuthorityEpoch };
+  const required = { resolvePrincipal, authorizeInboxIssue, decryptRequest, authorize, createServiceSession, execute, encryptResponse, publishEncryptedResponse, getAuthorityEpoch };
   for (const [name, callback] of Object.entries(required)) {
     if (typeof callback !== "function") throw new TypeError("GitHub Actions broker requires " + name + ".");
   }
@@ -123,6 +126,7 @@ export function createGitHubActionsBroker({
 
       let claimedRequestId = null;
       let completed = false;
+      let serviceSession = null;
       try {
         const request = await decryptRequest({
           envelope: parsed.envelope,
@@ -130,9 +134,10 @@ export function createGitHubActionsBroker({
         });
         if (!request || typeof request !== "object" || Array.isArray(request) ||
             request.requestId !== parsed.envelope.requestId ||
+            typeof request.service !== "string" || !SERVICE_NAMES.has(request.service) ||
             typeof request.action !== "string" || !ACTION_PATTERN.test(request.action) ||
             !request.args || typeof request.args !== "object" || Array.isArray(request.args)) {
-          throw brokerError("The decrypted request failed schema validation.");
+          throw brokerError("The decrypted request failed service/action schema validation.");
         }
         assertNoCallerIdentity(request);
 
@@ -142,17 +147,19 @@ export function createGitHubActionsBroker({
         }
         const decision = await authorize({
           principal,
+          service: request.service,
           action: request.action,
           args: request.args,
           authorityEpoch
         });
-        if (decision !== true) throw brokerError("The USER is not authorised for this action.", 403, "BROKER_PERMISSION_DENIED");
+        if (decision !== true) throw brokerError("The USER is not authorised for this service action.", 403, "BROKER_PERMISSION_DENIED");
 
-        // Only a decrypted, currently authorised operation may reserve its idempotency key.
+        // Decrypt and authorize before reserving an idempotency key; caller data never supplies a session.
         const claim = await idempotencyStore.claim({
           requestId: parsed.envelope.requestId,
           actorUserId: principal.userId,
           commentId: parsed.commentId,
+          service: request.service,
           action: request.action,
           args: request.args,
           authorityEpoch
@@ -172,10 +179,25 @@ export function createGitHubActionsBroker({
         }
         claimedRequestId = parsed.envelope.requestId;
 
+        // The broker creates a fresh short-lived service session from the verified USER.
+        // It is never supplied by the browser and is never included in the public inbox.
+        serviceSession = await createServiceSession({
+          principal,
+          service: request.service,
+          requestId: parsed.envelope.requestId,
+          authorityEpoch
+        });
+        const sessionToken = typeof serviceSession === "string" ? serviceSession : serviceSession?.token;
+        if (typeof sessionToken !== "string" || sessionToken.length < 24 || sessionToken.length > 4096) {
+          throw brokerError("The trusted service session could not be issued.", 503, "BROKER_SESSION_UNAVAILABLE");
+        }
+
         const result = await execute({
           principal,
+          service: request.service,
           action: request.action,
           args: request.args,
+          sessionToken,
           requestId: parsed.envelope.requestId,
           authorityEpoch
         });
@@ -183,6 +205,11 @@ export function createGitHubActionsBroker({
           requestEnvelope: parsed.envelope,
           payload: { ok: true, requestId: parsed.envelope.requestId, result }
         });
+        // Revoke/remove the service session before persisting and publishing the response.
+        if (typeof serviceSession?.dispose === "function") {
+          await serviceSession.dispose();
+          serviceSession = null;
+        }
         await idempotencyStore.complete({
           requestId: parsed.envelope.requestId,
           actorUserId: principal.userId,
@@ -196,6 +223,9 @@ export function createGitHubActionsBroker({
         });
         return { accepted: true, replayed: false, requestId: parsed.envelope.requestId };
       } catch (error) {
+        if (typeof serviceSession?.dispose === "function") {
+          try { await serviceSession.dispose(); } catch { /* Keep the original broker failure. */ }
+        }
         if (claimedRequestId && !completed) {
           await idempotencyStore.fail?.({
             requestId: claimedRequestId,
