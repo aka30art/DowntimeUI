@@ -61,6 +61,11 @@ test("all seven YARDHUB GitHub-native Edge services register and answer local CO
   const previousSession = globalThis.DowntimeCentral;
   const previousBootstrapCode = globalThis.__YARDHUB_BOOTSTRAP_CODE__;
   const runtime = await installGitHubEdgeRuntime({ store });
+  assert.equal(globalThis.Deno.env.get("DOWNTIME_CANONICAL_AUTH_READY"), "false");
+  assert.equal(globalThis.Deno.env.get("SUPABASE_SERVICE_ROLE_KEY"), "GITHUB_NATIVE_COMPAT_ADAPTER");
+  assert.equal(globalThis.Deno.env.get("DOWNTIME_IDENTITY_FINGERPRINT_SECRET"), undefined);
+  assert.equal(globalThis.Deno.env.get("GITHUB_STAFF_IMAGE_TOKEN"), undefined);
+  assert.equal(globalThis.Deno.env.get("PHOTO_CLEANUP_SECRET"), undefined);
   assert.match(runtime.bootstrapCode, /^[A-F0-9]{48}$/);
   assert.equal(globalThis.__YARDHUB_BOOTSTRAP_CODE__, runtime.bootstrapCode);
 
