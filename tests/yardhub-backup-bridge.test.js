@@ -21,7 +21,12 @@ function response(status, body, binary = false) {
   };
 }
 
-function createMockServices({ privateRepository = true, authority = null, flipAuthorityOnFirstSourceRead = false } = {}) {
+function createMockServices({
+  privateRepository = true,
+  authority = { status: "ACTIVE", primarySystemId: "YARDHUB-PRIMARY", secondarySystemId: "DOWNTIMEUI-GITHUB", epoch: 1 },
+  flipAuthorityOnFirstSourceRead = false,
+  authorityAfterFirstSourceRead = { status: "ACTIVE", primarySystemId: "DOWNTIMEUI-GITHUB", secondarySystemId: "YARDHUB-PRIMARY", epoch: 2 }
+} = {}) {
   let head = "commit-0";
   let currentTree = new Map();
   let counter = 0;
@@ -40,10 +45,7 @@ function createMockServices({ privateRepository = true, authority = null, flipAu
 
   function flipAuthorityToTwin() {
     const nextTree = new Map(currentTree);
-    const bytes = Buffer.from(JSON.stringify({
-      status: "ACTIVE", primarySystemId: "DOWNTIMEUI-GITHUB",
-      secondarySystemId: "YARDHUB-PRIMARY", epoch: 2
-    }) + "\n", "utf8");
+    const bytes = Buffer.from(JSON.stringify(authorityAfterFirstSourceRead) + "\n", "utf8");
     const sha = gitSha(bytes);
     blobs.set(sha, bytes);
     nextTree.set("control/authority.json", { sha, bytes });
@@ -195,6 +197,16 @@ test("unchanged YARDHUB data does not create a redundant GitHub commit", async (
   assert.equal(mock.commits, 1);
 });
 
+test("backup fails closed when the private GitHub data repository has no authority manifest", async () => {
+  const mock = createMockServices({ authority: null });
+  const runner = createYardHubBackupRunner({ fetchImpl: mock.fetchImpl });
+  const result = await runner.run({ env });
+  assert.equal(result.skipped, true);
+  assert.match(result.reason, /authority manifest is missing/i);
+  assert.equal(mock.tableCalls.size, 0);
+  assert.equal(mock.commits, 0);
+});
+
 test("backup stops before reading source records when GitHub already owns primary authority", async () => {
   const mock = createMockServices({
     authority: { status: "ACTIVE", primarySystemId: "DOWNTIMEUI-GITHUB", epoch: 2 }
@@ -204,6 +216,22 @@ test("backup stops before reading source records when GitHub already owns primar
   assert.equal(result.skipped, true);
   assert.match(result.reason, /not the active primary/);
   assert.equal(mock.tableCalls.size, 0);
+  assert.equal(mock.commits, 0);
+});
+
+test("backup stops when authority epoch changes during export even if YARDHUB remains primary", async () => {
+  const mock = createMockServices({
+    authority: { status: "ACTIVE", primarySystemId: "YARDHUB-PRIMARY", secondarySystemId: "DOWNTIMEUI-GITHUB", epoch: 1 },
+    flipAuthorityOnFirstSourceRead: true,
+    authorityAfterFirstSourceRead: {
+      status: "ACTIVE", primarySystemId: "YARDHUB-PRIMARY",
+      secondarySystemId: "DOWNTIMEUI-GITHUB", epoch: 2
+    }
+  });
+  const runner = createYardHubBackupRunner({ fetchImpl: mock.fetchImpl });
+  const result = await runner.run({ env });
+  assert.equal(result.skipped, true);
+  assert.match(result.reason, /authority epoch changed/i);
   assert.equal(mock.commits, 0);
 });
 
