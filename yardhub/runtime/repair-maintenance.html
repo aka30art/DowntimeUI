@@ -163,6 +163,27 @@
 </style>
 <link rel="stylesheet" href="shared-ui-system.css?v=20261124-2">
 <link rel="stylesheet" href="yard-hub-visual-system.css?v=20261125-1">
+<style id="yardhub-github-connect-style">
+body.yardhub-github-locked{overflow:hidden}
+body.yardhub-github-locked>:not(#yardhub-github-connect-overlay){visibility:hidden!important}
+#yardhub-github-connect-overlay{position:fixed;inset:0;z-index:999999;display:grid;place-items:center;padding:22px;background:#07111f;color:#e9eef5;font-family:Arial,sans-serif}
+#yardhub-github-connect-overlay[hidden]{display:none}
+.yardhub-github-connect-card{width:min(620px,100%);padding:30px;border:1px solid #344256;border-top:4px solid #f0c43b;border-radius:12px;background:#111d2c;box-shadow:0 24px 80px #0009}
+.yardhub-github-connect-kicker{font-size:11px;font-weight:700;letter-spacing:.16em;color:#f0c43b;margin-bottom:16px}
+.yardhub-github-connect-card h1{font-size:25px;margin:0 0 12px}
+.yardhub-github-connect-card p{font-size:14px;line-height:1.55;color:#b9c5d3}
+.yardhub-github-connect-note{padding:11px 13px;border-left:3px solid #f0c43b;background:#182638}
+#yardhub-github-connect-form{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:20px 0}
+#yardhub-github-connect-form label{display:grid;gap:6px;font-size:12px;color:#cbd5e1}
+#yardhub-github-connect-form label:nth-child(3),#yardhub-github-connect-form label:nth-child(4),#yardhub-github-connect-form button{grid-column:1/-1}
+#yardhub-github-connect-form input{width:100%;box-sizing:border-box;padding:12px;border:1px solid #40516a;border-radius:6px;background:#081321;color:#fff;font:inherit}
+#yardhub-github-connect-form button{padding:13px;border:0;border-radius:6px;background:#f0c43b;color:#111827;font-weight:800;letter-spacing:.08em;cursor:pointer}
+#yardhub-github-connect-form button:disabled{opacity:.55;cursor:wait}
+#yardhub-github-connect-form [data-create-private]{background:transparent;border:1px solid #f0c43b;color:#f0c43b}
+.yardhub-github-connect-status{min-height:22px;font-weight:700}
+.yardhub-github-connect-status[data-state=error]{color:#ff9c9c}
+@media(max-width:520px){.yardhub-github-connect-card{padding:20px}#yardhub-github-connect-form{grid-template-columns:1fr}#yardhub-github-connect-form label{grid-column:1/-1}}
+</style>
 </head>
 <body>
 <div class="app rm-module-root" id="appRoot"><div class="frame">
@@ -356,7 +377,7 @@
 </div></div>
 <div class="overlay" id="messageOverlay" role="dialog" aria-modal="true"><div class="dialog" style="max-width:420px"><div class="dialog-head"><div class="dialog-title" id="messageTitle">NOTICE</div><button class="close" type="button" data-close="messageOverlay" aria-label="Close">×</button></div><p id="messageText"></p><div class="modal-footer"><button class="btn primary" type="button" data-close="messageOverlay">CLOSE</button></div></div></div>
 
-<script>window.DOWNTIME_CENTRAL_API='https://ygwfipksbbprqynvbklk.supabase.co/functions/v1/central-bank';window.DOWNTIME_CENTRAL_API_KEY='sb_publishable_PDLmXilBlFT-aC3G14XcbA_GsZlgJGx';window.REPAIR_MAINTENANCE_API='https://ygwfipksbbprqynvbklk.supabase.co/functions/v1/repair-maintenance-api';window.CENTRAL_CONFIG_ADMIN_API='https://ygwfipksbbprqynvbklk.supabase.co/functions/v1/central-config-admin';</script>
+<script>window.DOWNTIME_CENTRAL_API='https://github-native.invalid/functions/v1/central-bank';window.DOWNTIME_CENTRAL_API_KEY='github-native';window.REPAIR_MAINTENANCE_API='https://github-native.invalid/functions/v1/repair-maintenance-api';window.CENTRAL_CONFIG_ADMIN_API='https://github-native.invalid/functions/v1/central-config-admin';</script>
 <script src="central-bank-client.js"></script>
 <script src="repair-maintenance-app.js?v=20261125-4"></script>
 <script src="repair-maintenance-structure.js?v=phase09-1"></script>
@@ -364,4 +385,22 @@
 .rm-custom-category-icon{display:grid;place-items:center;width:100%;height:100%;color:#ffd21a;font-size:24px;font-weight:950;letter-spacing:-1px}
 #customCategoryStatus{margin-top:18px;padding:16px;border:1px solid #665723;border-radius:11px;background:linear-gradient(110deg,#332c16,#1c241e);color:#cabf99;line-height:1.6}
 </style>
+<div id="yardhub-github-connect-overlay" role="dialog" aria-modal="true" aria-labelledby="yardhub-github-connect-title">
+  <div class="yardhub-github-connect-card">
+    <div class="yardhub-github-connect-kicker">DOWNTIMEUI · INDEPENDENT DATA INFRASTRUCTURE</div>
+    <h1 id="yardhub-github-connect-title">Connect YARDHUB to GitHub</h1>
+    <p>Connect the dedicated <strong>private</strong> GitHub repository used by the YARDHUB twin. Do not use the DOWNTIME or DOWNTIMEUI application-source repositories.</p>
+    <p class="yardhub-github-connect-note">Create the private data repository once, then connect using a fine-grained token limited to that repository with Contents read/write and Metadata read.</p>
+    <form id="yardhub-github-connect-form">
+      <label>GitHub owner<input name="owner" value="aka30art" autocomplete="username" required></label>
+      <label>Private data repository<input name="repo" placeholder="e.g. YARDHUB-DATA" autocomplete="off" required></label>
+      <label>Data branch<input name="branch" value="main" autocomplete="off" required></label>
+      <label>Fine-grained GitHub token<input name="token" type="password" autocomplete="off" required></label>
+      <button type="submit">CONNECT & INITIALISE</button>
+      <button type="button" data-create-private>CREATE PRIVATE DATA REPOSITORY</button>
+    </form>
+    <p class="yardhub-github-connect-status" data-yardhub-github-status>Waiting for a private GitHub data repository.</p>
+  </div>
+</div>
+<script type="module" src="github-bootstrap.js"></script>
 </body></html>
