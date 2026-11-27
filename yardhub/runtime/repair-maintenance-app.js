@@ -1,6 +1,6 @@
 (()=>{
   'use strict';
-  const API=window.REPAIR_MAINTENANCE_API||'https://ygwfipksbbprqynvbklk.supabase.co/functions/v1/repair-maintenance-api';
+  const API=window.REPAIR_MAINTENANCE_API||'https://github-native.invalid/functions/v1/repair-maintenance-api';
   const API_KEY=window.DOWNTIME_CENTRAL_API_KEY||'';
   const MACHINES=[
     {key:'KIVERCO_PICKING_LINE',label:'KIVERCO \u2013 PICKING LINE',sub:'CONVEYOR & SORTING SYSTEM',icon:'assets/rm-icons/kiverco.svg'},
