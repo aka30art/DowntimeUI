@@ -175,14 +175,35 @@ export function createGitHubActionsBroker({
           if (claim?.actorUserId && claim.actorUserId !== principal.userId) {
             throw brokerError("The request identifier is already bound to another USER.", 409, "BROKER_REPLAY_CONFLICT");
           }
-          if (claim?.encryptedResponse) {
+          let encryptedResponse = claim?.encryptedResponse || null;
+          if (!encryptedResponse && claim?.state === "COMMITTED") {
+            encryptedResponse = await encryptResponse({
+              requestEnvelope: parsed.envelope,
+              payload: {
+                ok: true,
+                requestId: parsed.envelope.requestId,
+                result: { committed: true, refreshRequired: true }
+              }
+            });
+            await idempotencyStore.complete({
+              requestId: parsed.envelope.requestId,
+              actorUserId: principal.userId,
+              encryptedResponse
+            });
+          }
+          if (encryptedResponse) {
             await publishEncryptedResponse({
               issueNumber: parsed.issueNumber,
               actorUserId: principal.userId,
-              encryptedResponse: claim.encryptedResponse
+              encryptedResponse
             });
           }
-          return { accepted: true, replayed: true, requestId: parsed.envelope.requestId };
+          return {
+            accepted: true,
+            replayed: true,
+            pending: claim?.state === "PROCESSING",
+            requestId: parsed.envelope.requestId
+          };
         }
         claimedRequestId = parsed.envelope.requestId;
 
