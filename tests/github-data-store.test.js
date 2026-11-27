@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import crypto from "node:crypto";
+import { createHash } from "node:crypto";
 import { createGitHubDataStore, GitHubStoreError } from "../src/infrastructure/github-data-store.js";
 import { GITHUB_YARDHUB_TABLES } from "../src/infrastructure/github-database-bootstrap.js";
 
@@ -34,7 +34,7 @@ function createMockGitHub({ includeAuthority = true, includePrimaryBackup = fals
   const trees = new Map([["tree-0", initialFiles]]);
   function addInitialFile(filePath, bytes) {
     const body = Buffer.isBuffer(bytes) ? bytes : Buffer.from(bytes);
-    const sha = crypto.createHash("sha1").update(Buffer.concat([
+    const sha = createHash("sha1").update(Buffer.concat([
       Buffer.from("blob " + body.length + "\\0"), body
     ])).digest("hex");
     const encoded = body.toString("base64");
