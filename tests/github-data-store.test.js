@@ -283,3 +283,77 @@ test("workspace snapshots use compare-and-swap versions", async () => {
   assert.equal(restored.version, 2);
   assert.equal(restored.payload.operations.changed, true);
 });
+
+test("multi-table GitHub database transaction commits all tables at one revision", async () => {
+  const server = createMockGitHub();
+  const store = makeStore(server);
+  const first = await store.transactDatabase({
+    expectedRevision: 0, actorId: "root-dev", operationId: "op-db-create-0001",
+    mutate(tables) {
+      tables.downtime_central_bank = [{ id: 1, payload: { users: [], appData: {} }, version: 1 }];
+      tables.gatelog_customers = [{ id: "cust-1", customer_name: "Test Customer" }];
+      return { created: true };
+    }
+  });
+  assert.equal(first.committed, true);
+  assert.equal(first.revision, 1);
+  const db = await store.readDatabase();
+  assert.equal(db.revision, 1);
+  assert.equal(db.tables.downtime_central_bank[0].payload.users.length, 0);
+  assert.equal(db.tables.gatelog_customers[0].customer_name, "Test Customer");
+  assert.equal(db.manifest.tables.downtime_central_bank.version, 1);
+  assert.equal(db.manifest.tables.gatelog_customers.version, 1);
+});
+
+test("GitHub database transaction rejects a stale revision without changing records", async () => {
+  const server = createMockGitHub();
+  const store = makeStore(server);
+  await store.transactDatabase({
+    expectedRevision: 0, actorId: "root-dev",
+    mutate(tables) { tables.downtime_central_bank = [{ id: 1, payload: { marker: "first" } }]; }
+  });
+  await assert.rejects(
+    store.transactDatabase({
+      expectedRevision: 0, actorId: "root-dev",
+      mutate(tables) { tables.downtime_central_bank[0].payload.marker = "stale-write"; }
+    }),
+    (error) => error instanceof GitHubStoreError && error.status === 409
+  );
+  const db = await store.readDatabase();
+  assert.equal(db.revision, 1);
+  assert.equal(db.tables.downtime_central_bank[0].payload.marker, "first");
+});
+
+test("GitHub database transaction rejects a concurrent branch update atomically", async () => {
+  const server = createMockGitHub();
+  const store = makeStore(server);
+  server.forceNextCompareAndSwapConflict();
+  await assert.rejects(
+    store.transactDatabase({
+      expectedRevision: 0, actorId: "root-dev",
+      mutate(tables) {
+        tables.downtime_central_bank = [{ id: 1, payload: { marker: "not-committed" } }];
+        tables.gatelog_customers = [{ id: "cust-2", customer_name: "Also Not Committed" }];
+      }
+    }),
+    (error) => error instanceof GitHubStoreError && error.status === 409
+  );
+  const db = await store.readDatabase();
+  assert.equal(db.revision, 0);
+  assert.equal(Object.keys(db.tables).length, 0);
+});
+
+test("primary and secondary GitHub databases are partitioned independently", async () => {
+  const server = createMockGitHub();
+  const secondary = makeStore(server, "DOWNTIMEUI-GITHUB");
+  const primary = makeStore(server, "YARDHUB-PRIMARY");
+  await secondary.transactDatabase({
+    expectedRevision: 0, actorId: "operator",
+    mutate(tables) { tables.gatelog_customers = [{ id: "secondary-only", customer_name: "Secondary" }]; }
+  });
+  const primaryDb = await primary.readDatabase();
+  const secondaryDb = await secondary.readDatabase();
+  assert.equal(primaryDb.revision, 0);
+  assert.equal(Object.keys(primaryDb.tables).length, 0);
+  assert.equal(secondaryDb.tables.gatelog_customers[0].id, "secondary-only");
+});
