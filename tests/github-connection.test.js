@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   clearGitHubConnection,
   createConnectedGitHubStore,
+  createPrivateGitHubDataRepository,
   loadGitHubConnection,
   saveGitHubConnection
 } from "../src/infrastructure/github-connection.js";
@@ -109,4 +110,53 @@ test("connection rejects a repository identity mismatch", async () => {
     (error) => error.status === 403 && /different repository identity/.test(error.message)
   );
   clearGitHubConnection({ storage });
+});
+
+test("first-run setup creates only the exact private GitHub data repository", async () => {
+  const storage = memoryStorage();
+  clearGitHubConnection({ storage });
+  let requestBody = null;
+  const result = await createPrivateGitHubDataRepository({
+    owner: "example", repo: "yardhub-data", token: "create-repo-token",
+    storage,
+    fetchImpl: async (url, options) => {
+      assert.equal(url, "https://api.github.com/user/repos");
+      assert.equal(options.method, "POST");
+      assert.match(options.headers.Authorization, /^Bearer /);
+      requestBody = JSON.parse(options.body);
+      return {
+        ok: true, status: 201,
+        async json() {
+          return {
+            private: true,
+            full_name: "example/yardhub-data",
+            default_branch: "main",
+            html_url: "https://github.com/example/yardhub-data"
+          };
+        }
+      };
+    }
+  });
+  assert.equal(requestBody.private, true);
+  assert.equal(result.private, true);
+  assert.equal(result.fullName, "example/yardhub-data");
+  assert.equal(loadGitHubConnection({ storage }).connected, true);
+  assert.equal(JSON.stringify(storage.snapshot()).includes("create-repo-token"), false);
+  clearGitHubConnection({ storage });
+});
+
+test("first-run setup rejects a repository that GitHub reports as public or mismatched", async () => {
+  const storage = memoryStorage();
+  clearGitHubConnection({ storage });
+  await assert.rejects(
+    createPrivateGitHubDataRepository({
+      owner: "example", repo: "yardhub-data", token: "create-repo-token", storage,
+      fetchImpl: async () => ({
+        ok: true, status: 201,
+        async json() { return { private: false, full_name: "example/yardhub-data", default_branch: "main" }; }
+      })
+    }),
+    (error) => error.status === 403 && /exact requested private repository/.test(error.message)
+  );
+  assert.equal(loadGitHubConnection({ storage }).connected, false);
 });
