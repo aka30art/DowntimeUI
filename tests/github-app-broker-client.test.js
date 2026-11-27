@@ -66,6 +66,23 @@ test("broker request and response are end-to-end encrypted with ephemeral P-256 
   await assert.rejects(decryptBrokerResponse(context, tampered, webcrypto));
 });
 
+test("broker comment envelopes round-trip above 1 KB and reject oversized encoded input before decoding", async () => {
+  const broker = await brokerKeyPair();
+  const brokerPublicKey = base64Url(await webcrypto.subtle.exportKey("raw", broker.publicKey));
+  const now = () => new Date("2026-11-27T12:00:00.000Z");
+  const payload = { action: "gatelog-customer-arrival", args: { detail: "x".repeat(2400) } };
+  const context = await createEncryptedBrokerRequest({ payload, brokerPublicKey, cryptoProvider: webcrypto, now });
+  assert.ok(context.commentBody.length > 1024);
+  const parsed = parseBrokerRequestComment(context.commentBody);
+  assert.deepEqual(await decryptBrokerRequest({
+    envelope: parsed, brokerPrivateKey: broker.privateKey, cryptoProvider: webcrypto, now
+  }), { ...payload, requestId: context.requestId });
+  assert.throws(
+    () => parseBrokerRequestComment("YARDHUB_REQUEST_V1:" + "A".repeat(20_000)),
+    /size limit/
+  );
+});
+
 test("broker rejects expired requests and malformed public comment envelopes", async () => {
   const broker = await brokerKeyPair();
   const brokerPublicKey = base64Url(await webcrypto.subtle.exportKey("raw", broker.publicKey));
