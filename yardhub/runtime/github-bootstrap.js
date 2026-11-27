@@ -10,6 +10,18 @@ import { installGitHubEdgeRuntime } from "./github-edge-runtime.js";
 let resolveReady;
 const ready = new Promise(resolve => { resolveReady = resolve; });
 globalThis.__YARDHUB_GITHUB_READY__ = ready;
+const nativeFetch = globalThis.fetch.bind(globalThis);
+globalThis.__YARDHUB_NATIVE_FETCH__ = nativeFetch;
+const earlyFetch = async (input, init) => {
+  const url = typeof input === "string" ? input : input?.url || "";
+  if (/\\/functions\\/v1\\//i.test(String(url))) {
+    await ready;
+    const activeFetch = globalThis.fetch;
+    if (activeFetch !== earlyFetch) return activeFetch(input, init);
+  }
+  return nativeFetch(input, init);
+};
+globalThis.fetch = earlyFetch;
 
 function status(message, isError = false) {
   const target = document.querySelector("[data-yardhub-github-status]");
@@ -31,7 +43,7 @@ async function activateRepository({ owner, repo, button, tokenInput }) {
     const store = await createConnectedGitHubStore({
       storage: globalThis.localStorage,
       systemId: "DOWNTIMEUI-GITHUB",
-      fetchImpl: globalThis.fetch
+      fetchImpl: globalThis.__YARDHUB_NATIVE_FETCH__ || globalThis.fetch
     });
     const authority = await store.ensureAuthority();
     const database = await ensureGitHubDatabaseReady({ store });
@@ -96,7 +108,7 @@ async function createPrivateRepository(form) {
   try {
     const created = await createPrivateGitHubDataRepository({
       owner, repo, token,
-      fetchImpl: globalThis.fetch
+      fetchImpl: globalThis.__YARDHUB_NATIVE_FETCH__ || globalThis.fetch
     });
     tokenInput.value = "";
     const branchInput = form.querySelector("[name=branch]");
