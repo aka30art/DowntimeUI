@@ -1,8 +1,10 @@
 import {
   clearGitHubConnection,
   createConnectedGitHubStore,
+  createPrivateGitHubDataRepository,
   saveGitHubConnection
 } from "../../src/infrastructure/github-connection.js";
+import { ensureGitHubDatabaseReady } from "../../src/infrastructure/github-database-bootstrap.js";
 import { installGitHubEdgeRuntime } from "./github-edge-runtime.js";
 
 let resolveReady;
@@ -22,36 +24,90 @@ function lockApplication(locked) {
   if (overlay) overlay.hidden = !locked;
 }
 
-async function connect(form) {
-  const owner = form.querySelector("[name=owner]").value.trim();
-  const repo = form.querySelector("[name=repo]").value.trim();
-  const branch = form.querySelector("[name=branch]").value.trim() || "main";
-  const tokenInput = form.querySelector("[name=token]");
-  const token = tokenInput.value.trim();
-  const button = form.querySelector("button[type=submit]");
-  button.disabled = true;
-  status("Verifying the private GitHub repository and opening the data branch…");
-
+async function activateRepository({ owner, repo, button, tokenInput }) {
+  let runtime = null;
   try {
-    saveGitHubConnection({ owner, repo, branch, token });
-    tokenInput.value = "";
+    status("Verifying private repository and initialising the YARDHUB data schema…");
     const store = await createConnectedGitHubStore({
       storage: globalThis.localStorage,
       systemId: "DOWNTIMEUI-GITHUB",
       fetchImpl: globalThis.fetch
     });
-    if (typeof store.ensureAuthority === "function") await store.ensureAuthority();
-    const runtime = await installGitHubEdgeRuntime({ store, actorId: "YARDHUB-GITHUB-RUNTIME" });
-    const authority = await store.readAuthority();
+    const authority = await store.ensureAuthority();
+    const database = await ensureGitHubDatabaseReady({ store });
+    runtime = await installGitHubEdgeRuntime({ store, actorId: "YARDHUB-GITHUB-RUNTIME" });
+    const verifiedAuthority = await store.readAuthority();
+    if (verifiedAuthority.primarySystemId !== "YARDHUB-PRIMARY" ||
+        verifiedAuthority.status !== "ACTIVE" ||
+        verifiedAuthority.epoch !== 1) {
+      throw new Error("Initial authority check failed. YARDHUB must remain the primary system during installation.");
+    }
     globalThis.__YARDHUB_GITHUB_STORE__ = store;
     globalThis.__YARDHUB_GITHUB_RUNTIME__ = runtime;
+    globalThis.__YARDHUB_GITHUB_DATABASE__ = database;
     globalThis.__YARDHUB_GITHUB_CONNECTED__ = true;
-    status("Connected · " + owner + "/" + repo + " · primary: " + authority.primarySystemId);
+    status("Private repository ready · " + owner + "/" + repo +
+      " · " + database.tableCount + " tables · primary: " + verifiedAuthority.primarySystemId);
     lockApplication(false);
-    resolveReady({ store, runtime, authority });
+    resolveReady({ store, runtime, authority, database });
+    globalThis.dispatchEvent(new CustomEvent("yardhub:github-connected", {
+      detail: { authority: verifiedAuthority, database }
+    }));
+    return true;
+  } catch (error) {
+    await runtime?.dispose?.();
+    clearGitHubConnection();
+    status(error?.message || "GitHub initialisation failed. Check the private repository and token.", true);
+    button.disabled = false;
+    tokenInput.focus();
+    return false;
+  }
+}
+
+async function connectExisting(form) {
+  const owner = form.querySelector("[name=owner]").value.trim();
+  const repo = form.querySelector("[name=repo]").value.trim();
+  const branch = form.querySelector("[name=branch]").value.trim() || "main";
+  const tokenInput = form.querySelector("[name=token]");
+  const token = tokenInput.value.trim();
+  const button = form.querySelector("[type=submit]");
+  button.disabled = true;
+  try {
+    saveGitHubConnection({ owner, repo, branch, token });
+    tokenInput.value = "";
+    await activateRepository({ owner, repo, button, tokenInput });
   } catch (error) {
     clearGitHubConnection();
     status(error?.message || "GitHub connection failed. Check the private repository and token.", true);
+    button.disabled = false;
+    tokenInput.focus();
+  }
+}
+
+async function createPrivateRepository(form) {
+  const owner = form.querySelector("[name=owner]").value.trim();
+  const repo = form.querySelector("[name=repo]").value.trim();
+  const tokenInput = form.querySelector("[name=token]");
+  const token = tokenInput.value.trim();
+  const button = form.querySelector("[data-create-private]");
+  button.disabled = true;
+  try {
+    const created = await createPrivateGitHubDataRepository({
+      owner, repo, token,
+      storage: globalThis.localStorage,
+      fetchImpl: globalThis.fetch
+    });
+    tokenInput.value = "";
+    const branchInput = form.querySelector("[name=branch]");
+    if (branchInput) branchInput.value = created.defaultBranch;
+    status("Created private repository · " + created.fullName + " · starting initialisation…");
+    await activateRepository({
+      owner: created.owner, repo: created.repo,
+      button, tokenInput
+    });
+  } catch (error) {
+    clearGitHubConnection();
+    status(error?.message || "Private repository creation failed. Check the token permissions.", true);
     button.disabled = false;
     tokenInput.focus();
   }
@@ -63,7 +119,10 @@ function initialise() {
   lockApplication(true);
   form.addEventListener("submit", event => {
     event.preventDefault();
-    void connect(form);
+    void connectExisting(form);
+  });
+  form.querySelector("[data-create-private]")?.addEventListener("click", () => {
+    void createPrivateRepository(form);
   });
   const disconnect = document.querySelector("[data-yardhub-github-disconnect]");
   disconnect?.addEventListener("click", () => {
