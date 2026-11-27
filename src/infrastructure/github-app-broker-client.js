@@ -122,7 +122,8 @@ export async function createEncryptedBrokerRequest({
       typeof payload.service !== "string" || !SERVICE_NAMES.has(payload.service) ||
       typeof payload.action !== "string" || !ACTION_PATTERN.test(payload.action) ||
       (payload.args !== undefined && (!payload.args || typeof payload.args !== "object" || Array.isArray(payload.args))) ||
-      (payload.sessionToken !== undefined && (typeof payload.sessionToken !== "string" || payload.sessionToken.length > 1024))) {
+      payload.sessionToken !== undefined || payload.session_token !== undefined ||
+      payload.accessToken !== undefined || payload.access_token !== undefined) {
     throw new TypeError("Broker request payload must contain a registered service, valid action and object args.");
   }
   const id = requiredString(requestId, "Request ID", /^[0-9a-f-]{36}$/i);
@@ -131,8 +132,7 @@ export async function createEncryptedBrokerRequest({
     requestId: id,
     service: payload.service,
     action: payload.action,
-    args: payload.args || {},
-    ...(payload.sessionToken ? { sessionToken: payload.sessionToken } : {})
+    args: payload.args || {}
   };
   const serverPublicKey = await importEcdhPublicKey(cryptoProvider.subtle, fromBase64Url(brokerPublicKey, 65));
   const pair = await cryptoProvider.subtle.generateKey(
@@ -202,7 +202,8 @@ export async function decryptBrokerRequest({
       typeof request.service !== "string" || !SERVICE_NAMES.has(request.service) ||
       typeof request.action !== "string" || !ACTION_PATTERN.test(request.action) ||
       !request.args || typeof request.args !== "object" || Array.isArray(request.args) ||
-      (request.sessionToken !== undefined && (typeof request.sessionToken !== "string" || request.sessionToken.length > 1024))) {
+      request.sessionToken !== undefined || request.session_token !== undefined ||
+      request.accessToken !== undefined || request.access_token !== undefined) {
     throw new Error("Decrypted broker request failed service/action schema validation.");
   }
   return request;
