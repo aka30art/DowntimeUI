@@ -249,7 +249,7 @@ export async function decryptBrokerResponse(context, envelope, cryptoProvider = 
     name: "AES-GCM", iv: fromBase64Url(envelope.nonce, 12),
     additionalData: utf8(PROTOCOL + ":RESPONSE:" + context.requestId),
     tagLength: 128
-  }, key, fromBase64Url(envelope.ciphertext));
+  }, key, fromBase64Url(envelope.ciphertext, MAX_ENVELOPE_BYTES));
   return decodeJson(new Uint8Array(plaintext), "Decrypted broker response");
 }
 
