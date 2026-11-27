@@ -1,6 +1,6 @@
 # GitHub-native YARDHUB broker — Phase 3 proof specification
 
-**Status:** DESIGN CANDIDATE ONLY — NOT IMPLEMENTED OR ACCEPTED  
+**Status:** DESIGN CANDIDATE — CLIENT AND LOCAL BROKER CORE PARTIALLY IMPLEMENTED; NOT DEPLOYED OR ACCEPTED  
 **Target PR:** `aka30art/DowntimeUI` #3  
 **Scope:** GitHub-only request transport, identity boundary, private data repository gateway  
 **Protection:** No operation in this specification may target or modify `aka30art/DOWNTIME`.
@@ -160,3 +160,24 @@ Official GitHub documentation:
 - [Create a workflow dispatch event — Actions: write permission](https://docs.github.com/en/rest/actions/workflows)
 
 This document does not grant authority to create external infrastructure or change protected repositories. All source changes are confined to `aka30art/DowntimeUI`. `aka30art/DOWNTIME` remains untouched. YARDHUB remains primary. No production record has been migrated, no authority switch has occurred, and PR #3 remains open/draft.
+
+
+## 10. Current code state — 27 November 2026
+
+The following code now exists in PR #3:
+
+- `src/infrastructure/github-app-broker-client.js` implements GitHub App Device Flow, sends `repository_id` when the user access token is minted, verifies the authenticated GitHub profile, and keeps the user token in module memory. Its request/response channel uses ephemeral P-256 ECDH, HKDF-SHA-256 and AES-256-GCM. The public issue comment contains ciphertext, not the tested customer/vehicle payload.
+- `src/infrastructure/github-actions-broker.js` implements a local orchestration core for the existing ECDH envelope: event repository/sender/issue/comment validation, numeric sender-ID principal lookup, per-USER inbox issue authorization, decryption callback, strict action schema, caller-identity field rejection, current authority-epoch check, YARD ROLE authorization callback, idempotency claim and encrypted response callbacks.
+- `tests/github-app-broker-client.test.js` exercises encryption/decryption, tamper rejection, expiry, Device Flow polling and repository-ID restriction using mocked GitHub HTTP responses.
+- `tests/github-actions-broker.test.js` exercises event identity, inbox ownership, canonical USER mapping, decryption failure, permission denial, caller-supplied identity rejection, replay and missing authority epoch.
+
+**Important limitations:**
+1. The client currently uses Device Flow. GitHub's documentation recommends the web application flow for browser apps and describes Device Flow for headless clients. Device Flow is therefore a testable transport candidate, not an accepted final browser sign-in decision. The registered App's actual settings and token permissions have not been inspected.
+2. The broker core is callback-driven. The private USER resolver, inbox ownership lookup, cryptographic broker key, data-repository adapter, atomic idempotency ledger, permission evaluator and encrypted comment publisher are not connected.
+3. No `issue_comment` Actions workflow exists on a dedicated broker repository's default branch. No private broker or data repository has been provisioned, and no App credentials/secrets are installed.
+4. The client holds the ephemeral response-decryption private key in memory. Recovery after page/device loss and secure two-device use are not yet solved.
+5. The tests are deterministic local/mock tests. They do not prove the real event context, GitHub App permissions, separate Data App isolation, public/private inbox privacy, queue behaviour, rate limits or end-to-end latency.
+
+The official GitHub documentation supports the `repository_id` restriction parameter for both web and device token exchange. It also states that browser clients should use the web application flow and strongly recommends PKCE; Device Flow is intended for headless applications. These distinctions remain explicit acceptance criteria, not assumptions.
+
+**Phase 3 remains BLOCKED.** No operational data, production credentials or YARDHUB authority have been moved.
