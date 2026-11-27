@@ -46,6 +46,22 @@ async function activateRepository({ owner, repo, button, tokenInput }) {
       fetchImpl: globalThis.__YARDHUB_NATIVE_FETCH__ || globalThis.fetch
     });
     const authority = await store.ensureAuthority();
+    const beforeRestore = await store.readDatabase();
+    let restoreResult = null;
+    if (beforeRestore.revision === 0 && Object.keys(beforeRestore.tables).length === 0 &&
+        typeof store.inspectYardHubPrimaryBackup === "function") {
+      const primaryBackup = await store.inspectYardHubPrimaryBackup();
+      if (primaryBackup) {
+        const restore = globalThis.confirm(
+          "A verified YARDHUB primary backup was found (" + primaryBackup.tableCount +
+          " tables, " + primaryBackup.storageObjectCount + " files, exported " +
+          primaryBackup.exportedAt + ").\n\nRestore this backup into the private GitHub database now?\n\nChoose Cancel to install a clean empty YARDHUB instead."
+        );
+        if (restore) {
+          restoreResult = await store.restoreYardHubPrimaryBackup({ expectedRevision: beforeRestore.revision });
+        }
+      }
+    }
     const database = await ensureGitHubDatabaseReady({ store });
     runtime = await installGitHubEdgeRuntime({
       store, actorId: "YARDHUB-GITHUB-RUNTIME",
@@ -64,7 +80,9 @@ async function activateRepository({ owner, repo, button, tokenInput }) {
     const bootstrapInput = document.getElementById("setupCode");
     if (bootstrapInput) bootstrapInput.value = database.bootstrapCode || "";
     status("Private repository ready · " + owner + "/" + repo +
-      " · " + database.tableCount + " tables · primary: " + verifiedAuthority.primarySystemId);
+      " · " + database.tableCount + " tables" +
+      (restoreResult ? " · restored verified primary backup from " + restoreResult.exportedAt + " · " + restoreResult.storageObjectCount + " files" : "") +
+      " · primary: " + verifiedAuthority.primarySystemId);
     lockApplication(false);
     resolveReady({ store, runtime, authority, database });
     globalThis.dispatchEvent(new CustomEvent("yardhub:github-connected", {
