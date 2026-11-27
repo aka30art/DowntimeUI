@@ -40,12 +40,16 @@ test("database bootstrap is idempotent and does not overwrite existing operation
   const store = memoryStore();
   await ensureGitHubDatabaseReady({ store });
   const originalUserId = store.tables.downtime_roots_bootstrap[0].user_id;
-  store.tables.downtime_reports = [{ id: "report-1", title: "Preserve me" }];
+  await store.transactDatabase({
+    expectedRevision: 1,
+    actorId: "test-operator",
+    mutate(tables) { tables.downtime_reports = [{ id: "report-1", title: "Preserve me" }]; }
+  });
   const second = await ensureGitHubDatabaseReady({ store });
   assert.equal(second.initialized, false);
   assert.equal(store.tables.downtime_reports[0].title, "Preserve me");
   assert.equal(store.tables.downtime_roots_bootstrap[0].user_id, originalUserId);
-  assert.equal(store.commits, 1);
+  assert.equal(store.commits, 2);
 });
 
 test("existing bootstrap identity is retained when filling missing schema tables", async () => {
