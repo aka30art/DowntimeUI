@@ -206,7 +206,7 @@ test("GitHub App browser OAuth uses PKCE, validates state and scopes the user to
   assert.equal(authorization.searchParams.get("client_id"), "test-client-id");
   assert.equal(authorization.searchParams.get("redirect_uri"), "https://yardhub.example/auth/github/callback");
   assert.equal(authorization.searchParams.get("code_challenge_method"), "S256");
-  assert.equal(authorization.searchParams.get("repository_id"), "12345678");
+  assert.equal(authorization.searchParams.has("repository_id"), false, "repository restriction belongs on the token exchange request");
   assert.equal(authorization.searchParams.get("allow_signup"), "false");
   assert.equal(authorization.searchParams.get("login"), "yard-operator");
 
