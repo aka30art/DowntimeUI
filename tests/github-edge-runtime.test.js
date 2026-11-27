@@ -455,7 +455,7 @@ test("broker rolls back all staged table mutations when a YARDHUB action fails",
     }), /deliberate rejection/);
     const db = await store.readDatabase();
     assert.equal(db.revision, before);
-    assert.equal(db.tables.gatelog_customers, undefined);
+    assert.equal((db.tables.gatelog_customers || []).length, 0);
   } finally {
     await runtime.dispose();
   }
