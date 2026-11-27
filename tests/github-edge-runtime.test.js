@@ -40,7 +40,10 @@ test("all seven YARDHUB GitHub-native Edge services register and answer local CO
   const store = createMemoryStore();
   const previousFetch = globalThis.fetch;
   const previousSession = globalThis.DowntimeCentral;
+  const previousBootstrapCode = globalThis.__YARDHUB_BOOTSTRAP_CODE__;
   const runtime = await installGitHubEdgeRuntime({ store });
+  assert.match(runtime.bootstrapCode, /^[A-F0-9]{48}$/);
+  assert.equal(globalThis.__YARDHUB_BOOTSTRAP_CODE__, runtime.bootstrapCode);
 
   try {
     const expected = [
@@ -63,6 +66,9 @@ test("all seven YARDHUB GitHub-native Edge services register and answer local CO
     }
   } finally {
     await runtime.dispose();
+    assert.equal(globalThis.__YARDHUB_BOOTSTRAP_CODE__, null);
+    if (previousBootstrapCode === undefined) delete globalThis.__YARDHUB_BOOTSTRAP_CODE__;
+    else globalThis.__YARDHUB_BOOTSTRAP_CODE__ = previousBootstrapCode;
     globalThis.fetch = previousFetch;
     if (previousSession === undefined) delete globalThis.DowntimeCentral;
     else globalThis.DowntimeCentral = previousSession;
