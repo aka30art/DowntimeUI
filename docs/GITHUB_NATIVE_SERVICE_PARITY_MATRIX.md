@@ -145,6 +145,23 @@ The source code also depends on database-side RPCs. These functions are part of 
 
 **RPC coverage requirement:** each function must have an equivalent transaction implementation and a contract test for valid inputs, invalid inputs, conflicting versions, duplicate operation IDs, denied actor, audit attribution and rollback on partial failure.
 
+## 3A. Static transport-method and RPC mapping check
+
+A static scan of the seven pinned source Edge Functions found these Supabase compatibility operations in use:
+
+- **Table queries:** `from`, `select`, `insert`, `upsert`, `update`, `delete`, `eq`, `neq`, `is`, `in`, `gt`, `gte`, `lte`, `filter`, `ilike`, `order`, `limit`, `range`, `single`, `maybeSingle`, and `match`.
+- **Storage:** `list`, `createSignedUploadUrl`, `createSignedUrl`, `upload`, and `remove`.
+- **RPC:** the 19 current source RPC names in Section 3.
+
+The GitHub table client implements the observed query-builder method names, the GitHub Storage adapter exposes the observed Storage surface, and `GITHUB_YARDHUB_RPC_HANDLERS` contains handlers for all 19 current source RPC names. This closes a static missing-symbol check only. It does **not** prove PostgREST semantic equivalence, RLS enforcement, exact result/ordering/count behaviour, binary object isolation or business-transaction parity.
+
+Current test evidence is narrower:
+- `tests/github-rpc-handlers.test.js` contains 12 focused contract cases covering groups of Central Bank, GATELOG, ROOTS and YARD ROLE RPC behaviour.
+- `tests/github-edge-runtime.test.js` exercises bootstrap/session and a small local action path through the seven registered handlers, plus Central Config menu and Photo Evidence upload/view/delete against an in-memory store.
+- `tests/github-table-client.test.js` and `tests/github-storage-client.test.js` cover adapter primitives with test stores/tickets.
+
+No production action is marked accepted on this basis. The action-level acceptance ledger remains open until each of the 96 surfaces has explicit positive, negative, cross-role, replay, concurrency, audit and browser evidence through the trusted broker.
+
 ## 4. Relational table inventory — 39 tables
 
 Source inventory snapshot: live read-only platform inventory captured in `docs/GITHUB_NATIVE_YARDHUB_TWIN_BLUEPRINT.md`, dated 27 November 2026. All 39 source tables were reported with RLS enabled.
