@@ -112,6 +112,7 @@ export function createGitHubTableClient({
     const query = {
       table, operation: "select", columns: "*", payload: null, filters: [],
       orders: [], maxRows: null, offset: 0, singleMode: null, returning: false,
+      headOnly: false, countMode: null,
       countMode: null, headOnly: false,
       conflictColumns: primaryKeys[table] || ["id"],
       select(columns = "*", options = {}) {
@@ -137,6 +138,18 @@ export function createGitHubTableClient({
       gte(column, value) { this.filters.push({ column, operator: "gte", value }); return this; },
       lt(column, value) { this.filters.push({ column, operator: "lt", value }); return this; },
       lte(column, value) { this.filters.push({ column, operator: "lte", value }); return this; },
+      filter(column, operator, value) {
+        const supported = new Set(["eq", "neq", "gt", "gte", "lt", "lte", "like", "ilike", "is", "in"]);
+        const op = String(operator || "").trim();
+        if (!supported.has(op)) throw new TypeError("Unsupported GitHub table filter: " + op);
+        let parsed = value;
+        if (op === "in" && typeof value === "string") {
+          const raw = value.trim().replace(/^\\(/, "").replace(/\\)$/, "");
+          parsed = raw ? raw.split(",").map(item => item.trim().replace(/^["']|["']$/g, "")) : [];
+        }
+        this.filters.push({ column, operator: op, value: parsed });
+        return this;
+      },
       like(column, value) { this.filters.push({ column, operator: "like", value }); return this; },
       ilike(column, value) { this.filters.push({ column, operator: "ilike", value }); return this; },
       filter(column, operator, value) { this.filters.push({ column, operator: String(operator), value }); return this; },
