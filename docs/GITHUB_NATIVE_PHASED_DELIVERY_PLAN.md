@@ -9,14 +9,17 @@ Deliver in independently testable phases. Each phase must have implementation, a
 
 ## Current phase board
 
-- **Phase 0 — PARTIAL:** the seven source service entrypoints, principal action families, USER/STAFF/ROOTS/YARD ROLE domains and 39-table/five-bucket inventory are documented. A complete route/action/RPC/trigger/RLS/storage/realtime/export-to-test matrix is still outstanding.
-- **Phase 1 — PARTIAL:** GitHub store, atomic JSON transactions, authority metadata and mocked transaction tests exist. Real private-repository contention, rate-limit, branch-protection and crash-recovery evidence does not.
-- **Phase 2 — BLOCKED:** the source repository is public, no dedicated private operational data repository is recorded, and the browser-direct credential path remains privileged.
-- **Phase 3 — NOT STARTED:** no acceptable broker proof exists.
-- **Phase 4 — NOT STARTED:** seven handlers build/register, but exhaustive endpoint and permission parity is unproven.
-- **Phases 5–8 — NOT STARTED:** module acceptance, full replication/recovery, authority-transfer rehearsal and release acceptance remain open.
+- **Phase 0 — PARTIAL, source census advanced:** the seven Edge service entrypoints, 96 action/read surfaces, 19 current service RPCs, all 39 live-inventory tables and five Storage buckets are catalogued. All 45 tracked migration files are SHA-pinned. The SQL scan identified 26 distinct functions, five triggers, RLS/policy/grant semantics and one missing tracked definition for live table `downtime_reports`. The 49 applied versus 45 tracked migration versions and complete export/relationship census remain unresolved.
+- **Phase 1 — PARTIAL:** GitHub Git Data persistence, atomic multi-table commits, backup/restore, checksum validation, compare-and-swap retry and authority preflight/recheck exist with mock-backed tests. Real private-repository contention, rate limits, protected-branch behaviour, complete binary restore and crash recovery are unproven.
+- **Phase 2 — BLOCKED:** the source code repository is public; no dedicated private YARDHUB data repository or protected broker credentials are available. Browser-held Contents access is not a staff security boundary.
+- **Phase 3 — NOT STARTED:** a GitHub Actions issue-comment broker remains a candidate only. No trusted private request broker has been provisioned or tested end-to-end.
+- **Phase 4 — NOT STARTED:** seven handlers build/register and local smoke tests exercise a small subset. The 96 action/read surfaces still lack exhaustive implementation, response, permission, audit and Storage parity evidence.
+- **Phase 5 — NOT STARTED:** the independent USER/STAFF/ROOTS/YARD ROLE and module acceptance matrix has not been demonstrated against a trusted broker and two real users/devices.
+- **Phase 6 — PARTIAL FOUNDATION ONLY:** backup runner and restore primitives exist, but no full source export, missing `downtime_reports` schema, live private data destination, clean-device restore or continuous checkpoint/reconciliation proof exists.
+- **Phase 7 — NOT STARTED:** no real replication checkpoint, freeze/promotion, reverse transfer or rollback rehearsal.
+- **Phase 8 — NOT STARTED:** release acceptance is blocked by open critical/high security findings and the missing private infrastructure.
 
-A detailed source-backed finding register is maintained in [GITHUB_NATIVE_SECURITY_AUDIT.md](GITHUB_NATIVE_SECURITY_AUDIT.md). Its open critical/high findings block operational activation.
+A detailed source-backed finding register is maintained in [GITHUB_NATIVE_SECURITY_AUDIT.md](GITHUB_NATIVE_SECURITY_AUDIT.md). The action/RPC/table/Storage inventory is in [GITHUB_NATIVE_SERVICE_PARITY_MATRIX.md](GITHUB_NATIVE_SERVICE_PARITY_MATRIX.md), and the 45-file source migration and schema-drift inventory is in [GITHUB_NATIVE_MIGRATION_INVENTORY.md](GITHUB_NATIVE_MIGRATION_INVENTORY.md). Their unresolved security/schema findings block operational activation.
 
 ## Phase 0 — Baseline and scope lock
 
@@ -113,16 +116,16 @@ A GitHub Actions issue-comment broker remains a candidate, not an approved produ
 
 ## Current verified baseline (27 November 2026)
 
-- PR #3 is open, draft and unmerged.
-- Current verified implementation head: `39f46c0c47d8407c9b2091f0583c759ef113bbd5`.
-- CI run `46081812603` (run #466) on that exact head completed successfully: `npm run check`, Chromium installation, Playwright browser QA and screenshot artifact upload all passed.
-- Earlier intermediate runs failed while the backup bridge and restore test fixtures were being corrected. Their failing fixtures have been corrected; run #466 validates the current backup authority guard and the deterministic restore/checksum fixtures.
-- Browser QA confirms the existing installer, daily operations, plant overview, task-lock persistence, reports, settings edits, backup/restore, 390px mobile layout, WIPE OUT reset, YARDHUB private setup gate, standalone R&M lock and mobile layout. It does not validate secure multi-user YARDHUB operations or full Edge action parity.
+- PR #3 is open, draft and unmerged. Current observed documentation head: `20234bb505a2576da7d0115234ba5e75a6bb02a2`.
+- CI run #471 (`46082186779`) on implementation commit `6d5240c58fcd0a30b93e707edc0aa2ee44a9848b` passed build/checks, Chromium installation, Playwright browser QA and screenshot artifact upload.
+- Runtime UI port: `yardhub/runtime/index.html` now includes the two latest source-main STAFF layout changes from source commits `0cbda60f90ee45f8df866e7b36f532498a78ea49` and `939195a1fac26a9a632ab3938f17922985d8cd9d`. STAFF uses the same YARD HUB page heading, directory row layout and responsive toolbar as USERS/ACCESS AND RIGHTS, with a dedicated header return button. `yardhub/reference/` remains unchanged and pinned to tree `ba99913d1eaff7d99785088fd0931b3815defd4c`.
+- A runtime STAFF static-contract test was added to `npm test` and `npm run check`. Workflow #479 (`46082765580`) on commit `521a283534011aef346611facda2fbc39cf17534` had passed `npm run check`; Chromium installation/browser QA was still running at the last check. The subsequent documentation head has not yet received its own CI result.
+- The latest source main has two commits beyond the pinned reference; the observed delta is limited to the STAFF UI/layout and its related test contracts. No source repository commit or workflow was changed by this work.
+- The migration inventory now records a missing tracked `downtime_reports` table definition, plus the 49-applied/45-tracked migration discrepancy. No attempt has been made to guess its schema.
 - The repository `aka30art/DowntimeUI` is public and is source code only. It is not an operational data destination. The `data/yardhub` branch is not approved for operational records.
-- The direct-browser GitHub token prototype is not approved for staff/multi-user production.
-- The seven-service runtime is an experimental compatibility harness; the preserved YARDHUB UI remains behind its activation gate.
+- The direct-browser GitHub token prototype is not approved for staff/multi-user production. The seven-service runtime remains an experimental compatibility harness.
 - No live primary data has been migrated; no primary switch has occurred; YARDHUB remains primary.
-- A static security audit has recorded open critical/high findings in `docs/GITHUB_NATIVE_SECURITY_AUDIT.md`. Build/browser success does not close them.
+- Critical/high security findings remain open in `docs/GITHUB_NATIVE_SECURITY_AUDIT.md`. Build and browser success do not close them.
 
 ## Non-negotiable protection boundary
 
