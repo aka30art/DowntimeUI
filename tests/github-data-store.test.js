@@ -243,3 +243,43 @@ test("primary switch can be cancelled without changing the authority epoch", asy
   assert.equal(cancelled.authority.primarySystemId, "YARDHUB-PRIMARY");
   assert.equal(cancelled.authority.epoch, 1);
 });
+
+test("workspace snapshots use compare-and-swap versions", async () => {
+  const server = createMockGitHub();
+  const store = makeStore(server);
+  const first = await store.writeSnapshot({
+    module: "YARDHUB_WORKSPACE", snapshotId: "site-main", actorId: "operator-1",
+    payload: { configuration: { site: "Main" }, operations: { week: "2026-11-23" } },
+    expectedVersion: null
+  });
+  assert.equal(first.snapshot.version, 1);
+  assert.equal(first.snapshot.writeMode, "SECONDARY_LOCAL");
+
+  await assert.rejects(
+    store.writeSnapshot({
+      module: "YARDHUB_WORKSPACE", snapshotId: "site-main", actorId: "operator-2",
+      payload: { operations: { week: "2026-11-23", changed: true } },
+      expectedVersion: null
+    }),
+    (error) => error instanceof GitHubStoreError && error.status === 409
+  );
+
+  const second = await store.writeSnapshot({
+    module: "YARDHUB_WORKSPACE", snapshotId: "site-main", actorId: "operator-2",
+    payload: { configuration: { site: "Main" }, operations: { week: "2026-11-23", changed: true } },
+    expectedVersion: 1
+  });
+  assert.equal(second.snapshot.version, 2);
+
+  await assert.rejects(
+    store.writeSnapshot({
+      module: "YARDHUB_WORKSPACE", snapshotId: "site-main", actorId: "operator-3",
+      payload: { operations: {} }, expectedVersion: 1
+    }),
+    (error) => error instanceof GitHubStoreError && error.status === 409
+  );
+
+  const restored = await store.readSnapshot({ module: "YARDHUB_WORKSPACE", snapshotId: "site-main" });
+  assert.equal(restored.version, 2);
+  assert.equal(restored.payload.operations.changed, true);
+});
