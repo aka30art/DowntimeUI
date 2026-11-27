@@ -66,10 +66,16 @@ export function parseGitHubIssueCommentEvent(event, { expectedRepositoryId, maxC
     if (error?.status) throw error;
     throw brokerError("The encrypted request envelope is not valid JSON.");
   }
+  const legacySigned = typeof envelope?.signature === "string" &&
+    /^[A-Za-z0-9_-]{32,2048}$/.test(envelope.signature);
+  const ecdhEncrypted = envelope?.protocol === "YARDHUB_GITHUB_BROKER" &&
+    typeof envelope.createdAt === "string" && typeof envelope.expiresAt === "string" &&
+    typeof envelope.clientPublicKey === "string" && /^[A-Za-z0-9_-]{80,120}$/.test(envelope.clientPublicKey) &&
+    typeof envelope.nonce === "string" && /^[A-Za-z0-9_-]{16,32}$/.test(envelope.nonce);
   if (!envelope || envelope.version !== 1 ||
       typeof envelope.requestId !== "string" || !REQUEST_ID_PATTERN.test(envelope.requestId) ||
-      typeof envelope.ciphertext !== "string" || !/^[A-Za-z0-9_-]{32,12000}$/.test(envelope.ciphertext) ||
-      typeof envelope.signature !== "string" || !/^[A-Za-z0-9_-]{32,2048}$/.test(envelope.signature)) {
+      typeof envelope.ciphertext !== "string" || !/^[A-Za-z0-9_-]{32,14000}$/.test(envelope.ciphertext) ||
+      (!legacySigned && !ecdhEncrypted)) {
     throw brokerError("The encrypted request envelope failed schema validation.");
   }
   return Object.freeze({
@@ -83,9 +89,14 @@ export function parseGitHubIssueCommentEvent(event, { expectedRepositoryId, maxC
     }),
     envelope: Object.freeze({
       version: 1,
+      protocol: envelope.protocol || "YARDHUB_LEGACY_SIGNED",
       requestId: envelope.requestId,
+      createdAt: envelope.createdAt || null,
+      expiresAt: envelope.expiresAt || null,
+      clientPublicKey: envelope.clientPublicKey || null,
+      nonce: envelope.nonce || null,
       ciphertext: envelope.ciphertext,
-      signature: envelope.signature
+      signature: envelope.signature || null
     })
   });
 }
@@ -108,6 +119,7 @@ export function createGitHubActionsBroker({
     getAuthorityEpoch
   };
   for (const [name, callback] of Object.entries(required)) {
+    if (name === "verifySignature") continue;
     if (typeof callback !== "function" && name !== "idempotencyStore") {
       throw new TypeError("GitHub Actions broker requires " + name + ".");
     }
@@ -126,20 +138,26 @@ export function createGitHubActionsBroker({
           principal.enabled !== true || principal.status !== "ACTIVE") {
         throw brokerError("The GitHub actor is not mapped to an active canonical USER/STAFF identity.", 403, "BROKER_USER_DENIED");
       }
-      if (!principal.signingPublicKey || !principal.responseEncryptionKey) {
-        throw brokerError("The canonical USER has no registered broker encryption identity.", 403, "BROKER_KEY_NOT_REGISTERED");
+      const legacySigned = parsed.envelope.protocol === "YARDHUB_LEGACY_SIGNED";
+      if (legacySigned) {
+        if (!principal.signingPublicKey || !principal.responseEncryptionKey ||
+            typeof verifySignature !== "function") {
+          throw brokerError("The canonical USER has no registered legacy broker signing identity.", 403, "BROKER_KEY_NOT_REGISTERED");
+        }
+        const signedMessage = [
+          parsed.repositoryId, parsed.issueId, parsed.commentId,
+          parsed.envelope.requestId, parsed.envelope.ciphertext
+        ].join(":");
+        const signatureValid = await verifySignature({
+          publicKey: principal.signingPublicKey,
+          message: signedMessage,
+          signature: parsed.envelope.signature
+        });
+        if (signatureValid !== true) throw brokerError("The request signature is invalid.", 401, "BROKER_SIGNATURE_INVALID");
+      } else if (!parsed.envelope.clientPublicKey || !parsed.envelope.nonce ||
+          !parsed.envelope.createdAt || !parsed.envelope.expiresAt) {
+        throw brokerError("The encrypted request is missing its ephemeral response key or time bounds.");
       }
-
-      const signedMessage = [
-        parsed.repositoryId, parsed.issueId, parsed.commentId,
-        parsed.envelope.requestId, parsed.envelope.ciphertext
-      ].join(":");
-      const signatureValid = await verifySignature({
-        publicKey: principal.signingPublicKey,
-        message: signedMessage,
-        signature: parsed.envelope.signature
-      });
-      if (signatureValid !== true) throw brokerError("The request signature is invalid.", 401, "BROKER_SIGNATURE_INVALID");
 
       const claim = await idempotencyStore.claim({
         requestId: parsed.envelope.requestId,
@@ -164,11 +182,14 @@ export function createGitHubActionsBroker({
         const request = await decryptRequest({
           ciphertext: parsed.envelope.ciphertext,
           requestId: parsed.envelope.requestId,
-          actorUserId: principal.userId
+          actorUserId: principal.userId,
+          envelope: parsed.envelope,
+          protocol: parsed.envelope.protocol
         });
         if (!request || typeof request !== "object" || Array.isArray(request) ||
             request.requestId !== parsed.envelope.requestId ||
-            typeof request.action !== "string" || !ACTION_PATTERN.test(request.action)) {
+            typeof request.action !== "string" || !ACTION_PATTERN.test(request.action) ||
+            (request.args !== undefined && (!request.args || typeof request.args !== "object" || Array.isArray(request.args)))) {
           throw brokerError("The decrypted request failed schema validation.");
         }
         assertNoCallerIdentity(request);
@@ -192,8 +213,10 @@ export function createGitHubActionsBroker({
           authorityEpoch
         });
         const encryptedResponse = await encryptResponse({
-          publicKey: principal.responseEncryptionKey,
-          response: { ok: true, requestId: parsed.envelope.requestId, result }
+          publicKey: legacySigned ? principal.responseEncryptionKey : parsed.envelope.clientPublicKey,
+          response: { ok: true, requestId: parsed.envelope.requestId, result },
+          protocol: parsed.envelope.protocol,
+          requestEnvelope: parsed.envelope
         });
         await idempotencyStore.complete({
           requestId: parsed.envelope.requestId,
