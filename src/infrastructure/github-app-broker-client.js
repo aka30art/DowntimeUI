@@ -185,12 +185,13 @@ export async function encryptBrokerResponse({
   requestEnvelope,
   payload,
   brokerPrivateKey,
-  cryptoProvider = globalThis.crypto
+  cryptoProvider = globalThis.crypto,
+  now = () => new Date()
 } = {}) {
   if (!cryptoProvider?.subtle || !requestEnvelope || !payload || typeof payload !== "object" || Array.isArray(payload)) {
     throw new TypeError("Broker response parameters are invalid.");
   }
-  validateRequestEnvelope(requestEnvelope);
+  validateRequestEnvelope(requestEnvelope, now);
   const clientPublicKey = await importEcdhPublicKey(cryptoProvider.subtle, fromBase64Url(requestEnvelope.clientPublicKey));
   const key = await deriveDirectionKey({
     subtle: cryptoProvider.subtle,
