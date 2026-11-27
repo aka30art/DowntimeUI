@@ -1,4 +1,4 @@
-import { resolveYardRolePermissions, YARD_ROLE_DEPARTMENT_MODULES } from "../../yardhub/reference/supabase/functions/_shared/yard-role-resolver.mjs";
+import { resolveYardRolePermissions } from "../../yardhub/reference/supabase/functions/_shared/yard-role-resolver.mjs";
 import { createGitHubCentralServiceSession } from "./github-central-service-session.js";
 
 const IDENTITY_SNAPSHOT_MODULE = "BROKER";
