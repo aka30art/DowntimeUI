@@ -53,11 +53,14 @@ export async function installGitHubEdgeRuntime({
     createClient() { return createCompatClient(); }
   };
   const { createGitHubSupabaseCompat } = await import("../../src/infrastructure/github-supabase-compat.js");
+  const compatClients = new Set();
   function createCompatClient() {
-    return createGitHubSupabaseCompat({
+    const client = createGitHubSupabaseCompat({
       store, actorId, rpcHandlers, handlers,
       sessionProvider: () => globalThis.DowntimeCentral?.session || null
     });
+    compatClients.add(client);
+    return client;
   }
 
   for (const name of functionNames) {
@@ -82,6 +85,8 @@ export async function installGitHubEdgeRuntime({
     bootstrapCode: databaseStatus.bootstrapCode || null,
     bootstrapCodeExpiresAt: databaseStatus.bootstrapCodeExpiresAt || null,
     async dispose() {
+      await Promise.all([...compatClients].map(client => client.dispose?.()));
+      compatClients.clear();
       globalThis.fetch = previousFetch;
       if (previousDeno === undefined) delete globalThis.Deno;
       else globalThis.Deno = previousDeno;
