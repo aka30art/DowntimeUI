@@ -21,7 +21,7 @@ function response(status, body, binary = false) {
   };
 }
 
-function createMockServices() {
+function createMockServices({ privateRepository = true } = {}) {
   let head = "commit-0";
   let currentTree = new Map();
   let counter = 0;
@@ -56,6 +56,7 @@ function createMockServices() {
 
     if (parsed.hostname === "api.github.com") {
       const path = parsed.pathname.replace("/repos/owner/data", "");
+      if (method === "GET" && path === "") return response(200, { private: privateRepository, full_name: "owner/data", archived: false });
       if (method === "GET" && path === "/git/ref/heads/main") {
         return response(200, { object: { sha: head } });
       }
@@ -111,7 +112,7 @@ function createMockServices() {
 }
 
 const env = {
-  SUPABASE_URL: "https://example.supabase.co",
+  SUPABASE_URL: "https://ygwfipksbbprqynvbklk.supabase.co",
   SUPABASE_SERVICE_ROLE_KEY: "service-role",
   YARDHUB_DATA_TOKEN: "github-token",
   YARDHUB_DATA_REPOSITORY: "owner/data",
@@ -147,4 +148,40 @@ test("unchanged YARDHUB data does not create a redundant GitHub commit", async (
   const second = await runner.run({ env });
   assert.equal(second.changed, false);
   assert.equal(mock.commits, 1);
+});
+
+
+test("backup refuses a public GitHub repository before reading primary records", async () => {
+  const mock = createMockServices({ privateRepository: false });
+  const runner = createYardHubBackupRunner({ fetchImpl: mock.fetchImpl });
+  await assert.rejects(
+    runner.run({ env }),
+    /exact requested PRIVATE GitHub repository/
+  );
+  assert.equal(mock.tableCalls.size, 0, "No source table may be read before the destination privacy gate.");
+  assert.equal(mock.commits, 0);
+});
+
+test("backup refuses the protected source repo and public code repo as destinations", async () => {
+  for (const repository of ["aka30art/DOWNTIME", "aka30art/DowntimeUI"]) {
+    const mock = createMockServices();
+    const runner = createYardHubBackupRunner({ fetchImpl: mock.fetchImpl });
+    await assert.rejects(
+      runner.run({ env: { ...env, YARDHUB_DATA_REPOSITORY: repository } }),
+      /forbidden backup destinations/
+    );
+    assert.equal(mock.tableCalls.size, 0);
+    assert.equal(mock.commits, 0);
+  }
+});
+
+test("backup refuses an unapproved Supabase source URL before contacting storage", async () => {
+  const mock = createMockServices();
+  const runner = createYardHubBackupRunner({ fetchImpl: mock.fetchImpl });
+  await assert.rejects(
+    runner.run({ env: { ...env, SUPABASE_URL: "https://attacker.supabase.co" } }),
+    /approved YARDHUB primary Supabase project/
+  );
+  assert.equal(mock.tableCalls.size, 0);
+  assert.equal(mock.commits, 0);
 });
