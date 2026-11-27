@@ -144,7 +144,8 @@ test("first-run setup creates only the exact private GitHub data repository", as
   assert.equal(requestBody.private, true);
   assert.equal(result.private, true);
   assert.equal(result.fullName, "example/yardhub-data");
-  assert.equal(loadGitHubConnection({ storage }).connected, true);
+  assert.equal(loadGitHubConnection({ storage }).connected, false);
+  assert.equal(loadGitHubConnection({ storage }).repo, "");
   assert.equal(JSON.stringify(storage.snapshot()).includes("create-repo-token"), false);
   clearGitHubConnection({ storage });
 });
