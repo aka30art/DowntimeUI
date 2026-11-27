@@ -12,10 +12,28 @@ concurrency:
   cancel-in-progress: true
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install build dependencies
+        run: npm install --no-audit --no-fund
+      - name: Build GitHub-native YARDHUB service bundles
+        run: npm run build:yardhub
+      - name: Verify generated service bundles
+        run: |
+          test -s yardhub/runtime/functions/central-bank.js
+          test -s yardhub/runtime/functions/central-config-admin.js
+          test -s yardhub/runtime/functions/gatelog-api.js
+          test -s yardhub/runtime/functions/photo-evidence.js
+          test -s yardhub/runtime/functions/repair-maintenance-api.js
+          test -s yardhub/runtime/functions/spectator-read.js
+          test -s yardhub/runtime/functions/yard-hub-settings-api.js
       - name: Configure Pages
         uses: actions/configure-pages@v5
         with:
@@ -24,13 +42,3 @@ jobs:
         uses: actions/upload-pages-artifact@v3
         with:
           path: .
-  deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
-    needs: build
-    steps:
-      - name: Deploy to Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
