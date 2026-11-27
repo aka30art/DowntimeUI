@@ -1,4 +1,4 @@
-import { GITHUB_YARDHUB_TABLES } from "./github-database-bootstrap.js";
+import { GITHUB_YARDHUB_TABLES, GITHUB_YARDHUB_SOURCE_TABLES } from "./github-database-bootstrap.js";
 const DEFAULT_API = "https://api.github.com";
 const DEFAULT_MAX_RETRIES = 5;
 const DEFAULT_MAX_SHARD_BYTES = 512 * 1024;
@@ -84,13 +84,13 @@ function validateYardHubBackupManifest(manifest) {
       manifest.sessionsExcluded !== true || !manifest.tableCounts ||
       typeof manifest.tableCounts !== "object" || !manifest.checksums ||
       typeof manifest.checksums !== "object" || !Number.isFinite(Date.parse(manifest.exportedAt)) ||
-      !Number.isInteger(manifest.tableCount) || manifest.tableCount !== GITHUB_YARDHUB_TABLES.length ||
+      !Number.isInteger(manifest.tableCount) || manifest.tableCount !== GITHUB_YARDHUB_SOURCE_TABLES.length ||
       !Number.isInteger(manifest.storageObjectCount) || manifest.storageObjectCount < 0 ||
       !Number.isInteger(manifest.storageBytes) || manifest.storageBytes < 0) {
     throw new GitHubStoreError("YARDHUB primary backup manifest is invalid or incomplete.");
   }
   const names = Object.keys(manifest.tableCounts).sort();
-  const expected = [...GITHUB_YARDHUB_TABLES].sort();
+  const expected = [...GITHUB_YARDHUB_SOURCE_TABLES].sort();
   if (JSON.stringify(names) !== JSON.stringify(expected)) {
     throw new GitHubStoreError("YARDHUB primary backup table catalogue does not match the supported schema.");
   }
