@@ -2148,8 +2148,9 @@ async function loadCentralUsers(){
    }
    if(button)button.disabled=centralUsers.length===0;
    const firstRunPanel=$('firstDevBootstrapPanel');
-   if(firstRunPanel)firstRunPanel.hidden=centralUsers.length>0;
-   if(status)status.textContent=centralUsers.length?'Select your USER and enter your PIN.':'No active USER accounts are available. Initialise the first DEV owner below.';
+   const bootstrapAvailable=Boolean(globalThis.__YARDHUB_BOOTSTRAP_CODE__);
+   if(firstRunPanel)firstRunPanel.hidden=centralUsers.length>0||!bootstrapAvailable;
+   if(status)status.textContent=centralUsers.length?'Select your USER and enter your PIN.':bootstrapAvailable?'No active USER accounts are available. Initialise the first DEV owner below.':'No active USER accounts are available. Reconnect as the installation owner to issue a new one-time DEV setup code.';
    return centralUsers;
   }catch(error){
    if(username)username.disabled=true;
@@ -2165,7 +2166,9 @@ async function initialiseDevOwner(){
  if(button)button.disabled=true;
  if(status)status.textContent='Initialising the first immutable DEV owner account…';
  try{
-  await window.DowntimeCentral.bootstrap({bootstrapCode:'YARDHUB-INITIAL-SETUP',username:'DEV',pin});
+  const bootstrapCode=globalThis.__YARDHUB_BOOTSTRAP_CODE__;
+  if(!bootstrapCode)throw new Error('The one-time DEV setup code is unavailable or expired. Reconnect to the private data repository to generate a fresh code.');
+  await window.DowntimeCentral.bootstrap({bootstrapCode,username:'DEV',pin});
   $('devBootstrapPin').value='';$('devBootstrapPinConfirm').value='';
   const panel=$('firstDevBootstrapPanel');if(panel)panel.hidden=true;
   await loadCentralUsers();
@@ -2474,7 +2477,7 @@ if(window.DowntimeCentral?.session?.token)resumeCentralSession();
       <button type="submit">CONNECT & INITIALISE</button><button type="button" data-create-private>CREATE PRIVATE DATA REPOSITORY</button>
     </form>
     <p class="yardhub-github-connect-status" data-yardhub-github-status>Waiting for a private GitHub data repository.</p>
-    <p class="yardhub-github-connect-note">Initial DEV bootstrap code: <strong>YARDHUB-INITIAL-SETUP</strong>. The token is held in memory only and must be re-entered after a page reload.</p>
+    <p class="yardhub-github-connect-note">The initial DEV owner setup is a one-time, private-session operation. Its random setup code is hashed in the private data repository, expires after 15 minutes and is invalidated after DEV is created. The repository token stays in memory only.</p>
   </div>
 </div>
 <script type="module" src="github-bootstrap.js"></script>
