@@ -33,6 +33,19 @@ export function createGitHubStorageClient({ store, now = () => new Date(), ticke
         }
       },
 
+      async createSignedUploadUrl(path, options = {}) {
+        try {
+          const ticket = createUploadTicket({
+            bucket: bucketName, path,
+            mimeType: options.contentType || "application/octet-stream",
+            size: Number.isInteger(options.size) ? options.size : null
+          });
+          return { data: { path: ticket.path, token: ticket.token, signedUrl: ticket.token }, error: null };
+        } catch (error) {
+          return { data: null, error };
+        }
+      },
+
       async uploadToSignedUrl(path, token, file, options = {}) {
         try {
           const ticket = tickets.get(String(token || ""));
