@@ -168,3 +168,29 @@ test("first-run DEV bootstrap signs in and authorises protected YARDHUB module s
     else globalThis.DowntimeCentral = previousSession;
   }
 });
+
+test("Edge Function and browser clients share one-time GitHub storage upload tickets", async () => {
+  const store = createMemoryStore();
+  const previousFetch = globalThis.fetch;
+  const runtime = await installGitHubEdgeRuntime({ store, functionNames: [] });
+  try {
+    const edgeClient = globalThis.__YARDHUB_GITHUB_COMPAT__.createClient();
+    const browserClient = globalThis.supabase.createClient();
+    assert.equal(edgeClient.storage, browserClient.storage);
+    const ticket = await edgeClient.storage.from("downtime-evidence").createSignedUploadUrl(
+      "2026-11-27/evidence.jpg",
+      { contentType: "image/jpeg", size: 3 }
+    );
+    assert.equal(ticket.error, null);
+    const result = await browserClient.storage.from("downtime-evidence").uploadToSignedUrl(
+      ticket.data.path, ticket.data.token,
+      new Blob([new Uint8Array([1, 2, 3])], { type: "image/jpeg" }),
+      { contentType: "image/jpeg" }
+    );
+    assert.equal(result.error, null);
+    assert.equal(result.data.path, "2026-11-27/evidence.jpg");
+  } finally {
+    await runtime.dispose();
+    globalThis.fetch = previousFetch;
+  }
+});
