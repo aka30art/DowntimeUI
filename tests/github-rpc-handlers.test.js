@@ -262,3 +262,44 @@ test("YARD ROLE assignment and reassignment retain user/staff linkage and audit 
   assert.equal(dbState.tables.yard_role_assignments[0].staff_id, "staff-1");
   assert.deepEqual(dbState.tables.yard_role_assignment_audit.map(x => x.action), ["USER_YARD_ROLE_ASSIGNED", "USER_YARD_ROLE_REASSIGNED"]);
 });
+
+test("DEV-preserving identity reset retains DEV session and operational records", async () => {
+  const store = memoryStore({
+    downtime_roots_bootstrap: [{ singleton: true, user_id: "dev-user" }],
+    downtime_central_sessions: [
+      { token_hash: "dev-session", username: "DEV", expires_at: "2026-11-27T12:00:00.000Z" },
+      { token_hash: "admin-session", username: "ADMIN", expires_at: "2026-11-27T12:00:00.000Z" }
+    ],
+    downtime_central_bank: [{
+      id: 1, version: 7,
+      payload: {
+        users: [
+          { userId: "dev-user", username: "DEV", enabled: true, pinSalt: "salt", pinHash: "hash" },
+          { userId: "admin-user", username: "ADMIN", enabled: true }
+        ],
+        staff: { roster: ["DEV", "ADMIN"], profiles: { DEV: { name: "DEV" }, ADMIN: { name: "ADMIN" } } },
+        appData: { staffRoster: ["DEV", "ADMIN"], operatorProfiles: { DEV: {}, ADMIN: {} } }
+      }
+    }],
+    yard_hub_tier_config: [{ id: 1, version: 3, payload: { userTiers: { DEV: "OWNER", ADMIN: "ADMIN" }, tiers: {} } }],
+    yard_role_assignments: [{ id: "ya1", user_id: "admin-user", staff_id: "staff-admin", yard_role_id: "role-1", status: "ACTIVE", version: 1 }],
+    downtime_roots_assignments: [{ id: "ra1", user_id: "admin-user", staff_id: "staff-admin", roots_class: "ADMIN", status: "ACTIVE", version: 1 }],
+    downtime_reports: [{ id: "report-1", title: "Preserved report" }]
+  });
+  const db = createGitHubTableClient({ store, rpcHandlers: GITHUB_YARDHUB_RPC_HANDLERS, now: fixedNow });
+  const result = await db.rpc("downtime_identity_reset_preserve_dev", {
+    p_expected_version: 7, p_actor_user_id: "dev-user", p_actor_username: "DEV",
+    p_actor_display_name: "Developer", p_actor_session_hash: "dev-session"
+  });
+  assert.equal(result.error, null);
+  assert.equal(result.data.devSessionPreserved, true);
+  const snapshot = await store.readDatabase();
+  assert.deepEqual(snapshot.tables.downtime_central_bank[0].payload.users.map(x => x.username), ["DEV"]);
+  assert.deepEqual(snapshot.tables.downtime_central_bank[0].payload.staff.roster, []);
+  assert.deepEqual(snapshot.tables.downtime_central_sessions.map(x => x.token_hash), ["dev-session"]);
+  assert.equal(snapshot.tables.yard_hub_tier_config[0].payload.userTiers && Object.keys(snapshot.tables.yard_hub_tier_config[0].payload.userTiers).length, 0);
+  assert.equal(snapshot.tables.yard_role_assignments[0].status, "REVOKED");
+  assert.equal(snapshot.tables.downtime_roots_assignments[0].status, "REVOKED");
+  assert.equal(snapshot.tables.downtime_reports[0].title, "Preserved report");
+  assert.equal(snapshot.tables.downtime_identity_reset_runs.length, 1);
+});
