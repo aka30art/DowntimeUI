@@ -1,5 +1,5 @@
 import { build } from "esbuild";
-import { readFile } from "node:fs/promises";
+import { mkdir, readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 
 const root = process.cwd();
@@ -22,7 +22,9 @@ const plugin = {
     buildApi.onLoad({ filter: /.*/, namespace: "ignored" }, () => ({ contents: "export {};", loader: "js" }));
 
     buildApi.onResolve({ filter: /^(https:\/\/esm\.sh\/@supabase\/supabase-js|npm:@supabase\/supabase-js)/ }, () => ({ path: supabaseShim }));
-    buildApi.onResolve({ filter: /^https:\/\/esm\.sh\/pdf-lib@1\.17\.1$/ }, () => ({ path: "pdf-lib" }));
+    buildApi.onResolve({ filter: /^https:\/\/esm\.sh\/pdf-lib@1\.17\.1$/ }, async (args) =>
+      buildApi.resolve("pdf-lib", { resolveDir: root, kind: "import-statement", importer: args.importer })
+    );
 
     buildApi.onLoad({ filter: /\.(ts|tsx)$/ }, async (args) => {
       let contents = await readFile(args.path, "utf8");
@@ -35,7 +37,7 @@ const plugin = {
   }
 };
 
-for (const [name, entryPoint] of functions) {
+await mkdir(resolve(root, "yardhub/runtime/functions"), { recursive: true });\n\nfor (const [name, entryPoint] of functions) {
   await build({
     absWorkingDir: root,
     entryPoints: [entryPoint],
