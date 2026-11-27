@@ -89,6 +89,10 @@ export async function runGitHubActionsBroker({
   const repository = requiredEnv(env, "GITHUB_REPOSITORY");
   const [brokerOwner, brokerRepository] = repository.split("/");
   if (!brokerOwner || !brokerRepository) throw new Error("GITHUB_REPOSITORY must be owner/repository.");
+  const brokerRepositoryId = Number(requiredEnv(env, "YARDHUB_BROKER_REPOSITORY_ID"));
+  if (!Number.isSafeInteger(brokerRepositoryId) || brokerRepositoryId <= 0) {
+    throw new TypeError("YARDHUB_BROKER_REPOSITORY_ID must be a positive numeric repository ID.");
+  }
 
   const dataOwner = requiredEnv(env, "YARDHUB_DATA_OWNER");
   const dataRepository = requiredEnv(env, "YARDHUB_DATA_REPOSITORY");
@@ -121,7 +125,7 @@ export async function runGitHubActionsBroker({
     const broker = createGitHubYardHubBroker({
       store,
       handlers: runtime.handlers,
-      expectedRepositoryId: Number(event.repository?.id),
+      expectedRepositoryId: brokerRepositoryId,
       brokerPrivateKey,
       githubToken: workflowToken,
       brokerOwner,
