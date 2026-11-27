@@ -23,6 +23,7 @@ export async function installGitHubEdgeRuntime({
   const handlers = globalThis.__YARDHUB_EDGE_HANDLERS__ || (globalThis.__YARDHUB_EDGE_HANDLERS__ = {});
   const previousDeno = globalThis.Deno;
   const previousFetch = globalThis.fetch;
+  const previousSupabase = globalThis.supabase;
   const environment = {
     SUPABASE_URL: "https://github-native.invalid",
     SUPABASE_SERVICE_ROLE_KEY: "github-native-service-adapter",
@@ -42,6 +43,9 @@ export async function installGitHubEdgeRuntime({
     }
   };
   globalThis.__YARDHUB_GITHUB_COMPAT__ = {
+    createClient() { return createCompatClient(); }
+  };
+  globalThis.supabase = {
     createClient() { return createCompatClient(); }
   };
   const { createGitHubSupabaseCompat } = await import("../../src/infrastructure/github-supabase-compat.js");
@@ -77,6 +81,8 @@ export async function installGitHubEdgeRuntime({
       else globalThis.Deno = previousDeno;
       delete globalThis.__YARDHUB_GITHUB_COMPAT__;
       delete globalThis.__YARDHUB_CURRENT_FUNCTION__;
+      if (previousSupabase === undefined) delete globalThis.supabase;
+      else globalThis.supabase = previousSupabase;
     }
   };
 }
