@@ -24,7 +24,7 @@ const DEFAULT_PRIMARY_KEYS = Object.freeze({
   gatelog_vehicles: ["id"],
   gatelog_visits: ["id"],
   gatelog_waste_types: ["id"],
-  gatelog_visit_waste_types: ["id"],
+  gatelog_visit_waste_types: ["visit_id", "waste_type_id"],
   gatelog_audit: ["id"],
   gatelog_daily_gateman_assignments: ["duty_date"],
   gatelog_report_archive: ["id"],
@@ -73,12 +73,49 @@ function matches(row, filters) {
   });
 }
 
-function project(row, columns) {
-  if (!columns || columns.trim() === "*" || columns.includes("(")) return clone(row);
-  const selected = columns.split(",").map(part => part.trim()).filter(Boolean);
+const RELATIONS = Object.freeze({
+  gatelog_visits: {
+    gatelog_customers: { table: "gatelog_customers", localKey: "customer_id", foreignKey: "id", many: false },
+    gatelog_visit_waste_types: { table: "gatelog_visit_waste_types", localKey: "id", foreignKey: "visit_id", many: true }
+  },
+  gatelog_visit_waste_types: {
+    gatelog_waste_types: { table: "gatelog_waste_types", localKey: "waste_type_id", foreignKey: "id", many: false }
+  }
+});
+
+function splitSelectColumns(value) {
+  const result = [];
+  let depth = 0, start = 0;
+  for (let i = 0; i < value.length; i += 1) {
+    if (value[i] === "(") depth += 1;
+    else if (value[i] === ")") depth -= 1;
+    else if (value[i] === "," && depth === 0) {
+      result.push(value.slice(start, i).trim()); start = i + 1;
+    }
+  }
+  result.push(value.slice(start).trim());
+  return result.filter(Boolean);
+}
+
+function project(row, columns, tableName = "", allTables = {}) {
+  if (!columns || columns.trim() === "*") return clone(row);
   const result = {};
-  for (const path of selected) {
-    const [source, alias] = path.split(":").map(value => value.trim());
+  const selected = splitSelectColumns(columns);
+  if (selected.includes("*")) Object.assign(result, clone(row));
+  for (const part of selected) {
+    const relationMatch = /^([A-Za-z0-9_]+)(?::([A-Za-z0-9_]+))?\\((.*)\\)$/.exec(part);
+    if (relationMatch) {
+      const relationName = relationMatch[1];
+      const outputName = relationMatch[2] || relationName;
+      const relation = RELATIONS[tableName]?.[relationName];
+      if (!relation) { result[outputName] = relationName === "gatelog_customers" ? null : []; continue; }
+      const candidates = (allTables[relation.table] || []).filter(item => item[relation.foreignKey] === row[relation.localKey]);
+      const projected = candidates.map(item => project(item, relationMatch[3], relation.table, allTables));
+      result[outputName] = relation.many ? projected : (projected[0] || null);
+      continue;
+    }
+    if (part === "*") continue;
+    const [source, alias] = part.split(":").map(value => value.trim());
     const value = source.split(".").reduce((current, key) => current?.[key], row);
     if (value !== undefined) result[alias || source] = clone(value);
   }
@@ -176,7 +213,7 @@ export function createGitHubTableClient({
             const count = this.countMode ? rows.length : null;
             if (this.offset) rows = rows.slice(this.offset);
             if (this.maxRows !== null) rows = rows.slice(0, this.maxRows);
-            rows = rows.map(row => project(row, this.columns));
+            rows = rows.map(row => project(row, this.columns, table, db.tables));
             if (this.singleMode === "single" && rows.length !== 1) throw new GitHubTableQueryError("Expected exactly one row, received " + rows.length + ".", "PGRST116", 406);
             if (this.singleMode === "maybe" && rows.length > 1) throw new GitHubTableQueryError("Expected zero or one row, received " + rows.length + ".", "PGRST116", 406);
             return { data: this.headOnly ? null : this.singleMode ? (rows[0] ?? null) : rows, error: null, count, status: 200, statusText: "OK" };
