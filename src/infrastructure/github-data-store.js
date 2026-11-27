@@ -481,7 +481,7 @@ export function createGitHubDataStore({
         const tableMetadata = {};
         const exportedAt = new Date(backupManifest.exportedAt).toISOString();
 
-        for (const table of GITHUB_YARDHUB_TABLES) {
+        for (const table of GITHUB_YARDHUB_SOURCE_TABLES) {
           const sourcePath = "replication/yardhub-primary/tables/" + table + ".json";
           const sourceEntry = sourceEntries.get(sourcePath);
           if (!sourceEntry || sourceEntry.sha !== backupManifest.checksums[sourcePath]) {
