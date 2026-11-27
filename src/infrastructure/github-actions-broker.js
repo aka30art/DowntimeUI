@@ -3,6 +3,7 @@ import { parseBrokerRequestComment } from "./github-app-broker-client.js";
 const ENVELOPE_PREFIX = "YARDHUB_REQUEST_V1:";
 const MAX_COMMENT_LENGTH = 16 * 1024;
 const ACTION_PATTERN = /^[a-z][a-z0-9-]{1,63}$/;
+const SERVICE_NAMES = new Set(["central-bank", "central-config-admin", "gatelog-api", "photo-evidence", "repair-maintenance-api", "spectator-read", "yard-hub-settings-api"]);
 const FORBIDDEN_IDENTITY_FIELDS = new Set([
   "actor", "actorId", "actor_id", "actorUserId", "actor_user_id",
   "actorUsername", "actor_username", "actorDisplayName", "actor_display_name",
@@ -146,7 +147,10 @@ export function createGitHubActionsBroker({
         });
         if (!request || typeof request !== "object" || Array.isArray(request) ||
             request.requestId !== parsed.envelope.requestId ||
-            typeof request.action !== "string" || !ACTION_PATTERN.test(request.action)) {
+            typeof request.service !== "string" || !SERVICE_NAMES.has(request.service) ||
+            typeof request.action !== "string" || !ACTION_PATTERN.test(request.action) ||
+            (request.args != null && (typeof request.args !== "object" || Array.isArray(request.args))) ||
+            (request.sessionToken != null && (typeof request.sessionToken !== "string" || request.sessionToken.length > 1024))) {
           throw brokerError("The decrypted request failed schema validation.");
         }
         assertNoCallerIdentity(request);
@@ -156,16 +160,20 @@ export function createGitHubActionsBroker({
         }
         const decision = await authorize({
           principal,
+          service: request.service,
           action: request.action,
           args: request.args ?? {},
+          sessionToken: request.sessionToken || null,
           authorityEpoch
         });
         if (decision !== true) throw brokerError("The USER is not authorised for this action.", 403, "BROKER_PERMISSION_DENIED");
 
         const result = await execute({
           principal,
+          service: request.service,
           action: request.action,
           args: request.args ?? {},
+          sessionToken: request.sessionToken || null,
           requestId: parsed.envelope.requestId,
           authorityEpoch
         });
