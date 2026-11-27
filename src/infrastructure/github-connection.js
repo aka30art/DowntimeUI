@@ -83,22 +83,40 @@ export async function createPrivateGitHubDataRepository({
   token = String(token || "").trim();
   if (!/^[A-Za-z0-9-]+$/.test(owner)) throw new TypeError("Enter a valid GitHub owner.");
   if (!/^[A-Za-z0-9_.-]+$/.test(repo)) throw new TypeError("Enter a valid GitHub repository name.");
-  if (!token) throw new TypeError("Enter a GitHub access token with repository-creation permission.");
+  if (!token) throw new TypeError("Enter a GitHub access token with private repository-creation permission.");
   if (FORBIDDEN_REPOSITORIES.has(normaliseRepository(owner, repo))) {
     throw new GitHubStoreError("The application source and protected DOWNTIME repositories cannot be operational data stores.", 403);
   }
   if (typeof fetchImpl !== "function") throw new TypeError("A fetch implementation is required.");
 
+  const headers = {
+    Accept: "application/vnd.github+json",
+    Authorization: "Bearer " + token,
+    "X-GitHub-Api-Version": "2022-11-28"
+  };
+  let identityResponse;
+  try {
+    identityResponse = await fetchImpl("https://api.github.com/user", { method: "GET", headers });
+  } catch {
+    throw new GitHubStoreError("GitHub could not verify the token owner. Check the connection and try again.");
+  }
+  let identity;
+  try {
+    identity = typeof identityResponse.json === "function"
+      ? await identityResponse.json()
+      : JSON.parse(await identityResponse.text());
+  } catch {
+    throw new GitHubStoreError("GitHub returned unreadable token-owner metadata.", identityResponse.status || 0);
+  }
+  if (!identityResponse.ok || String(identity?.login || "").toLowerCase() !== owner.toLowerCase()) {
+    throw new GitHubStoreError("The GitHub token must belong to the configured owner account (" + owner + "). No repository was created.", identityResponse.status || 403);
+  }
+
   let response;
   try {
     response = await fetchImpl("https://api.github.com/user/repos", {
       method: "POST",
-      headers: {
-        Accept: "application/vnd.github+json",
-        Authorization: "Bearer " + token,
-        "Content-Type": "application/json",
-        "X-GitHub-Api-Version": "2022-11-28"
-      },
+      headers: { ...headers, "Content-Type": "application/json" },
       body: JSON.stringify({
         name: repo,
         description: String(description).slice(0, 350),
@@ -120,7 +138,7 @@ export async function createPrivateGitHubDataRepository({
   }
   if (!response.ok) {
     const message = metadata?.message || "GitHub rejected private repository creation.";
-    throw new GitHubStoreError(message + " The token needs permission to create a private repository.", response.status);
+    throw new GitHubStoreError(message + " The fine-grained token needs Repository creation (write) or Administration (write) permission.", response.status);
   }
   const fullName = normaliseRepository(owner, repo);
   if (metadata?.private !== true || String(metadata?.full_name || "").toLowerCase() !== fullName) {
