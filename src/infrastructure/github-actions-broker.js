@@ -1,10 +1,13 @@
+import { parseBrokerRequestComment } from "./github-app-broker-client.js";
+
 const ENVELOPE_PREFIX = "YARDHUB_REQUEST_V1:";
 const MAX_COMMENT_LENGTH = 16 * 1024;
-const REQUEST_ID_PATTERN = /^[A-Za-z0-9_-]{16,96}$/;
 const ACTION_PATTERN = /^[a-z][a-z0-9-]{1,63}$/;
 const FORBIDDEN_IDENTITY_FIELDS = new Set([
-  "actor", "actorId", "actor_id", "userId", "user_id", "username",
-  "role", "tier", "permissions", "isAdmin", "isDev"
+  "actor", "actorId", "actor_id", "actorUserId", "actor_user_id",
+  "actorUsername", "actor_username", "actorDisplayName", "actor_display_name",
+  "actorRole", "actorTier", "callerRole", "callerTier",
+  "permissions", "isAdmin", "isDev"
 ]);
 
 function brokerError(message, status = 400, code = "BROKER_REQUEST_INVALID") {
@@ -14,28 +17,17 @@ function brokerError(message, status = 400, code = "BROKER_REQUEST_INVALID") {
   return error;
 }
 
-function decodeBase64Url(value) {
-  if (typeof value !== "string" || !/^[A-Za-z0-9_-]+$/.test(value)) {
-    throw brokerError("The encrypted request envelope is malformed.");
-  }
-  const base64 = value.replace(/-/g, "+").replace(/_/g, "/") + "=".repeat((4 - value.length % 4) % 4);
-  const binary = typeof Buffer !== "undefined"
-    ? Buffer.from(base64, "base64").toString("utf8")
-    : decodeURIComponent(Array.from(atob(base64), char => "%" + char.charCodeAt(0).toString(16).padStart(2, "0")).join(""));
-  return JSON.parse(binary);
-}
-
-function assertNoCallerIdentity(value, path = "request") {
+function assertNoCallerIdentity(value) {
   if (!value || typeof value !== "object") return;
   if (Array.isArray(value)) {
-    value.forEach((item, index) => assertNoCallerIdentity(item, path + "[" + index + "]"));
+    value.forEach(assertNoCallerIdentity);
     return;
   }
   for (const [key, nested] of Object.entries(value)) {
     if (FORBIDDEN_IDENTITY_FIELDS.has(key)) {
-      throw brokerError("Caller-supplied identity or privilege fields are not accepted.", 403, "BROKER_CALLER_IDENTITY_FORBIDDEN");
+      throw brokerError("Caller-supplied actor identity or privilege fields are not accepted.", 403, "BROKER_CALLER_IDENTITY_FORBIDDEN");
     }
-    assertNoCallerIdentity(nested, path + "." + key);
+    assertNoCallerIdentity(nested);
   }
 }
 
@@ -49,10 +41,13 @@ export function parseGitHubIssueCommentEvent(event, { expectedRepositoryId, maxC
   if (!Number.isSafeInteger(senderId) || senderId <= 0 || event.sender?.type !== "User") {
     throw brokerError("The GitHub event does not identify an eligible human account.", 401, "BROKER_ACTOR_INVALID");
   }
-  if (!event.issue?.id || event.issue?.pull_request) {
-    throw brokerError("Requests must be posted to a broker issue, not a pull request.", 400, "BROKER_ISSUE_INVALID");
+  const issueId = Number(event.issue?.id);
+  const issueNumber = Number(event.issue?.number);
+  const commentId = Number(event.comment?.id);
+  if (!Number.isSafeInteger(issueId) || issueId <= 0 || !Number.isSafeInteger(issueNumber) || issueNumber <= 0 || event.issue?.pull_request) {
+    throw brokerError("Requests must be posted to a registered broker issue, not a pull request.", 400, "BROKER_ISSUE_INVALID");
   }
-  if (!event.comment?.id || Number(event.comment?.user?.id) !== senderId) {
+  if (!Number.isSafeInteger(commentId) || commentId <= 0 || Number(event.comment?.user?.id) !== senderId) {
     throw brokerError("The comment author does not match the authenticated event sender.", 401, "BROKER_ACTOR_MISMATCH");
   }
   const body = String(event.comment.body || "");
@@ -61,50 +56,32 @@ export function parseGitHubIssueCommentEvent(event, { expectedRepositoryId, maxC
   }
   let envelope;
   try {
-    envelope = decodeBase64Url(body.slice(ENVELOPE_PREFIX.length).trim());
-  } catch (error) {
-    if (error?.status) throw error;
-    throw brokerError("The encrypted request envelope is not valid JSON.");
+    envelope = parseBrokerRequestComment(body);
+  } catch {
+    throw brokerError("The encrypted request envelope is malformed.");
   }
-  const legacySigned = typeof envelope?.signature === "string" &&
-    /^[A-Za-z0-9_-]{32,2048}$/.test(envelope.signature);
-  const ecdhEncrypted = envelope?.protocol === "YARDHUB_GITHUB_BROKER" &&
-    typeof envelope.createdAt === "string" && typeof envelope.expiresAt === "string" &&
-    typeof envelope.clientPublicKey === "string" && /^[A-Za-z0-9_-]{80,120}$/.test(envelope.clientPublicKey) &&
-    typeof envelope.nonce === "string" && /^[A-Za-z0-9_-]{16,32}$/.test(envelope.nonce);
-  if (!envelope || envelope.version !== 1 ||
-      typeof envelope.requestId !== "string" || !REQUEST_ID_PATTERN.test(envelope.requestId) ||
-      typeof envelope.ciphertext !== "string" || !/^[A-Za-z0-9_-]{32,14000}$/.test(envelope.ciphertext) ||
-      (!legacySigned && !ecdhEncrypted)) {
+  if (!envelope || envelope.protocol !== "YARDHUB_GITHUB_BROKER" || envelope.version !== 1 ||
+      typeof envelope.requestId !== "string" || !/^[0-9a-f-]{36}$/i.test(envelope.requestId) ||
+      typeof envelope.clientPublicKey !== "string" || typeof envelope.nonce !== "string" ||
+      typeof envelope.ciphertext !== "string") {
     throw brokerError("The encrypted request envelope failed schema validation.");
   }
   return Object.freeze({
     repositoryId,
-    issueId: Number(event.issue.id),
-    issueNumber: Number(event.issue.number),
-    commentId: Number(event.comment.id),
+    issueId,
+    issueNumber,
+    commentId,
     actor: Object.freeze({
       githubUserId: String(senderId),
       login: String(event.sender.login || "").slice(0, 39)
     }),
-    envelope: Object.freeze({
-      version: 1,
-      protocol: envelope.protocol || "YARDHUB_LEGACY_SIGNED",
-      requestId: envelope.requestId,
-      createdAt: envelope.createdAt || null,
-      expiresAt: envelope.expiresAt || null,
-      clientPublicKey: envelope.clientPublicKey || null,
-      nonce: envelope.nonce || null,
-      ciphertext: envelope.ciphertext,
-      signature: envelope.signature || null
-    })
+    envelope: Object.freeze(envelope)
   });
 }
 
 export function createGitHubActionsBroker({
   expectedRepositoryId,
   resolvePrincipal,
-  verifySignature,
   decryptRequest,
   authorize,
   execute,
@@ -113,16 +90,9 @@ export function createGitHubActionsBroker({
   idempotencyStore,
   getAuthorityEpoch
 } = {}) {
-  const required = {
-    resolvePrincipal, verifySignature, decryptRequest, authorize,
-    execute, encryptResponse, publishEncryptedResponse, idempotencyStore,
-    getAuthorityEpoch
-  };
+  const required = { resolvePrincipal, decryptRequest, authorize, execute, encryptResponse, publishEncryptedResponse, getAuthorityEpoch };
   for (const [name, callback] of Object.entries(required)) {
-    if (name === "verifySignature") continue;
-    if (typeof callback !== "function" && name !== "idempotencyStore") {
-      throw new TypeError("GitHub Actions broker requires " + name + ".");
-    }
+    if (typeof callback !== "function") throw new TypeError("GitHub Actions broker requires " + name + ".");
   }
   if (!idempotencyStore || typeof idempotencyStore.claim !== "function" ||
       typeof idempotencyStore.complete !== "function") {
@@ -132,31 +102,13 @@ export function createGitHubActionsBroker({
   return Object.freeze({
     async handleIssueComment(event) {
       const parsed = parseGitHubIssueCommentEvent(event, { expectedRepositoryId });
+      // GitHub's authenticated event sender ID is the transport identity.
+      // No identity value inside the encrypted request can override it.
       const principal = await resolvePrincipal(parsed.actor.githubUserId);
       if (!principal || String(principal.githubUserId) !== parsed.actor.githubUserId ||
           !principal.userId || !principal.staffId ||
           principal.enabled !== true || principal.status !== "ACTIVE") {
         throw brokerError("The GitHub actor is not mapped to an active canonical USER/STAFF identity.", 403, "BROKER_USER_DENIED");
-      }
-      const legacySigned = parsed.envelope.protocol === "YARDHUB_LEGACY_SIGNED";
-      if (legacySigned) {
-        if (!principal.signingPublicKey || !principal.responseEncryptionKey ||
-            typeof verifySignature !== "function") {
-          throw brokerError("The canonical USER has no registered legacy broker signing identity.", 403, "BROKER_KEY_NOT_REGISTERED");
-        }
-        const signedMessage = [
-          parsed.repositoryId, parsed.issueId, parsed.commentId,
-          parsed.envelope.requestId, parsed.envelope.ciphertext
-        ].join(":");
-        const signatureValid = await verifySignature({
-          publicKey: principal.signingPublicKey,
-          message: signedMessage,
-          signature: parsed.envelope.signature
-        });
-        if (signatureValid !== true) throw brokerError("The request signature is invalid.", 401, "BROKER_SIGNATURE_INVALID");
-      } else if (!parsed.envelope.clientPublicKey || !parsed.envelope.nonce ||
-          !parsed.envelope.createdAt || !parsed.envelope.expiresAt) {
-        throw brokerError("The encrypted request is missing its ephemeral response key or time bounds.");
       }
 
       const claim = await idempotencyStore.claim({
@@ -180,16 +132,12 @@ export function createGitHubActionsBroker({
 
       try {
         const request = await decryptRequest({
-          ciphertext: parsed.envelope.ciphertext,
-          requestId: parsed.envelope.requestId,
-          actorUserId: principal.userId,
           envelope: parsed.envelope,
-          protocol: parsed.envelope.protocol
+          actorUserId: principal.userId
         });
         if (!request || typeof request !== "object" || Array.isArray(request) ||
             request.requestId !== parsed.envelope.requestId ||
-            typeof request.action !== "string" || !ACTION_PATTERN.test(request.action) ||
-            (request.args !== undefined && (!request.args || typeof request.args !== "object" || Array.isArray(request.args)))) {
+            typeof request.action !== "string" || !ACTION_PATTERN.test(request.action)) {
           throw brokerError("The decrypted request failed schema validation.");
         }
         assertNoCallerIdentity(request);
@@ -213,10 +161,8 @@ export function createGitHubActionsBroker({
           authorityEpoch
         });
         const encryptedResponse = await encryptResponse({
-          publicKey: legacySigned ? principal.responseEncryptionKey : parsed.envelope.clientPublicKey,
-          response: { ok: true, requestId: parsed.envelope.requestId, result },
-          protocol: parsed.envelope.protocol,
-          requestEnvelope: parsed.envelope
+          requestEnvelope: parsed.envelope,
+          payload: { ok: true, requestId: parsed.envelope.requestId, result }
         });
         await idempotencyStore.complete({
           requestId: parsed.envelope.requestId,
@@ -243,6 +189,5 @@ export function createGitHubActionsBroker({
 
 export const GITHUB_ACTIONS_BROKER_PROTOCOL = Object.freeze({
   envelopePrefix: ENVELOPE_PREFIX,
-  maxCommentLength: MAX_COMMENT_LENGTH,
-  requestIdPattern: REQUEST_ID_PATTERN
+  maxCommentLength: MAX_COMMENT_LENGTH
 });
