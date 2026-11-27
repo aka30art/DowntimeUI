@@ -33,6 +33,11 @@ test("first GitHub installation seeds all operational tables and immutable DEV b
   assert.equal(store.tables.downtime_roots_bootstrap.length, 1);
   assert.ok(store.tables.downtime_roots_bootstrap[0].user_id);
   assert.equal(store.tables.downtime_roots_bootstrap[0].singleton, true);
+  assert.match(result.bootstrapCode, /^[A-F0-9]{48}$/);
+  assert.notEqual(result.bootstrapCode, "YARDHUB-INITIAL-SETUP");
+  assert.equal(store.tables.downtime_roots_bootstrap[0].bootstrap_code_hash.length, 64);
+  assert.notEqual(store.tables.downtime_roots_bootstrap[0].bootstrap_code_hash, result.bootstrapCode);
+  assert.equal(store.tables.downtime_roots_bootstrap[0].bootstrap_code_expires_at, result.bootstrapCodeExpiresAt);
   assert.equal(store.tables.yard_hub_tier_config[0].version, 0);
   assert.equal(store.commits, 1);
 });
@@ -78,4 +83,23 @@ test("bootstrap adds missing singleton records without replacing non-empty table
   assert.ok(store.tables.downtime_central_config_state.some(row => row.id === 1));
   assert.ok(store.tables.yard_hub_tier_config.some(row => row.id === 1));
   assert.equal(store.tables.downtime_reports[0].title, "Keep this report");
+});
+
+test("DEV bootstrap code rotates after a reload and expires after fifteen minutes", async () => {
+  const store = memoryStore();
+  const first = await ensureGitHubDatabaseReady({ store, generateBootstrapCode: () => "A".repeat(48) });
+  delete globalThis.__YARDHUB_BOOTSTRAP_CODE__;
+  const second = await ensureGitHubDatabaseReady({ store, generateBootstrapCode: () => "B".repeat(48) });
+  assert.equal(first.bootstrapCode, "A".repeat(48));
+  assert.equal(second.bootstrapCode, "B".repeat(48));
+  assert.notEqual(store.tables.downtime_roots_bootstrap[0].bootstrap_code_hash, first.bootstrapCode);
+  assert.equal(store.tables.downtime_roots_bootstrap[0].bootstrap_code_expires_at, second.bootstrapCodeExpiresAt);
+});
+
+test("DEV bootstrap code is not generated once a DEV account exists", async () => {
+  const store = memoryStore();
+  await ensureGitHubDatabaseReady({ store, generateBootstrapCode: () => "C".repeat(48) });
+  store.tables.downtime_central_bank[0].payload.users = [{ username: "DEV", userId: store.tables.downtime_roots_bootstrap[0].user_id }];
+  const result = await ensureGitHubDatabaseReady({ store });
+  assert.equal(result.bootstrapCode, null);
 });
