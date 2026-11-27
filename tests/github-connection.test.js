@@ -120,6 +120,10 @@ test("first-run setup creates only the exact private GitHub data repository", as
     owner: "example", repo: "yardhub-data", token: "create-repo-token",
     storage,
     fetchImpl: async (url, options) => {
+      if (url === "https://api.github.com/user") {
+        assert.equal(options.method, "GET");
+        return { ok: true, status: 200, async json() { return { login: "example" }; } };
+      }
       assert.equal(url, "https://api.github.com/user/repos");
       assert.equal(options.method, "POST");
       assert.match(options.headers.Authorization, /^Bearer /);
@@ -158,5 +162,26 @@ test("first-run setup rejects a repository that GitHub reports as public or mism
     }),
     (error) => error.status === 403 && /exact requested private repository/.test(error.message)
   );
+  assert.equal(loadGitHubConnection({ storage }).connected, false);
+});
+
+test("first-run setup refuses to create a repository under a different token owner", async () => {
+  const storage = memoryStorage();
+  clearGitHubConnection({ storage });
+  let creationAttempted = false;
+  await assert.rejects(
+    createPrivateGitHubDataRepository({
+      owner: "example", repo: "yardhub-data", token: "wrong-owner-token", storage,
+      fetchImpl: async (url) => {
+        if (url === "https://api.github.com/user") {
+          return { ok: true, status: 200, async json() { return { login: "someone-else" }; } };
+        }
+        creationAttempted = true;
+        throw new Error("Repository creation must not be attempted.");
+      }
+    }),
+    (error) => error.status === 403 && /must belong to the configured owner/.test(error.message)
+  );
+  assert.equal(creationAttempted, false);
   assert.equal(loadGitHubConnection({ storage }).connected, false);
 });
