@@ -144,12 +144,11 @@ export async function createPrivateGitHubDataRepository({
   if (metadata?.private !== true || String(metadata?.full_name || "").toLowerCase() !== fullName) {
     throw new GitHubStoreError("GitHub did not create the exact requested private repository. No data connection was opened.", 403);
   }
-  saveGitHubConnection({ owner, repo, branch: metadata.default_branch || "main", token }, { storage });
   return {
     owner, repo, fullName: metadata.full_name,
     private: true, defaultBranch: metadata.default_branch || "main",
     htmlUrl: metadata.html_url || null,
-    connected: true
+    connected: false
   };
 }
 
