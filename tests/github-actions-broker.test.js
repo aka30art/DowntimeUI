@@ -36,7 +36,7 @@ function event(overrides = {}) {
 }
 
 function createBrokerHarness({
-  request = { requestId: REQUEST_ID, action: "gatelog-history", args: { range: "today" } },
+  request = { requestId: REQUEST_ID, service: "gatelog-api", action: "history", args: { range: "today" }, sessionToken: "session-token-test" },
   principalOverrides = {},
   authorised = true,
   decryptError = null
@@ -121,6 +121,8 @@ test("broker maps GitHub numeric actor to canonical active USER and authorises b
   const result = await harness.broker.handleIssueComment(event());
   assert.deepEqual(result, { accepted: true, replayed: false, requestId: REQUEST_ID });
   assert.deepEqual(harness.calls.resolved, [String(ACTOR_ID)]);
+  assert.equal(harness.calls.authorised[0].service, "gatelog-api");
+  assert.equal(harness.calls.authorised[0].sessionToken, "session-token-test");
   assert.equal(harness.calls.issueChecks[0].principal.userId, USER_ID);
   assert.equal(harness.calls.issueChecks[0].issueId, 333);
   assert.equal(harness.calls.decrypted[0].actorUserId, USER_ID);
@@ -128,6 +130,8 @@ test("broker maps GitHub numeric actor to canonical active USER and authorises b
   assert.equal(harness.calls.authorised[0].principal.userId, USER_ID);
   assert.equal(harness.calls.authorised[0].authorityEpoch, 4);
   assert.equal(harness.calls.executed[0].principal.userId, USER_ID);
+  assert.equal(harness.calls.executed[0].service, "gatelog-api");
+  assert.equal(harness.calls.executed[0].sessionToken, "session-token-test");
   assert.equal(harness.calls.executed[0].authorityEpoch, 4);
   assert.equal(harness.calls.encrypted[0].requestEnvelope.requestId, REQUEST_ID);
   assert.equal(harness.calls.published[0].encryptedResponse, "encrypted-response-for-request-key");
@@ -165,7 +169,7 @@ test("broker rejects caller-supplied actor, role and privilege fields inside enc
     { permissions: { canManage: true } },
     { nested: { callerTier: "OWNER" } }
   ]) {
-    const harness = createBrokerHarness({ request: { requestId: REQUEST_ID, action: "gatelog-history", args } });
+    const harness = createBrokerHarness({ request: { requestId: REQUEST_ID, service: "gatelog-api", action: "history", args, sessionToken: "session-token-test" } });
     await assert.rejects(harness.broker.handleIssueComment(event()), error => error.code === "BROKER_CALLER_IDENTITY_FORBIDDEN");
     assert.equal(harness.calls.executed.length, 0);
   }
@@ -186,7 +190,7 @@ test("broker refuses execution if the current authority epoch is unavailable", a
     expectedRepositoryId: REPOSITORY_ID,
     resolvePrincipal: async id => ({ githubUserId: id, userId: USER_ID, staffId: "staff-01", enabled: true, status: "ACTIVE" }),
     authorizeInboxIssue: async () => true,
-    decryptRequest: async () => ({ requestId: REQUEST_ID, action: "gatelog-history" }),
+    decryptRequest: async () => ({ requestId: REQUEST_ID, service: "gatelog-api", action: "history", args: {}, sessionToken: "session-token-test" }),
     authorize: async () => true,
     execute: async () => { throw new Error("Must not execute without authority epoch."); },
     encryptResponse: async () => "encrypted",
@@ -212,4 +216,14 @@ test("broker denies a valid USER when the request issue is not assigned to that 
     getAuthorityEpoch: async () => 1
   });
   await assert.rejects(restricted.handleIssueComment(event()), error => error.code === "BROKER_ISSUE_OWNERSHIP_DENIED");
+});
+
+
+test("broker rejects unregistered service names before authorisation or execution", async () => {
+  const harness = createBrokerHarness({
+    request: { requestId: REQUEST_ID, service: "unknown-service", action: "history", args: {} }
+  });
+  await assert.rejects(harness.broker.handleIssueComment(event()), /schema validation/);
+  assert.equal(harness.calls.authorised.length, 0);
+  assert.equal(harness.calls.executed.length, 0);
 });
