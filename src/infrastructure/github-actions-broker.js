@@ -82,6 +82,7 @@ export function parseGitHubIssueCommentEvent(event, { expectedRepositoryId, maxC
 export function createGitHubActionsBroker({
   expectedRepositoryId,
   resolvePrincipal,
+  authorizeInboxIssue,
   decryptRequest,
   authorize,
   execute,
@@ -90,7 +91,7 @@ export function createGitHubActionsBroker({
   idempotencyStore,
   getAuthorityEpoch
 } = {}) {
-  const required = { resolvePrincipal, decryptRequest, authorize, execute, encryptResponse, publishEncryptedResponse, getAuthorityEpoch };
+  const required = { resolvePrincipal, authorizeInboxIssue, decryptRequest, authorize, execute, encryptResponse, publishEncryptedResponse, getAuthorityEpoch };
   for (const [name, callback] of Object.entries(required)) {
     if (typeof callback !== "function") throw new TypeError("GitHub Actions broker requires " + name + ".");
   }
@@ -109,6 +110,14 @@ export function createGitHubActionsBroker({
           !principal.userId || !principal.staffId ||
           principal.enabled !== true || principal.status !== "ACTIVE") {
         throw brokerError("The GitHub actor is not mapped to an active canonical USER/STAFF identity.", 403, "BROKER_USER_DENIED");
+      }
+      const issueAllowed = await authorizeInboxIssue({
+        principal,
+        issueId: parsed.issueId,
+        issueNumber: parsed.issueNumber
+      });
+      if (issueAllowed !== true) {
+        throw brokerError("The broker issue is not assigned to this canonical USER.", 403, "BROKER_ISSUE_OWNERSHIP_DENIED");
       }
 
       const claim = await idempotencyStore.claim({
