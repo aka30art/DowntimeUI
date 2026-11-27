@@ -121,30 +121,6 @@ function initialise() {
   form.querySelector("[data-create-private]")?.addEventListener("click", () => {
     void createPrivateRepository(form);
   });
-  const createRepository = document.querySelector("[data-create-private-repo]");
-  createRepository?.addEventListener("click", async () => {
-    const owner = form.querySelector("[name=owner]").value.trim();
-    const repo = form.querySelector("[name=repo]").value.trim();
-    const token = form.querySelector("[name=token]").value.trim();
-    if (!owner || !repo || !token) {
-      status("Enter the GitHub owner, new repository name and token first.", true);
-      return;
-    }
-    createRepository.disabled = true;
-    status("Creating the dedicated private GitHub data repository…");
-    try {
-      const created = await createPrivateGitHubDataRepository({
-        owner, repo, token,
-        fetchImpl: globalThis.fetch
-      });
-      form.querySelector("[name=branch]").value = created.defaultBranch || "main";
-      status("Private repository created: " + created.fullName + ". Connecting…");
-      await connect(form);
-    } catch (error) {
-      status(error?.message || "Private repository creation failed.", true);
-      createRepository.disabled = false;
-    }
-  });
   const disconnect = document.querySelector("[data-yardhub-github-disconnect]");
   disconnect?.addEventListener("click", () => {
     clearGitHubConnection();
