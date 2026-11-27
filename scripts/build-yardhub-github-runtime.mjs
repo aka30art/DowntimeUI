@@ -33,16 +33,18 @@ const plugin = {
         'const allowedOrigin = globalThis.location?.origin || "https://aka30art.github.io"'
       );
       if (args.path.endsWith("/central-bank/index.ts")) {
-        const originalBootstrap = `const salt=cryptoHex(crypto.getRandomValues(new Uint8Array(16)));
-   bank.users=[{username,displayName:username,tier:"OWNER",enabled:true,pinSalt:salt,pinHash:await hashPin(pin,salt)}];`;
-        const githubBootstrap = `const {data:bootstrapIdentity,error:bootstrapIdentityError}=await db.from("downtime_roots_bootstrap").select("user_id").eq("singleton",true).maybeSingle();
-   if(bootstrapIdentityError||!bootstrapIdentity?.user_id)return json({error:"Immutable DEV bootstrap identity is unavailable"},503);
-   const salt=cryptoHex(crypto.getRandomValues(new Uint8Array(16)));
-   bank.users=[{userId:bootstrapIdentity.user_id,username,displayName:username,tier:"OWNER",enabled:true,pinSalt:salt,pinHash:await hashPin(pin,salt)}];`;
-        if (!contents.includes(originalBootstrap)) {
+        const bootstrapPattern = /const salt=cryptoHex\\(crypto\\.getRandomValues\\(new Uint8Array\\(16\\)\\)\\);\\s*bank\\.users=\\[\\{username,displayName:username,tier:"OWNER",enabled:true,pinSalt:salt,pinHash:await hashPin\\(pin,salt\\)\\}\\];/;
+        const githubBootstrap = [
+          'const {data:bootstrapIdentity,error:bootstrapIdentityError}=await db.from("downtime_roots_bootstrap").select("user_id").eq("singleton",true).maybeSingle();',
+          '   if(bootstrapIdentityError||!bootstrapIdentity?.user_id)return json({error:"Immutable DEV bootstrap identity is unavailable"},503);',
+          '   const salt=cryptoHex(crypto.getRandomValues(new Uint8Array(16)));',
+          '   bank.users=[{userId:bootstrapIdentity.user_id,username,displayName:username,tier:"OWNER",enabled:true,pinSalt:salt,pinHash:await hashPin(pin,salt)}];'
+        ].join("\\n");
+        const matches = contents.match(bootstrapPattern);
+        if (!matches) {
           throw new Error("Central Bank bootstrap source contract changed; cannot bind DEV to immutable ROOTS identity.");
         }
-        contents = contents.replace(originalBootstrap, githubBootstrap);
+        contents = contents.replace(bootstrapPattern, githubBootstrap);
       }
       return { contents, loader: args.path.endsWith(".tsx") ? "tsx" : "ts" };
     });
