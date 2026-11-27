@@ -32,6 +32,7 @@ test("first GitHub installation seeds all operational tables and immutable DEV b
   assert.deepEqual(store.tables.downtime_central_bank[0].payload.users, []);
   assert.equal(store.tables.downtime_roots_bootstrap.length, 1);
   assert.ok(store.tables.downtime_roots_bootstrap[0].user_id);
+  assert.match(store.tables.downtime_roots_bootstrap[0].user_id, /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
   assert.equal(store.tables.downtime_roots_bootstrap[0].singleton, true);
   assert.match(result.bootstrapCode, /^[A-F0-9]{48}$/);
   assert.notEqual(result.bootstrapCode, "YARDHUB-INITIAL-SETUP");
