@@ -258,6 +258,22 @@ export function createYardHubBackupRunner({
     }
     if (destinationMetadata.archived === true) throw new Error("YARDHUB backup destination is archived.");
 
+    const destinationHead = await fetchGitHubHead({ api, repository, token, branch });
+    if (destinationHead.entries.has("control/authority.json")) {
+      const authorityFile = await request(api + "/repos/" + repository + "/contents/control/authority.json?ref=" + encodeURIComponent(branch), {
+        headers: githubHeaders
+      });
+      const authority = JSON.parse(Buffer.from(authorityFile.content, "base64").toString("utf8"));
+      if (authority.status !== "ACTIVE" || authority.primarySystemId !== "YARDHUB-PRIMARY") {
+        return {
+          skipped: true,
+          reason: "YARDHUB is not the active primary in the GitHub authority manifest.",
+          primarySystemId: authority.primarySystemId || null,
+          authorityStatus: authority.status || null
+        };
+      }
+    }
+
     const tableRows = await mapLimit(YARDHUB_TABLES, 4, table => exportTable({ supabaseUrl, serviceKey, table }));
     const files = [];
     const tableCounts = {};
