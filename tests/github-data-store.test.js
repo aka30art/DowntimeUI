@@ -35,7 +35,7 @@ function createMockGitHub({ includeAuthority = true, includePrimaryBackup = fals
   function addInitialFile(filePath, bytes) {
     const body = Buffer.isBuffer(bytes) ? bytes : Buffer.from(bytes);
     const sha = createHash("sha1").update(Buffer.concat([
-      Buffer.from("blob " + body.length + "\\0"), body
+      Buffer.from("blob " + body.length + "\0"), body
     ])).digest("hex");
     const encoded = body.toString("base64");
     blobs.set(sha, encoded);
@@ -53,7 +53,7 @@ function createMockGitHub({ includeAuthority = true, includePrimaryBackup = fals
           : [];
       tableCounts[table] = rows.length;
       const path = "replication/yardhub-primary/tables/" + table + ".json";
-      checksums[path] = addInitialFile(path, JSON.stringify(rows) + "\\n");
+      checksums[path] = addInitialFile(path, JSON.stringify(rows) + "\n");
     }
     const objectPath = "downtime-evidence/week-1/photo.png";
     const storagePath = "replication/yardhub-primary/storage/" + objectPath;
@@ -62,7 +62,7 @@ function createMockGitHub({ includeAuthority = true, includePrimaryBackup = fals
     checksums[metadataPath] = addInitialFile(metadataPath, JSON.stringify({
       bucket: "downtime-evidence", path: "week-1/photo.png",
       mimeType: "image/png", size: 4, updatedAt: "2026-11-27T10:00:00.000Z"
-    }) + "\\n");
+    }) + "\n");
     if (tamperPrimaryBackupChecksum) {
       checksums["replication/yardhub-primary/tables/downtime_shared_state.json"] = "incorrect-checksum";
     }
@@ -71,7 +71,7 @@ function createMockGitHub({ includeAuthority = true, includePrimaryBackup = fals
       sourceProjectRef: "source-project", exportedAt: "2026-11-27T10:00:00.000Z",
       tableCounts, tableCount: GITHUB_YARDHUB_TABLES.length,
       storageObjectCount: 1, storageBytes: 4, sessionsExcluded: true, checksums
-    }) + "\\n");
+    }) + "\n");
   }
 
   const fetchImpl = async (url, options = {}) => {
