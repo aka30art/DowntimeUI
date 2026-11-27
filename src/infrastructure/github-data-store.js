@@ -585,7 +585,7 @@ export function createGitHubDataStore({
             revision: 1,
             commitSha: committed.commitSha,
             exportedAt,
-            tableCount: GITHUB_YARDHUB_TABLES.length,
+            tableCount: GITHUB_YARDHUB_SOURCE_TABLES.length,
             storageObjectCount,
             storageBytes,
             checksumVerified: true
