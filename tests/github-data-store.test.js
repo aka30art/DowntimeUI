@@ -25,7 +25,7 @@ function createMockGitHub() {
   let head = "commit-0";
   let failNextCas = false;
   const commits = new Map([[head, { tree: "tree-0", parent: null }]]);
-  const trees = new Map([["tree-0", new Map([[ "control/authority.json", JSON.stringify(INITIAL_AUTHORITY) + "\n" ]])]]);
+  const trees = new Map([["tree-0", new Map([[ "control/authority.json", Buffer.from(JSON.stringify(INITIAL_AUTHORITY) + "\n", "utf8").toString("base64") ]])]]);
   const blobs = new Map();
 
   const fetchImpl = async (url, options = {}) => {
