@@ -290,7 +290,7 @@ export function createGitHubAppBrokerClient({
   }
 
   async function startDeviceAuthorization() {
-    const form = new URLSearchParams({ client_id: appClientId, repository_id: String(repoId) });
+    const form = new URLSearchParams({ client_id: appClientId, scope: "offline_access" });
     const result = await request(DEVICE_BASE + "/login/device/code", {
       method: "POST",
       headers: { Accept: "application/json", "Content-Type": "application/x-www-form-urlencoded" },
