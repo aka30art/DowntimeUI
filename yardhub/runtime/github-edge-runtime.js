@@ -1,3 +1,5 @@
+import { GITHUB_YARDHUB_RPC_HANDLERS } from "../../src/infrastructure/github-rpc-handlers.js";
+
 const DEFAULT_FUNCTIONS = [
   "central-bank",
   "central-config-admin",
@@ -10,7 +12,7 @@ const DEFAULT_FUNCTIONS = [
 
 export async function installGitHubEdgeRuntime({
   store,
-  rpcHandlers = {},
+  rpcHandlers = GITHUB_YARDHUB_RPC_HANDLERS,
   actorId = "YARDHUB-EDGE-SERVICE",
   env = {},
   functionNames = DEFAULT_FUNCTIONS,
