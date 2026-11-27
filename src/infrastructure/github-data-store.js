@@ -142,23 +142,24 @@ export function createGitHubDataStore({
     catch { throw new GitHubStoreError("Stored JSON is invalid at " + path + "."); }
   };
 
-  const commitJsonAtHead = async ({ headSha, treeSha, path, value, message }) => {
-    const content = encodeJson(value);
-    if (byteLength(content) > maxShardBytes) {
-      throw new GitHubStoreError("The daily event shard exceeds the configured size limit. Archive the day before adding more events.");
-    }
-    const blob = await request("/git/blobs", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ content, encoding: "utf-8" })
-    });
+  const commitJsonFilesAtHead = async ({ headSha, treeSha, files, message }) => {
+    if (!Array.isArray(files) || files.length < 1) throw new TypeError("At least one JSON file is required.");
+    const entries = await Promise.all(files.map(async ({ path, value }) => {
+      const content = encodeJson(value);
+      if (byteLength(content) > maxShardBytes) {
+        throw new GitHubStoreError("The JSON shard exceeds the configured size limit: " + path);
+      }
+      const blob = await request("/git/blobs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content, encoding: "utf-8" })
+      });
+      return { path, mode: "100644", type: "blob", sha: blob.sha };
+    }));
     const tree = await request("/git/trees", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        base_tree: treeSha,
-        tree: [{ path, mode: "100644", type: "blob", sha: blob.sha }]
-      })
+      body: JSON.stringify({ base_tree: treeSha, tree: entries })
     });
     const commit = await request("/git/commits", {
       method: "POST",
@@ -178,6 +179,48 @@ export function createGitHubDataStore({
       }
       throw error;
     }
+  };
+
+  const commitJsonAtHead = ({ headSha, treeSha, path, value, message }) =>
+    commitJsonFilesAtHead({ headSha, treeSha, files: [{ path, value }], message });
+
+  const databaseManifestPath = "database/" + systemId.toLowerCase() + "/manifest.json";
+  const databaseTablePath = (table) => "database/" + systemId.toLowerCase() + "/tables/" + table + ".json";
+  const validTableName = (table) => requiredString(table, "Database table", /^[a-z][a-z0-9_]{0,62}$/);
+  function validateDatabaseManifest(manifest) {
+    if (!manifest || typeof manifest !== "object" || Array.isArray(manifest)) {
+      throw new GitHubStoreError("GitHub database manifest is missing or malformed.");
+    }
+    if (manifest.schemaVersion !== 1 || manifest.systemId !== systemId ||
+        !Number.isInteger(manifest.revision) || manifest.revision < 0 ||
+        !manifest.tables || typeof manifest.tables !== "object" || Array.isArray(manifest.tables)) {
+      throw new GitHubStoreError("GitHub database manifest has an unsupported schema or revision.");
+    }
+    for (const [name, meta] of Object.entries(manifest.tables)) {
+      validTableName(name);
+      if (!meta || typeof meta !== "object" || !Number.isInteger(meta.version) || meta.version < 1) {
+        throw new GitHubStoreError("GitHub database table metadata is invalid: " + name);
+      }
+    }
+    return manifest;
+  }
+  const emptyDatabaseManifest = () => ({
+    schemaVersion: 1,
+    systemId,
+    revision: 0,
+    tables: {},
+    updatedAt: null
+  });
+  const readDatabaseAtHead = async (headSha) => {
+    const manifest = validateDatabaseManifest(await readJsonAt(databaseManifestPath, headSha) || emptyDatabaseManifest());
+    const entries = await Promise.all(Object.keys(manifest.tables).map(async (name) => {
+      const shard = await readJsonAt(databaseTablePath(name), headSha);
+      if (!shard || shard.schemaVersion !== 1 || shard.table !== name || !Array.isArray(shard.rows)) {
+        throw new GitHubStoreError("GitHub database table shard is missing or malformed: " + name);
+      }
+      return [name, shard.rows];
+    }));
+    return { manifest, tables: Object.fromEntries(entries), headSha };
   };
 
   const mutateAuthority = async (expectedEpoch, mutator, message) => {
@@ -301,6 +344,75 @@ export function createGitHubDataStore({
       const path = "snapshots/" + writerSystemId.toLowerCase() + "/" + moduleName.toLowerCase() + "/" + encodeURIComponent(snapshotId) + ".json";
       const headSha = await getHead();
       return readJsonAt(path, headSha);
+    },
+
+    async readDatabase() {
+      const headSha = await getHead();
+      const { manifest, tables } = await readDatabaseAtHead(headSha);
+      return { revision: manifest.revision, manifest, tables };
+    },
+
+    async transactDatabase({ expectedRevision, actorId, operationId = null, mutate } = {}) {
+      if (!Number.isInteger(expectedRevision) || expectedRevision < 0) {
+        throw new TypeError("expectedRevision must be a non-negative integer.");
+      }
+      requiredString(actorId, "Database transaction actor");
+      if (typeof mutate !== "function") throw new TypeError("A database mutator function is required.");
+      if (operationId !== null) requiredString(operationId, "Database operation ID", /^[A-Za-z0-9._:-]{8,120}$/);
+
+      const headSha = await getHead();
+      const treeSha = await getCommitTree(headSha);
+      const current = await readDatabaseAtHead(headSha);
+      if (current.manifest.revision !== expectedRevision) {
+        throw new GitHubStoreError("Database revision changed. Refresh before retrying.", 409, {
+          expectedRevision, currentRevision: current.manifest.revision
+        });
+      }
+      const tables = structuredClone(current.tables);
+      const result = await mutate(tables);
+      const names = new Set([...Object.keys(current.tables), ...Object.keys(tables)]);
+      const changed = [];
+      const nextManifest = structuredClone(current.manifest);
+      for (const rawName of names) {
+        const name = validTableName(rawName);
+        const beforeExists = Object.prototype.hasOwnProperty.call(current.tables, name);
+        const afterExists = Object.prototype.hasOwnProperty.call(tables, name);
+        if (afterExists && !Array.isArray(tables[name])) {
+          throw new TypeError("Database table " + name + " must be an array of records.");
+        }
+        if (beforeExists === afterExists && JSON.stringify(current.tables[name]) === JSON.stringify(tables[name])) continue;
+        if (!afterExists) {
+          throw new GitHubStoreError("Database table deletion is disabled; use explicit archive/retention operations.");
+        }
+        changed.push({
+          path: databaseTablePath(name),
+          value: { schemaVersion: 1, systemId, table: name, rows: tables[name] }
+        });
+        nextManifest.tables[name] = {
+          version: (current.manifest.tables[name]?.version || 0) + 1,
+          updatedAt: now().toISOString()
+        };
+      }
+      if (!changed.length) {
+        return { committed: false, revision: current.manifest.revision, result, manifest: current.manifest };
+      }
+      nextManifest.revision = current.manifest.revision + 1;
+      nextManifest.updatedAt = now().toISOString();
+      changed.push({ path: databaseManifestPath, value: nextManifest });
+      const committed = await commitJsonFilesAtHead({
+        headSha, treeSha, files: changed,
+        message: "YARDHUB database transaction r" + nextManifest.revision + " · " + String(operationId || "operation").slice(0, 80)
+      });
+      if (!committed.committed) {
+        throw new GitHubStoreError("Database transaction conflicted with another writer. No records were committed; reload and retry.", 409);
+      }
+      return {
+        committed: true,
+        revision: nextManifest.revision,
+        commitSha: committed.commitSha,
+        result,
+        manifest: nextManifest
+      };
     },
 
     async readEvents({ module: moduleInput, date, writerSystemId = systemId } = {}) {
