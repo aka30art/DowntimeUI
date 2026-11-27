@@ -77,6 +77,16 @@ test("broker comment envelopes round-trip above 1 KB and reject oversized encode
   assert.deepEqual(await decryptBrokerRequest({
     envelope: parsed, brokerPrivateKey: broker.privateKey, cryptoProvider: webcrypto, now
   }), { ...payload, requestId: context.requestId });
+  const largeResponse = { ok: true, report: "r".repeat(2400) };
+  const encryptedResponse = await encryptBrokerResponse({
+    requestEnvelope: parsed, payload: largeResponse,
+    brokerPrivateKey: broker.privateKey, cryptoProvider: webcrypto, now
+  });
+  const responseComment = formatBrokerResponseComment(encryptedResponse);
+  assert.ok(responseComment.length > 1024);
+  assert.deepEqual(await decryptBrokerResponse(
+    context, parseBrokerResponseComment(responseComment), webcrypto
+  ), largeResponse);
   assert.throws(
     () => parseBrokerRequestComment("YARDHUB_REQUEST_V1:" + "A".repeat(20_000)),
     /size limit/
