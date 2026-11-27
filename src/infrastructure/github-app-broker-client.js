@@ -353,7 +353,6 @@ export function createGitHubAppBrokerClient({
     authorizeUrl.searchParams.set("state", state);
     authorizeUrl.searchParams.set("code_challenge", codeChallenge);
     authorizeUrl.searchParams.set("code_challenge_method", "S256");
-    authorizeUrl.searchParams.set("repository_id", String(repoId));
     authorizeUrl.searchParams.set("allow_signup", "false");
     if (login) authorizeUrl.searchParams.set("login", requiredString(login, "GitHub login"));
     return Object.freeze({
