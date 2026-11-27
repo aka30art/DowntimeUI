@@ -16,7 +16,7 @@ export function createGitHubSupabaseCompat({
   originProvider = () => globalThis.location?.origin || "https://aka30art.github.io"
 } = {}) {
   if (!store) throw new TypeError("A GitHub data store is required.");
-  const tables = createGitHubTableClient({ store, actorId });
+  const tables = createGitHubTableClient({ store, actorId, rpcHandlers });
   const storage = createGitHubStorageClient({ store });
 
   const auth = {
@@ -81,13 +81,6 @@ export function createGitHubSupabaseCompat({
     functions,
     channel,
     async removeChannel(target) { await target?.unsubscribe?.(); return "ok"; },
-    async rpc(name, args = {}) {
-      const handler = rpcHandlers[name];
-      if (typeof handler !== "function") {
-        return { data: null, error: { message: "GitHub-native RPC is not implemented: " + name, code: "42883" } };
-      }
-      try { return { data: await handler({ store, tables, storage, args, actorId }), error: null }; }
-      catch (error) { return { data: null, error: { message: error.message, code: error.code || "GITHUB_RPC_ERROR", status: error.status || 500 } }; }
-    }
+    rpc: tables.rpc
   });
 }
