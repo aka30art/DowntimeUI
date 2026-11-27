@@ -2147,7 +2147,9 @@ async function loadCentralUsers(){
     username.value='';
    }
    if(button)button.disabled=centralUsers.length===0;
-   if(status)status.textContent=centralUsers.length?'Select your USER and enter your PIN.':'No active USER accounts are available.';
+   const firstRunPanel=$('firstDevBootstrapPanel');
+   if(firstRunPanel)firstRunPanel.hidden=centralUsers.length>0;
+   if(status)status.textContent=centralUsers.length?'Select your USER and enter your PIN.':'No active USER accounts are available. Initialise the first DEV owner below.';
    return centralUsers;
   }catch(error){
    if(username)username.disabled=true;
@@ -2156,6 +2158,22 @@ async function loadCentralUsers(){
    throw error;
   }finally{if(pin)pin.value=''}
 }
+async function initialiseDevOwner(){
+ const pin=$('devBootstrapPin')?.value||'',confirmation=$('devBootstrapPinConfirm')?.value||'',button=$('initialiseDevBtn'),status=$('authMsg');
+ if(!/^[0-9]{4,8}$/.test(pin)){if(status)status.textContent='DEV PIN must contain 4–8 digits.';return}
+ if(pin!==confirmation){if(status)status.textContent='DEV PIN confirmation does not match.';return}
+ if(button)button.disabled=true;
+ if(status)status.textContent='Initialising the first immutable DEV owner account…';
+ try{
+  await window.DowntimeCentral.bootstrap({bootstrapCode:'YARDHUB-INITIAL-SETUP',username:'DEV',pin});
+  $('devBootstrapPin').value='';$('devBootstrapPinConfirm').value='';
+  const panel=$('firstDevBootstrapPanel');if(panel)panel.hidden=true;
+  await loadCentralUsers();
+  const username=$('centralUsername');if(username)username.value='DEV';
+  if(status)status.textContent='DEV owner created. Enter the PIN you just set to sign in.';
+ }catch(error){if(status)status.textContent=error?.message||'DEV owner initialisation failed.';if(button)button.disabled=false}
+}
+$('initialiseDevBtn')?.addEventListener('click',initialiseDevOwner);
 async function legacyCloudClient(){const client=await loadSupabaseClient();if(!client)return null;try{const current=await client.auth.getSession();if(!current?.data?.session){const auth=await client.auth.signInAnonymously();if(auth.error)throw auth.error}await startCentralRealtimeSync(client)}catch(error){console.warn('Ancillary report/evidence cloud session unavailable.',error)}return client}
 function isStaffModuleAutoAccess(){const tier=String(centralUser?.tier||'').trim().toUpperCase(),canonical=Boolean(centralUser?.userId||centralUser?.staffId);return ['DEV','DEV1','ADMIN'].includes(rootsAuthority())||(!canonical&&(['DEVACC','ADMIN'].includes(tier)))}
 function syncStaffModuleAccess(){const tile=$('launchStaffManagementBtn'),status=$('yardFloorStatus');if(!tile)return;const allowed=isStaffModuleAutoAccess()||permission('canManageStaff')||permission('canEnterStaff')||permission('canEditStaff')||permission('canManageAssignments')||permission('canViewStaff');tile.hidden=false;tile.disabled=!allowed;tile.classList.toggle('yard-tile-active',allowed);tile.classList.toggle('yard-tile-locked',!allowed);if(status)status.textContent=allowed?'LIVE APPLICATION':'RESTRICTED ACCESS'}
@@ -2409,6 +2427,10 @@ container.querySelector('.spectator-header')?.insertAdjacentHTML('beforeend','<b
 
 render();
 loadCentralUsers().catch(()=>{});
+window.addEventListener('yardhub:github-connected',async()=>{
+ try{await loadCentralUsers();if(window.DowntimeCentral?.session?.token)await resumeCentralSession()}
+ catch(error){console.warn('YARDHUB login list could not refresh after GitHub connection.',error)}
+});
 if(window.DowntimeCentral?.session?.token)resumeCentralSession();
 })();
 </script>
