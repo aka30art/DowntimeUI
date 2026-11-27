@@ -27,8 +27,10 @@ export function createGitHubSupabaseCompat({
       return { data: { session: current ? { access_token: current.token, user: current.user || null } : null }, error: null };
     },
     async signInAnonymously() {
-      const current = sessionProvider();
-      return { data: { session: { access_token: current?.token || "github-native-local-session", user: current?.user || null } }, error: null };
+      return {
+        data: { session: null, user: null },
+        error: makeResponseError("Anonymous authentication is disabled. Sign in through the trusted YARDHUB identity service.", 401)
+      };
     },
     async signOut() { return { error: null }; }
   };
