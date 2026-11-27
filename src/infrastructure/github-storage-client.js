@@ -67,6 +67,20 @@ export function createGitHubStorageClient({ store, now = () => new Date(), ticke
         }
       },
 
+      async list(path = "", options = {}) {
+        try {
+          const data = await store.listObjects({
+            bucket: bucketName, prefix: path,
+            limit: options.limit ?? 1000,
+            offset: options.offset ?? 0,
+            sortBy: options.sortBy || { column: "name", order: "asc" }
+          });
+          return { data, error: null };
+        } catch (error) {
+          return { data: null, error };
+        }
+      },
+
       async download(path) {
         try {
           const result = await store.downloadObject({ bucket: bucketName, path });
