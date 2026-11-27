@@ -49,7 +49,7 @@ function createMockGitHub() {
       const sha = decodeURIComponent(path.slice("/git/blobs/".length));
       const value = blobs.get(sha);
       return value === undefined ? response(404, { message: "Not found" }) : response(200, {
-        sha, encoding: "base64", content: Buffer.from(value, "utf8").toString("base64")
+        sha, encoding: "base64", content: value
       });
     }
     if (method === "GET" && path.startsWith("/contents/")) {
@@ -61,13 +61,13 @@ function createMockGitHub() {
       if (content === undefined) return response(404, { message: "Not found" });
       return response(200, {
         type: "file", encoding: "base64",
-        content: Buffer.from(content, "utf8").toString("base64")
+        content
       });
     }
     if (method === "POST" && path === "/git/blobs") {
       const body = JSON.parse(options.body);
       const sha = "blob-" + (++counter);
-      blobs.set(sha, body.encoding === "base64" ? Buffer.from(body.content, "base64").toString("utf8") : body.content);
+      blobs.set(sha, body.encoding === "base64" ? body.content : Buffer.from(body.content, "utf8").toString("base64"));
       return response(201, { sha });
     }
     if (method === "POST" && path === "/git/trees") {
