@@ -21,8 +21,10 @@ export async function installGitHubEdgeRuntime({
   fetchImpl = globalThis.fetch
 } = {}) {
   if (!store) throw new TypeError("A GitHub data store is required.");
+  const previousBootstrapCode = globalThis.__YARDHUB_BOOTSTRAP_CODE__;
   if (typeof store.ensureAuthority === "function") await store.ensureAuthority();
-  await ensureGitHubDatabaseReady({ store });
+  const databaseStatus = await ensureGitHubDatabaseReady({ store });
+  globalThis.__YARDHUB_BOOTSTRAP_CODE__ = databaseStatus.bootstrapCode || null;
   const handlers = globalThis.__YARDHUB_EDGE_HANDLERS__ || (globalThis.__YARDHUB_EDGE_HANDLERS__ = {});
   const previousDeno = globalThis.Deno;
   const previousFetch = globalThis.fetch;
@@ -78,12 +80,16 @@ export async function installGitHubEdgeRuntime({
 
   return {
     handlers,
+    bootstrapCode: databaseStatus.bootstrapCode || null,
+    bootstrapCodeExpiresAt: databaseStatus.bootstrapCodeExpiresAt || null,
     async dispose() {
       globalThis.fetch = previousFetch;
       if (previousDeno === undefined) delete globalThis.Deno;
       else globalThis.Deno = previousDeno;
       delete globalThis.__YARDHUB_GITHUB_COMPAT__;
       delete globalThis.__YARDHUB_CURRENT_FUNCTION__;
+      if (previousBootstrapCode === undefined) delete globalThis.__YARDHUB_BOOTSTRAP_CODE__;
+      else globalThis.__YARDHUB_BOOTSTRAP_CODE__ = previousBootstrapCode;
       if (previousSupabase === undefined) delete globalThis.supabase;
       else globalThis.supabase = previousSupabase;
     }
