@@ -6,6 +6,7 @@ import {buildWeeklyReport} from "./domain/reports.js";
 import {assignStationOperator,createPlantState,normalizePlantState,setPlantStatus,setStationStatus} from "./domain/plant.js";
 import {createWorkspaceBackup,restoreWorkspaceBackup,validateWorkspaceBackup} from "./domain/backup.js";
 import {factoryResetStorage} from "./domain/factory-reset.js";
+import {createConnectedGitHubStore,loadGitHubConnection,saveGitHubConnection,clearGitHubConnection} from "./infrastructure/github-connection.js";
 
 const STORE_PREFIX="downtimeui:operations:v1:";
 const WORKSPACE_BINDINGS=new WeakMap();
@@ -68,11 +69,15 @@ export function mountWorkspace(root,config,{onEditConfiguration=()=>{},onExportC
     dailyTasks:Array.isArray(config.dailyTasks)?config.dailyTasks:[]
   };
   const storage=options.storage||globalThis.localStorage;
+  const githubSettingsStorage=options.settingsStorage||globalThis.localStorage;
+  const githubSessionStorage=options.sessionStorage||globalThis.sessionStorage;
   const bindingController=new AbortController();
-  let refreshInterval=null;
+  let refreshInterval=null,githubSyncTimer=null,githubSyncInFlight=false,githubSyncQueued=false;
+  let githubStore=null,githubAuthority=null,githubSnapshotVersion=null,lastGitHubSyncAt=null;
   const disposeBinding=()=>{
     bindingController.abort();
     if(refreshInterval!==null){globalThis.clearInterval?.(refreshInterval);refreshInterval=null;}
+    if(githubSyncTimer!==null){globalThis.clearTimeout?.(githubSyncTimer);githubSyncTimer=null;}
   };
   WORKSPACE_BINDINGS.set(root,disposeBinding);
   const loaded=readOperations(storage,config.installationId);
@@ -124,12 +129,125 @@ export function mountWorkspace(root,config,{onEditConfiguration=()=>{},onExportC
     if(result.ok){
       lastPersistedState=JSON.parse(JSON.stringify(candidate));
       status=message;
+      queueGitHubSnapshot();
       return true;
     }
     state=JSON.parse(JSON.stringify(lastPersistedState));
     status="Save failed; unsaved changes were rolled back: "+result.error;
     render();
     return false;
+  }
+  function updateWorkspaceStatus(message){
+    status=message;
+    root.querySelectorAll(".workspace-message,.workspace-footer span:first-child").forEach(node=>{node.textContent=message;});
+  }
+  function queueGitHubSnapshot(){
+    if(!githubStore)return;
+    githubSyncQueued=true;
+    if(githubSyncTimer!==null)globalThis.clearTimeout?.(githubSyncTimer);
+    updateWorkspaceStatus("Saved locally. GitHub backup queued.");
+    githubSyncTimer=globalThis.setTimeout?.(()=>{
+      githubSyncTimer=null;
+      void flushGitHubSnapshot();
+    },Number.isFinite(options.githubSyncDebounceMs)?Math.max(250,options.githubSyncDebounceMs):900)??null;
+  }
+  async function flushGitHubSnapshot(){
+    if(!githubStore||githubSyncInFlight)return;
+    githubSyncInFlight=true;
+    try{
+      while(githubSyncQueued&&githubStore){
+        githubSyncQueued=false;
+        const backup=createWorkspaceBackup(config,JSON.parse(JSON.stringify(state)),{exportedAt:getNow()});
+        const result=await githubStore.writeSnapshot({
+          module:"YARDHUB_WORKSPACE",
+          snapshotId:config.installationId,
+          actorId:options.actorId||"LOCAL-OPERATOR",
+          payload:{backup},
+          expectedVersion:githubSnapshotVersion
+        });
+        githubSnapshotVersion=result.snapshot.version;
+        lastGitHubSyncAt=result.snapshot.updatedAt;
+        updateWorkspaceStatus("GitHub backup saved · version "+githubSnapshotVersion+" · "+lastGitHubSyncAt);
+      }
+    }catch(error){
+      githubSyncQueued=false;
+      updateWorkspaceStatus("Local data is retained. GitHub backup failed: "+(error?.message||"Unknown error"));
+    }finally{
+      githubSyncInFlight=false;
+    }
+  }
+  async function connectGitHubStore(){
+    try{
+      const saved=saveGitHubConnection({
+        owner:root.querySelector("[data-github-owner]")?.value||"",
+        repo:root.querySelector("[data-github-repo]")?.value||"",
+        branch:root.querySelector("[data-github-branch]")?.value||"",
+        token:root.querySelector("[data-github-token]")?.value||""
+      },{storage:githubSettingsStorage,sessionStorage:githubSessionStorage});
+      githubStore=createConnectedGitHubStore({storage:githubSettingsStorage,sessionStorage:githubSessionStorage,fetchImpl:options.fetchImpl||globalThis.fetch});
+      githubAuthority=await githubStore.readAuthority();
+      const snapshot=await githubStore.readSnapshot({module:"YARDHUB_WORKSPACE",snapshotId:config.installationId});
+      githubSnapshotVersion=snapshot?.version??null;
+      status="GitHub connected · "+saved.owner+"/"+saved.repo+" · primary: "+githubAuthority.primarySystemId+(snapshot?" · snapshot v"+snapshot.version:" · no remote snapshot yet");
+      render();
+    }catch(error){
+      githubStore=null;githubAuthority=null;githubSnapshotVersion=null;
+      status="GitHub connection failed: "+(error?.message||"Check the repository and token.");
+      render();
+    }
+  }
+  function disconnectGitHubStore(){
+    clearGitHubConnection({storage:githubSettingsStorage,sessionStorage:githubSessionStorage});
+    githubStore=null;githubAuthority=null;githubSnapshotVersion=null;githubSyncQueued=false;
+    updateWorkspaceStatus("GitHub disconnected. Local browser storage remains available.");
+    render();
+  }
+  async function syncGitHubNow(){
+    if(!githubStore){updateWorkspaceStatus("Connect the GitHub data store first.");return;}
+    if(githubSyncTimer!==null){globalThis.clearTimeout?.(githubSyncTimer);githubSyncTimer=null;}
+    githubSyncQueued=true;
+    await flushGitHubSnapshot();
+  }
+  async function restoreGitHubSnapshot(){
+    if(!githubStore){updateWorkspaceStatus("Connect the GitHub data store first.");return;}
+    try{
+      const snapshot=await githubStore.readSnapshot({module:"YARDHUB_WORKSPACE",snapshotId:config.installationId});
+      if(!snapshot?.payload?.backup){updateWorkspaceStatus("No GitHub workspace snapshot exists for this installation.");return;}
+      const backup=snapshot.payload.backup;
+      const validation=validateWorkspaceBackup(backup,config.installationId);
+      if(!validation.ok){updateWorkspaceStatus("GitHub snapshot rejected: "+validation.errors.join(" "));return;}
+      if(typeof globalThis.confirm==="function"&&!globalThis.confirm("Replace this browser's local workspace with GitHub snapshot version "+snapshot.version+"?"))return;
+      const restored=restoreWorkspaceBackup(backup,config.installationId,{storage});
+      if(!restored.ok){updateWorkspaceStatus("GitHub restore failed: "+restored.errors.join(" "));return;}
+      const parentSync=onRestoreConfiguration(restored.configuration);
+      if(parentSync?.ok===false){updateWorkspaceStatus("GitHub records restored, but the installer handoff failed: "+(parentSync.error||"Unknown error"));return;}
+      for(const key of Object.keys(config))delete config[key];
+      Object.assign(config,restored.configuration);
+      state=restored.operations;
+      state.plant=normalizePlantState(state.plant);
+      lastPersistedState=JSON.parse(JSON.stringify(state));
+      githubSnapshotVersion=snapshot.version;
+      selectedDate=getLocalDate();selectedWeek=weekStartFor(selectedDate);editingEntryId=null;
+      status="GitHub workspace snapshot v"+snapshot.version+" restored.";
+      ensureWeek();render();
+    }catch(error){
+      updateWorkspaceStatus("GitHub restore failed: "+(error?.message||"Unknown error"));
+    }
+  }
+  function renderGitHubConnectionPanel(){
+    const connection=loadGitHubConnection({storage:githubSettingsStorage,sessionStorage:githubSessionStorage});
+    const connected=Boolean(githubStore);
+    const authorityLabel=githubAuthority?("Primary: "+githubAuthority.primarySystemId+" · epoch "+githubAuthority.epoch):"Not connected";
+    const syncLabel=lastGitHubSyncAt?("Last snapshot: "+lastGitHubSyncAt):"No snapshot written in this session";
+    return '<div class="workspace-panel"><div class="workspace-panel-head"><div><h2>GitHub shared data</h2><p>Connect this workspace to the independent GitHub data branch. Local saves are retained and queued for a versioned shared snapshot.</p></div><span class="workspace-count">'+(connected?"CONNECTED":"NOT CONNECTED")+'</span></div>'+
+      '<div class="workspace-form-grid">'+
+      '<label><span>GitHub owner</span><input data-github-owner value="'+esc(connection.owner)+'" autocomplete="off"></label>'+
+      '<label><span>Repository</span><input data-github-repo value="'+esc(connection.repo)+'" autocomplete="off"></label>'+
+      '<label class="workspace-full"><span>Data branch</span><input data-github-branch value="'+esc(connection.branch)+'" autocomplete="off"></label>'+
+      '<label class="workspace-full"><span>GitHub access token · current browser session</span><input data-github-token type="password" autocomplete="off" placeholder="'+(connection.connected?"Enter token to reconnect":"Fine-grained repository token")+'"></label></div>'+
+      '<div class="workspace-button-row"><button type="button" data-action="github-connect">Connect and verify</button><button type="button" data-action="github-disconnect">Disconnect</button><button type="button" data-action="github-sync" '+(!connected?"disabled":"") +'>Sync workspace now</button><button type="button" data-action="github-restore" '+(!connected?"disabled":"") +'>Restore latest snapshot</button></div>'+
+      '<p class="workspace-muted">'+esc(authorityLabel)+' · '+esc(syncLabel)+'</p>'+
+      '<p class="workspace-muted">This connection uses the GitHub Contents/Git Data APIs. GitHub credentials are held in session storage; repository settings are kept locally. The current branch is a prototype data store, not yet the production backup destination.</p></div>';
   }
   function nav(){
     return [["daily","Daily sheet"],["plant","Plant overview"],["tasks","Daily tasks"],["weekly","Weekly summary"],["reports","Reports"],["people","People & settings"]].map(([id,name])=>'<button type="button" class="workspace-nav '+(view===id?"active":"")+'" data-view="'+id+'">'+name+'</button>').join("");
@@ -308,13 +426,14 @@ export function mountWorkspace(root,config,{onEditConfiguration=()=>{},onExportC
       section("Daily task presets","Maintain reusable task templates for the daily checklist.",7,tasksList.map(x=>esc(x.name)).join(" · ")||"No task templates defined")+
       '</div>'+
       '<div class="workspace-panel"><div class="workspace-panel-head"><div><h2>Data and recovery</h2><p>Export a copy of this installation’s configuration and local records.</p></div></div><p class="workspace-muted">Operational records, checklist locks and report snapshots are stored in browser storage, namespaced by this installation ID. This is not a central backup or a multi-user sync service.</p><div class="workspace-button-row"><button type="button" data-action="export-backup">Export full workspace backup</button><button type="button" data-action="import-backup">Import workspace backup</button><button type="button" data-action="export-config">Export configuration JSON</button></div><input type="file" accept=".json,application/json" data-backup-file hidden></div>'+
+      renderGitHubConnectionPanel()+
       '<div class="workspace-panel workspace-danger-zone"><div class="workspace-panel-head"><div><h2>WIPE OUT</h2><p>Factory reset this browser workspace.</p></div></div><p class="workspace-muted">This removes this installation’s configuration, operational records, task locks, reports, and saved setup draft from this browser. You can optionally restore a JSON backup instead.</p><button type="button" class="workspace-danger-button" data-action="factory-reset">WIPE OUT — Factory reset</button></div><div class="workspace-message" role="status">'+esc(status)+'</div></section>';
   }
   function render(){
     const week=ensureWeek();
     const content=view==="daily"?renderDaily():view==="plant"?renderPlantOverview():view==="tasks"?renderTasks():view==="weekly"?renderWeekly():view==="reports"?renderReports():renderPeople();
-    root.innerHTML='<div class="workspace-app"><header class="workspace-header"><div class="workspace-brand"><span class="workspace-brand-mark">D</span><div><b>'+esc(config.identity.companyName)+'</b><small>'+esc(config.site.siteName)+' · DOWNTIMEUI</small></div></div><div class="workspace-header-actions"><span class="workspace-local-tag">LOCAL MODE · SINGLE DEVICE</span><button type="button" data-action="export-backup">Backup</button></div></header>'+
-      '<nav class="workspace-navigation">'+nav()+'</nav><div class="workspace-content">'+content+'</div><footer class="workspace-footer"><span>'+esc(status)+'</span><span>Data is stored in this browser. Shared access and server sync are not active.</span></footer></div>';
+    root.innerHTML='<div class="workspace-app"><header class="workspace-header"><div class="workspace-brand"><span class="workspace-brand-mark">D</span><div><b>'+esc(config.identity.companyName)+'</b><small>'+esc(config.site.siteName)+' · DOWNTIMEUI</small></div></div><div class="workspace-header-actions"><span class="workspace-local-tag">'+(githubStore?"LOCAL + GITHUB SNAPSHOT":"LOCAL MODE · SINGLE DEVICE")+'</span><button type="button" data-action="export-backup">Backup</button></div></header>'+
+      '<nav class="workspace-navigation">'+nav()+'</nav><div class="workspace-content">'+content+'</div><footer class="workspace-footer"><span>'+esc(status)+'</span><span>'+(githubStore?"GitHub snapshot backup is connected; cross-device authority and full module parity are still in development.":"Data is stored in this browser. Shared access and server sync are not active.")+'</span></footer></div>';
   }
   function selectedWeekMove(offset){
     selectedWeek=addDays(selectedWeek,offset*7);
@@ -483,6 +602,10 @@ export function mountWorkspace(root,config,{onEditConfiguration=()=>{},onExportC
       if(!wiped.ok){status="Factory reset failed; local data was retained where rollback allowed: "+wiped.error;render();return;}
       globalThis.location?.reload?.();
     }
+    else if(action==="github-connect")void connectGitHubStore();
+    else if(action==="github-disconnect")disconnectGitHubStore();
+    else if(action==="github-sync")void syncGitHubNow();
+    else if(action==="github-restore")void restoreGitHubSnapshot();
     else if(action==="export-backup")exportBackup();
     else if(action==="import-backup")root.querySelector("[data-backup-file]")?.click?.();
     else if(action==="export-config")onExportConfiguration();
