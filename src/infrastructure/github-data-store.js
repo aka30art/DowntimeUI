@@ -404,8 +404,13 @@ export function createGitHubDataStore({
 
     async readTable(tableInput) {
       const table = requiredString(tableInput, "Database table", /^[a-z][a-z0-9_]{0,62}$/);
-      const result = await readJsonAt(databaseTablePath(table), branch);
-      return Array.isArray(result) ? result : [];
+      const headSha = await getHead();
+      const shard = await readJsonAt(databaseTablePath(table), headSha);
+      if (!shard) return [];
+      if (shard.schemaVersion !== 1 || shard.table !== table || !Array.isArray(shard.rows)) {
+        throw new GitHubStoreError("GitHub database table shard is missing or malformed: " + table);
+      }
+      return shard.rows;
     },
 
     async readDatabase() {
