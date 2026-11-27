@@ -152,6 +152,8 @@ export function createGitHubBrokerAuthority({
   store,
   brokerRepositoryId,
   brokerIssueId = null,
+  bootstrapGitHubUserId = null,
+  bootstrapIssueId = null,
   now = () => new Date()
 } = {}) {
   if (!store || typeof store.readDatabase !== "function" ||
@@ -163,6 +165,13 @@ export function createGitHubBrokerAuthority({
   const defaultIssueId = brokerIssueId == null ? null : Number(brokerIssueId);
   if (defaultIssueId !== null && (!Number.isSafeInteger(defaultIssueId) || defaultIssueId < 1)) {
     throw new TypeError("Broker inbox issue ID is invalid.");
+  }
+  const bootstrapExternalId = bootstrapGitHubUserId == null
+    ? null
+    : requiredString(bootstrapGitHubUserId, "Bootstrap GitHub user ID", GITHUB_ID_PATTERN);
+  const bootstrapTicketId = bootstrapIssueId == null ? defaultIssueId : Number(bootstrapIssueId);
+  if (bootstrapExternalId && (!Number.isSafeInteger(bootstrapTicketId) || bootstrapTicketId < 1)) {
+    throw new TypeError("Immutable DEV bootstrap requires a dedicated broker issue ID.");
   }
 
   async function readLinks() {
@@ -178,6 +187,40 @@ export function createGitHubBrokerAuthority({
 
   async function resolvePrincipal(githubUserId) {
     const externalId = requiredString(githubUserId, "GitHub numeric user ID", GITHUB_ID_PATTERN);
+    const database = await store.readDatabase();
+    const bank = getBank(database.tables);
+    const users = Array.isArray(bank?.users) ? bank.users : [];
+
+    // First trusted account is pinned out-of-band to the immutable DEV root.
+    // This breaks the first-enrolment circular dependency without creating a
+    // self-assignable public bootstrap path.
+    if (bootstrapExternalId && externalId === bootstrapExternalId) {
+      const rootRow = (database.tables.downtime_roots_bootstrap || []).find(row => row.singleton === true);
+      const rootUser = users.find(row => row?.userId === rootRow?.user_id);
+      if (activeUser(rootUser) && String(rootUser.username).toUpperCase() === "DEV" &&
+          resolveRootsClass(database.tables, rootUser.userId) === "DEV") {
+        return Object.freeze({
+          githubUserId: externalId,
+          userId: rootUser.userId,
+          staffId: null,
+          username: rootUser.username,
+          displayName: rootUser.displayName || rootUser.username,
+          enabled: true,
+          status: "ACTIVE",
+          tier: rootUser.tier || null,
+          rootsClass: "DEV",
+          staffProfile: null,
+          yardRoleId: null,
+          yardRoleName: null,
+          departments: Object.freeze({}),
+          brokerRepositoryId: repositoryId,
+          brokerIssueId: bootstrapTicketId,
+          bootstrapRoot: true
+        });
+      }
+      return null;
+    }
+
     const identity = await readLinks();
     const links = identity.links.filter(link =>
       link.githubUserId === externalId && String(link.status || "").toUpperCase() === "ACTIVE"
@@ -187,9 +230,6 @@ export function createGitHubBrokerAuthority({
     if (link.brokerRepositoryId !== repositoryId ||
         !Number.isSafeInteger(Number(link.brokerIssueId || defaultIssueId))) return null;
 
-    const database = await store.readDatabase();
-    const bank = getBank(database.tables);
-    const users = Array.isArray(bank?.users) ? bank.users : [];
     const user = users.find(row => row?.userId === link.userId);
     if (!activeUser(user)) return null;
     const rootsClass = resolveRootsClass(database.tables, user.userId);
@@ -224,6 +264,9 @@ export function createGitHubBrokerAuthority({
   async function authorizeInboxIssue({ principal, issueId, repositoryId: requestedRepositoryId }) {
     if (!principal?.githubUserId || requestedRepositoryId !== repositoryId ||
         !Number.isSafeInteger(Number(issueId))) return false;
+    if (principal.bootstrapRoot === true) {
+      return principal.rootsClass === "DEV" && Number(issueId) === bootstrapTicketId;
+    }
     const identity = await readLinks();
     const matching = identity.links.filter(link =>
       link.githubUserId === principal.githubUserId &&
