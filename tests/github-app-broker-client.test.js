@@ -35,6 +35,7 @@ test("broker request and response are end-to-end encrypted with ephemeral P-256 
   const brokerPublicKey = base64Url(await webcrypto.subtle.exportKey("raw", broker.publicKey));
   const now = () => new Date("2026-11-27T12:00:00.000Z");
   const payload = {
+    service: "gatelog-api",
     action: "gatelog-customer-arrival",
     args: { customer: "Confidential customer", registration: "AB12 CDE", wasteTypes: ["General"] }
   };
@@ -70,7 +71,7 @@ test("broker comment envelopes round-trip above 1 KB and reject oversized encode
   const broker = await brokerKeyPair();
   const brokerPublicKey = base64Url(await webcrypto.subtle.exportKey("raw", broker.publicKey));
   const now = () => new Date("2026-11-27T12:00:00.000Z");
-  const payload = { action: "gatelog-customer-arrival", args: { detail: "x".repeat(2400) } };
+  const payload = { service: "gatelog-api", action: "gatelog-customer-arrival", args: { detail: "x".repeat(2400) } };
   const context = await createEncryptedBrokerRequest({ payload, brokerPublicKey, cryptoProvider: webcrypto, now });
   assert.ok(context.commentBody.length > 1024);
   const parsed = parseBrokerRequestComment(context.commentBody);
@@ -97,7 +98,7 @@ test("broker rejects expired requests and malformed public comment envelopes", a
   const broker = await brokerKeyPair();
   const brokerPublicKey = base64Url(await webcrypto.subtle.exportKey("raw", broker.publicKey));
   const context = await createEncryptedBrokerRequest({
-    payload: { action: "central-state-read", args: {} },
+    payload: { service: "central-bank", action: "central-state-read", args: {} },
     brokerPublicKey,
     cryptoProvider: webcrypto,
     now: () => new Date("2026-11-27T12:00:00.000Z")
@@ -232,7 +233,7 @@ test("GitHub App browser OAuth uses PKCE, validates state and scopes the user to
   assert.equal(entries.size, 0, "PKCE verifier/state must be removed after callback; access tokens are never persisted.");
 
   const submitted = await client.submitEncryptedRequest({
-    payload: { action: "gatelog-customer-arrival", args: { customer: "Confidential customer" } },
+    payload: { service: "gatelog-api", action: "gatelog-customer-arrival", args: { customer: "Confidential customer" } },
     brokerPublicKey
   });
   assert.equal(submitted.commentId, 765);
