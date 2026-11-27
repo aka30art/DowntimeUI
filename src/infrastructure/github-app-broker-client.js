@@ -23,9 +23,20 @@ function toBase64Url(bytes) {
   return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
 }
 
-function fromBase64Url(value) {
-  const raw = requiredString(value, "Base64URL value", /^[A-Za-z0-9_-]+$/).replace(/-/g, "+").replace(/_/g, "/");
-  const binary = atob(raw + "=".repeat((4 - raw.length % 4) % 4));
+function fromBase64Url(value, maxBytes = 1024) {
+  if (typeof value !== "string" || !value || !Number.isSafeInteger(maxBytes) || maxBytes < 1 ||
+      value.length > Math.ceil(maxBytes * 4 / 3) || value.length % 4 === 1 ||
+      !/^[A-Za-z0-9_-]+$/.test(value)) {
+    throw new TypeError("Base64URL value is invalid or exceeds its size limit.");
+  }
+  const raw = value.replace(/-/g, "+").replace(/_/g, "/");
+  let binary;
+  try {
+    binary = atob(raw + "=".repeat((4 - raw.length % 4) % 4));
+  } catch {
+    throw new TypeError("Base64URL value is malformed.");
+  }
+  if (binary.length > maxBytes) throw new TypeError("Base64URL value exceeds its decoded size limit.");
   return Uint8Array.from(binary, character => character.charCodeAt(0));
 }
 
@@ -51,8 +62,10 @@ function buildCommentBody(marker, envelope) {
 function parseCommentBody(body, marker) {
   if (typeof body !== "string" || !body.startsWith(marker)) return null;
   const encoded = body.slice(marker.length).trim();
-  const bytes = fromBase64Url(encoded);
-  if (bytes.byteLength > MAX_ENVELOPE_BYTES) throw new Error("Encrypted broker envelope exceeds the size limit.");
+  if (encoded.length > Math.ceil(MAX_ENVELOPE_BYTES * 4 / 3)) {
+    throw new Error("Encrypted broker envelope exceeds the size limit.");
+  }
+  const bytes = fromBase64Url(encoded, MAX_ENVELOPE_BYTES);
   return decodeJson(bytes, "Encrypted broker envelope");
 }
 
@@ -109,7 +122,7 @@ export async function createEncryptedBrokerRequest({
   const id = requiredString(requestId, "Request ID", /^[0-9a-f-]{36}$/i);
   if (payload.requestId && payload.requestId !== id) throw new TypeError("Payload request ID does not match its encrypted envelope.");
   const requestPayload = { requestId: id, action: payload.action, args: payload.args || {} };
-  const serverPublicKey = await importEcdhPublicKey(cryptoProvider.subtle, fromBase64Url(brokerPublicKey));
+  const serverPublicKey = await importEcdhPublicKey(cryptoProvider.subtle, fromBase64Url(brokerPublicKey, 65));
   const pair = await cryptoProvider.subtle.generateKey(
     { name: "ECDH", namedCurve: "P-256" }, false, ["deriveBits"]
   );
@@ -156,7 +169,7 @@ export async function decryptBrokerRequest({
 } = {}) {
   if (!cryptoProvider?.subtle) throw new Error("WebCrypto is required for broker decryption.");
   validateRequestEnvelope(envelope, now);
-  const clientPublicKey = await importEcdhPublicKey(cryptoProvider.subtle, fromBase64Url(envelope.clientPublicKey));
+  const clientPublicKey = await importEcdhPublicKey(cryptoProvider.subtle, fromBase64Url(envelope.clientPublicKey, 65));
   const key = await deriveDirectionKey({
     subtle: cryptoProvider.subtle,
     privateKey: brokerPrivateKey,
@@ -167,10 +180,10 @@ export async function decryptBrokerRequest({
   });
   const plaintext = await cryptoProvider.subtle.decrypt({
     name: "AES-GCM",
-    iv: fromBase64Url(envelope.nonce),
+    iv: fromBase64Url(envelope.nonce, 12),
     additionalData: utf8(PROTOCOL + ":REQUEST:" + envelope.requestId),
     tagLength: 128
-  }, key, fromBase64Url(envelope.ciphertext));
+  }, key, fromBase64Url(envelope.ciphertext, MAX_ENVELOPE_BYTES));
   const request = decodeJson(new Uint8Array(plaintext), "Decrypted broker request");
   if (!request || typeof request !== "object" || Array.isArray(request) ||
       request.requestId !== envelope.requestId || typeof request.action !== "string" ||
@@ -192,7 +205,7 @@ export async function encryptBrokerResponse({
     throw new TypeError("Broker response parameters are invalid.");
   }
   validateRequestEnvelope(requestEnvelope, now);
-  const clientPublicKey = await importEcdhPublicKey(cryptoProvider.subtle, fromBase64Url(requestEnvelope.clientPublicKey));
+  const clientPublicKey = await importEcdhPublicKey(cryptoProvider.subtle, fromBase64Url(requestEnvelope.clientPublicKey, 65));
   const key = await deriveDirectionKey({
     subtle: cryptoProvider.subtle,
     privateKey: brokerPrivateKey,
@@ -233,7 +246,7 @@ export async function decryptBrokerResponse(context, envelope, cryptoProvider = 
     usage: "decrypt"
   });
   const plaintext = await cryptoProvider.subtle.decrypt({
-    name: "AES-GCM", iv: fromBase64Url(envelope.nonce),
+    name: "AES-GCM", iv: fromBase64Url(envelope.nonce, 12),
     additionalData: utf8(PROTOCOL + ":RESPONSE:" + context.requestId),
     tagLength: 128
   }, key, fromBase64Url(envelope.ciphertext));
