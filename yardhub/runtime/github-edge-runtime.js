@@ -26,7 +26,8 @@ export async function installGitHubEdgeRuntime({
   const databaseStatus = await ensureGitHubDatabaseReady({ store });
   globalThis.__YARDHUB_BOOTSTRAP_CODE__ = databaseStatus.bootstrapCode || null;
   const handlers = globalThis.__YARDHUB_EDGE_HANDLERS__ || (globalThis.__YARDHUB_EDGE_HANDLERS__ = {});
-  const sharedStorage = globalThis.__YARDHUB_GITHUB_STORAGE__ || createGitHubStorageClient({ store });
+  const previousSharedStorage = globalThis.__YARDHUB_GITHUB_STORAGE__;
+  const sharedStorage = createGitHubStorageClient({ store });
   globalThis.__YARDHUB_GITHUB_STORAGE__ = sharedStorage;
   const previousDeno = globalThis.Deno;
   const previousFetch = globalThis.fetch;
@@ -96,6 +97,8 @@ export async function installGitHubEdgeRuntime({
       delete globalThis.__YARDHUB_GITHUB_COMPAT__;
       delete globalThis.__YARDHUB_CURRENT_FUNCTION__;
       globalThis.__YARDHUB_BOOTSTRAP_CODE__ = null;
+      if (previousSharedStorage === undefined) delete globalThis.__YARDHUB_GITHUB_STORAGE__;
+      else globalThis.__YARDHUB_GITHUB_STORAGE__ = previousSharedStorage;
       if (previousSupabase === undefined) delete globalThis.supabase;
       else globalThis.supabase = previousSupabase;
     }
