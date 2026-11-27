@@ -7,6 +7,17 @@
 
 Deliver in independently testable phases. Each phase must have implementation, automated tests, browser acceptance evidence and a recorded exit decision. Do not merge PR #3, deploy the twin as an operational system, copy production records, or switch primary authority until every production gate below is satisfied. A passing build or mocked GitHub API test is not a production gate.
 
+## Current phase board
+
+- **Phase 0 — PARTIAL:** the seven source service entrypoints, principal action families, USER/STAFF/ROOTS/YARD ROLE domains and 39-table/five-bucket inventory are documented. A complete route/action/RPC/trigger/RLS/storage/realtime/export-to-test matrix is still outstanding.
+- **Phase 1 — PARTIAL:** GitHub store, atomic JSON transactions, authority metadata and mocked transaction tests exist. Real private-repository contention, rate-limit, branch-protection and crash-recovery evidence does not.
+- **Phase 2 — BLOCKED:** the source repository is public, no dedicated private operational data repository is recorded, and the browser-direct credential path remains privileged.
+- **Phase 3 — NOT STARTED:** no acceptable broker proof exists.
+- **Phase 4 — NOT STARTED:** seven handlers build/register, but exhaustive endpoint and permission parity is unproven.
+- **Phases 5–8 — NOT STARTED:** module acceptance, full replication/recovery, authority-transfer rehearsal and release acceptance remain open.
+
+A detailed source-backed finding register is maintained in [GITHUB_NATIVE_SECURITY_AUDIT.md](GITHUB_NATIVE_SECURITY_AUDIT.md). Its open critical/high findings block operational activation.
+
 ## Phase 0 — Baseline and scope lock
 
 - Pin the source YARDHUB baseline and the DOWNTIMEUI target commit for every audit.
@@ -90,12 +101,14 @@ For each module, test fresh installation, normal operation, permission-denied pa
 ## Current verified baseline (27 November 2026)
 
 - PR #3 is open, draft and unmerged.
-- Latest observed PR head: `4bc94216748ee5d7055f92f5e54d11d5a1f18876`.
-- Its CI run `46081199788`: `npm run check` passed; Chromium installation was still in progress at the last observation; browser QA had not yet run.
-- The repository `aka30art/DowntimeUI` is public. The data branch in it is metadata-only and is not a production data destination.
-- The browser-direct GitHub token prototype is not approved for staff/multi-user production.
+- The last observed head while this plan was updated is `57f6c2d1a1b577871bc0dc154143e64eb04efe77` (security audit documentation added; PR checks for that exact documentation commit were not yet reported).
+- CI run `46081306857` on commit `7c313a6a1c98070f97b0d5b524ff7bad8452a0fb` completed successfully: `npm run check`, Chromium installation and Playwright browser QA all passed.
+- CI run `46081441856` for commit `235ca7f379523e9d3a980f059e57ef6aaf8b365e` was in progress at the last check; it includes the latest backup-runner authority guard.
+- The repository `aka30art/DowntimeUI` is public and is source code only. It is not an operational data destination. The `data/yardhub` branch is not approved for operational records.
+- The direct-browser GitHub token prototype is not approved for staff/multi-user production.
 - The seven-service runtime is an experimental compatibility harness; the preserved YARDHUB UI remains behind its activation gate.
-- No live primary data has been migrated; no primary switch has occurred.
+- No live primary data has been migrated; no primary switch has occurred; YARDHUB remains primary.
+- A static security audit has recorded open critical/high findings in `docs/GITHUB_NATIVE_SECURITY_AUDIT.md`. Build/browser success does not close them.
 
 ## Non-negotiable protection boundary
 
