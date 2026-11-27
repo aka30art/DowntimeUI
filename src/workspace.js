@@ -6,7 +6,7 @@ import {buildWeeklyReport} from "./domain/reports.js";
 import {assignStationOperator,createPlantState,normalizePlantState,setPlantStatus,setStationStatus} from "./domain/plant.js";
 import {createWorkspaceBackup,restoreWorkspaceBackup,validateWorkspaceBackup} from "./domain/backup.js";
 import {factoryResetStorage} from "./domain/factory-reset.js";
-import {createConnectedGitHubStore,loadGitHubConnection,saveGitHubConnection,clearGitHubConnection} from "./infrastructure/github-connection.js";
+import {createConnectedGitHubStore,createPrivateGitHubDataRepository,loadGitHubConnection,saveGitHubConnection,clearGitHubConnection} from "./infrastructure/github-connection.js";
 
 const STORE_PREFIX="downtimeui:operations:v1:";
 const WORKSPACE_BINDINGS=new WeakMap();
@@ -211,6 +211,23 @@ export function mountWorkspace(root,config,{onEditConfiguration=()=>{},onExportC
       render();
     }
   }
+  async function createGitHubPrivateRepository(){
+    try{
+      const created=await createPrivateGitHubDataRepository({
+        owner:root.querySelector("[data-github-owner]")?.value||"",
+        repo:root.querySelector("[data-github-repo]")?.value||"",
+        token:root.querySelector("[data-github-token]")?.value||"",
+        storage:githubSettingsStorage,
+        fetchImpl:options.fetchImpl||globalThis.fetch
+      });
+      const branchInput=root.querySelector("[data-github-branch]");
+      if(branchInput)branchInput.value=created.defaultBranch;
+      await connectGitHubStore();
+    }catch(error){
+      status="Private data repository creation failed: "+(error?.message||"Check repository name and token permissions.");
+      render();
+    }
+  }
   function disconnectGitHubStore(){
     clearGitHubConnection({storage:githubSettingsStorage,sessionStorage:githubSessionStorage});
     githubStore=null;githubAuthority=null;githubSnapshotVersion=null;githubSyncQueued=false;githubSyncBlocked=false;
@@ -266,7 +283,7 @@ export function mountWorkspace(root,config,{onEditConfiguration=()=>{},onExportC
       '<label><span>Repository</span><input data-github-repo value="'+esc(connection.repo)+'" autocomplete="off"></label>'+
       '<label class="workspace-full"><span>Data branch</span><input data-github-branch value="'+esc(connection.branch)+'" autocomplete="off"></label>'+
       '<label class="workspace-full"><span>Fine-grained GitHub token · memory only</span><input data-github-token type="password" autocomplete="off" placeholder="Re-enter after reload"></label></div>'+
-      '<div class="workspace-button-row"><button type="button" data-action="github-connect">Connect and verify</button><button type="button" data-action="github-disconnect">Disconnect</button><button type="button" data-action="github-sync" '+(!connected?"disabled":"") +'>Sync workspace now</button><button type="button" data-action="github-restore" '+(!connected?"disabled":"") +'>Restore latest snapshot</button></div>'+
+      '<div class="workspace-button-row"><button type="button" data-action="github-create">Create private data repository</button><button type="button" data-action="github-connect">Connect and verify</button><button type="button" data-action="github-disconnect">Disconnect</button><button type="button" data-action="github-sync" '+(!connected?"disabled":"") +'>Sync workspace now</button><button type="button" data-action="github-restore" '+(!connected?"disabled":"") +'>Restore latest snapshot</button></div>'+
       '<p class="workspace-muted">'+esc(authorityLabel)+' · '+esc(syncLabel)+'</p>'+
       '<p class="workspace-muted">Security gate: the configured repository must be private and separate from application source. Tokens are memory-only and cleared on disconnect or page reload. Direct browser access still exposes the connected repository’s records to that trusted operator; this is not yet a multi-user server-side broker. Do not connect staff accounts or production records until the server-side authorization gateway and private repository are configured.</p></div>';
   }
@@ -623,6 +640,7 @@ export function mountWorkspace(root,config,{onEditConfiguration=()=>{},onExportC
       if(!wiped.ok){status="Factory reset failed; local data was retained where rollback allowed: "+wiped.error;render();return;}
       globalThis.location?.reload?.();
     }
+    else if(action==="github-create")void createGitHubPrivateRepository();
     else if(action==="github-connect")void connectGitHubStore();
     else if(action==="github-disconnect")disconnectGitHubStore();
     else if(action==="github-sync")void syncGitHubNow();
