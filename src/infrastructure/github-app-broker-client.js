@@ -3,7 +3,7 @@ const RESPONSE_MARKER = "YARDHUB_RESPONSE_V1:";
 const PROTOCOL = "YARDHUB_GITHUB_BROKER";
 const API_BASE = "https://api.github.com";
 const DEVICE_BASE = "https://github.com";
-const MAX_ENVELOPE_BYTES = 10 * 1024;
+const MAX_ENVELOPE_BYTES = 11 * 1024;
 const ACTION_PATTERN = /^[a-z][a-z0-9-]{1,63}$/;
 
 function requiredString(value, label, pattern = null) {
@@ -408,19 +408,22 @@ export function createGitHubAppBrokerClient({
     if (!context?.requestId || context.expiresAt && Date.parse(context.expiresAt) <= now()) {
       throw new Error("The pending broker request has expired.");
     }
-    const comments = await request(API_BASE + "/repos/" + repoOwner + "/" + repoName + "/issues/" + issue + "/comments?per_page=100&page=1", {
-      headers: {
-        Accept: "application/vnd.github+json",
-        Authorization: "Bearer " + token,
-        "X-GitHub-Api-Version": "2026-03-10"
+    for (let page = 1; page <= 5; page += 1) {
+      const comments = await request(API_BASE + "/repos/" + repoOwner + "/" + repoName + "/issues/" + issue + "/comments?per_page=100&page=" + page, {
+        headers: {
+          Accept: "application/vnd.github+json",
+          Authorization: "Bearer " + token,
+          "X-GitHub-Api-Version": "2026-03-10"
+        }
+      }, "Broker response poll");
+      if (!Array.isArray(comments)) throw new Error("GitHub returned an invalid broker comment list.");
+      for (const comment of comments) {
+        const envelope = parseBrokerResponseComment(comment?.body);
+        if (envelope?.requestId === context.requestId) {
+          return { pending: false, payload: await decryptBrokerResponse(context, envelope, cryptoProvider), commentId: comment.id };
+        }
       }
-    }, "Broker response poll");
-    if (!Array.isArray(comments)) throw new Error("GitHub returned an invalid broker comment list.");
-    for (const comment of comments) {
-      const envelope = parseBrokerResponseComment(comment?.body);
-      if (envelope?.requestId === context.requestId) {
-        return { pending: false, payload: await decryptBrokerResponse(context, envelope, cryptoProvider), commentId: comment.id };
-      }
+      if (comments.length < 100) break;
     }
     return { pending: true };
   }
