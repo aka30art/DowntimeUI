@@ -25,8 +25,9 @@ function createMockGitHub() {
   let head = "commit-0";
   let failNextCas = false;
   const commits = new Map([[head, { tree: "tree-0", parent: null }]]);
-  const trees = new Map([["tree-0", new Map([[ "control/authority.json", Buffer.from(JSON.stringify(INITIAL_AUTHORITY) + "\n", "utf8").toString("base64") ]])]]);
-  const blobs = new Map();
+  const initialAuthority = Buffer.from(JSON.stringify(INITIAL_AUTHORITY) + "\n", "utf8").toString("base64");
+  const blobs = new Map([["initial-blob", initialAuthority]]);
+  const trees = new Map([["tree-0", new Map([["control/authority.json", { sha: "initial-blob", content: initialAuthority }]])]]);
 
   const fetchImpl = async (url, options = {}) => {
     const parsed = new URL(url);
@@ -57,13 +58,12 @@ function createMockGitHub() {
       const ref = parsed.searchParams.get("ref");
       const commit = commits.get(ref);
       const tree = commit && trees.get(commit.tree);
-      const content = tree?.get(filePath);
-      if (content === undefined) return response(404, { message: "Not found" });
-      const blobSha = [...blobs.entries()].find(([, value]) => value === content)?.[0] || "initial-blob";
+      const file = tree?.get(filePath);
+      if (file === undefined) return response(404, { message: "Not found" });
       return response(200, {
         type: "file", encoding: "base64",
-        sha: blobSha,
-        content
+        sha: file.sha,
+        content: file.content
       });
     }
     if (method === "POST" && path === "/git/blobs") {
@@ -77,7 +77,7 @@ function createMockGitHub() {
       const base = new Map(trees.get(body.base_tree) || []);
       for (const entry of body.tree) {
         if (entry.sha === null) base.delete(entry.path);
-        else base.set(entry.path, blobs.get(entry.sha));
+        else base.set(entry.path, { sha: entry.sha, content: blobs.get(entry.sha) });
       }
       const sha = "tree-" + (++counter);
       trees.set(sha, base);
