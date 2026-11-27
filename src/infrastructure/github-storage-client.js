@@ -1,4 +1,4 @@
-function toBytes(file) {
+async function toBytes(file) {
   if (file instanceof Uint8Array) return file;
   if (file instanceof ArrayBuffer) return new Uint8Array(file);
   if (typeof Blob !== "undefined" && file instanceof Blob) return new Uint8Array(await file.arrayBuffer());
