@@ -261,3 +261,103 @@ No merge, deployment, primary cutover or Supabase removal is authorised by this 
 - Selection and approval of the YARDHUB → GitHub replication bridge.
 
 **Current state:** architecture proposal prepared; no application code or production system changed.
+
+
+## 9. Live Supabase inventory — read-only checkpoint, 27 November 2026
+
+The linked production project was inspected read-only. Project status returned `ACTIVE_HEALTHY`, region `eu-west-1`, PostgreSQL 17. No SQL writes, migrations, function deployments, storage mutations or configuration changes were performed.
+
+### Platform inventory
+
+- **39 public tables** were returned by the live table inventory; all 39 report RLS enabled.
+- **49 applied migrations** were returned. Latest: `20261127095422_canonical_user_session_tier_nullable`.
+- **7 active Edge Functions**:
+  - `central-bank` v31
+  - `photo-evidence` v9
+  - `repair-maintenance-api` v21
+  - `spectator-read` v10
+  - `yard-hub-settings-api` v21
+  - `central-config-admin` v10
+  - `gatelog-api` v15
+- **5 private Storage buckets**:
+  - `downtime-evidence`
+  - `downtime-pdfs`
+  - `downtime-staff-photos`
+  - `repair-maintenance-evidence`
+  - `repair-maintenance-reports`
+- Storage object inventory at this checkpoint: 6 downtime-evidence objects (6,172,205 bytes), 2 downtime-pdfs objects (61,578 bytes), 0 staff-photo objects, 0 R&M evidence objects, and 1 R&M report object (5,010 bytes). Total observed: 9 objects, 6,238,793 bytes. This is a point-in-time inventory, not a full export or retention assessment.
+- The `supabase_realtime` publication currently contains only `public.downtime_shared_state`. Other module updates are served through API reads/writes and refresh flows, not publication membership.
+
+### Live table row-count snapshot
+
+The following row counts are the values returned by the live table inventory. They are a migration planning snapshot, not a substitute for exported records and checksums.
+
+| Table | Rows |
+|---|---:|
+| downtime_shared_state | 1 |
+| downtime_reports | 2 |
+| downtime_attachments | 6 |
+| downtime_central_bank | 1 |
+| downtime_central_sessions | 13 |
+| downtime_central_audit | 650 |
+| downtime_central_config_state | 1 |
+| downtime_central_config_history | 3 |
+| repair_maintenance_faults | 18 |
+| repair_maintenance_notes | 0 |
+| repair_maintenance_attachments | 0 |
+| repair_maintenance_audit | 95 |
+| yard_hub_tier_config | 1 |
+| yard_hub_access_audit | 26 |
+| repair_maintenance_machine_presets | 21 |
+| repair_maintenance_pdf_exports | 1 |
+| repair_maintenance_assets | 5 |
+| repair_maintenance_machine_settings | 6 |
+| repair_maintenance_machine_models | 4 |
+| downtime_daily_operator_assignments | 11 |
+| downtime_daily_operator_audit | 11 |
+| gatelog_customers | 3 |
+| gatelog_vehicles | 3 |
+| gatelog_visits | 0 |
+| gatelog_waste_types | 6 |
+| gatelog_visit_waste_types | 0 |
+| gatelog_audit | 16 |
+| gatelog_daily_gateman_assignments | 1 |
+| gatelog_report_archive | 0 |
+| yard_roles | 6 |
+| yard_role_department_permissions | 30 |
+| yard_role_assignments | 2 |
+| yard_role_assignment_audit | 2 |
+| downtime_roots_assignments | 2 |
+| downtime_roots_assignment_audit | 4 |
+| yard_role_definition_audit | 17 |
+| downtime_roots_bootstrap | 1 |
+| downtime_identity_reset_runs | 1 |
+| downtime_roots_role_definitions | 2 |
+
+### Implications for the backup design
+
+1. The backup must cover more than the operational tracker. Identity, sessions, role definitions/assignments, audit history, configuration drafts and published versions, GATELOG and R&M records, daily assignments, report metadata and all five Storage buckets require explicit export treatment.
+2. Storage file contents must be copied and checksum-verified; copying database metadata alone does not preserve photo evidence or PDFs.
+3. Session tokens should not be replicated as active sessions. The GitHub twin needs its own independent session lifecycle; the backup should preserve account identity and relevant audit history without treating primary sessions as valid twin sessions.
+4. The live row counts show existing operational and audit history. Empty-looking GATELOG visit or R&M attachment tables do not imply that the rest of their module data can be omitted.
+5. The sole Realtime publication member confirms that replacing Supabase realtime with GitHub polling is a manageable design change, but all client refresh paths still need explicit parity tests.
+
+## 10. Updated Phase 0 exit status
+
+**Additional live read-only work completed:**
+- Confirmed the primary Supabase project is currently active and healthy.
+- Enumerated all 39 public tables and confirmed RLS is enabled on each.
+- Enumerated 49 applied migrations and 7 active Edge Functions.
+- Enumerated all 5 private Storage buckets and counted their current objects and bytes.
+- Enumerated the current Realtime publication membership.
+- Captured a live table row-count snapshot for migration planning.
+
+**Still required before Phase 0 can be marked fully complete:**
+- Export-level verification of every table, including complete row contents, foreign-key relationships, large JSON payloads and checksums.
+- Full Storage object listing and actual file export/checksum verification, including report/evidence references.
+- Exhaustive source census of all browser callers and all Edge Function actions, SQL RPCs, triggers and policies.
+- Complete feature-by-feature parity matrix against the current primary main branch.
+- A tested GitHub-only write-orchestration prototype with concurrent writes, stale writes, retry, outage and restoration scenarios.
+- Selection and rehearsal of the YARDHUB → GitHub replication bridge.
+
+**Updated state:** repository audit and live platform inventory are documented. Phase 0 remains open until export completeness, source census and the write-gateway feasibility test are complete. No production system or application code has been changed.
