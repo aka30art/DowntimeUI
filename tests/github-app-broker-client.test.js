@@ -35,8 +35,8 @@ test("broker request and response are end-to-end encrypted with ephemeral P-256 
   const brokerPublicKey = base64Url(await webcrypto.subtle.exportKey("raw", broker.publicKey));
   const now = () => new Date("2026-11-27T12:00:00.000Z");
   const payload = {
-    operation: "gatelog.customer-arrival",
-    data: { customer: "Confidential customer", registration: "AB12 CDE", wasteTypes: ["General"] }
+    action: "gatelog-customer-arrival",
+    args: { customer: "Confidential customer", registration: "AB12 CDE", wasteTypes: ["General"] }
   };
   const context = await createEncryptedBrokerRequest({ payload, brokerPublicKey, cryptoProvider: webcrypto, now });
   assert.equal(context.envelope.protocol, "YARDHUB_GITHUB_BROKER");
@@ -70,7 +70,7 @@ test("broker rejects expired requests and malformed public comment envelopes", a
   const broker = await brokerKeyPair();
   const brokerPublicKey = base64Url(await webcrypto.subtle.exportKey("raw", broker.publicKey));
   const context = await createEncryptedBrokerRequest({
-    payload: { operation: "central.state.read" },
+    payload: { action: "central-state-read", args: {} },
     brokerPublicKey,
     cryptoProvider: webcrypto,
     now: () => new Date("2026-11-27T12:00:00.000Z")
@@ -184,12 +184,12 @@ test("GitHub App Device Flow restricts the user token to the broker repository a
   assert.deepEqual(authorised.account, { id: 990011, login: "yard-operator" });
 
   const submitted = await client.submitEncryptedRequest({
-    payload: { operation: "gatelog.customer-arrival", data: { customer: "Confidential customer" } },
+    payload: { action: "gatelog-customer-arrival", args: { customer: "Confidential customer" } },
     brokerPublicKey
   });
   assert.equal(submitted.commentId, 765);
   assert.equal(submitted.account.id, 990011);
-  assert.equal(decryptedPayload.operation, "gatelog.customer-arrival");
+  assert.equal(decryptedPayload.action, "gatelog-customer-arrival");
   assert.equal(submittedComment.includes("Confidential customer"), false);
 
   const response = await client.pollEncryptedResponse(submitted);
