@@ -9,6 +9,7 @@ function makeResponseError(message, status = 500) {
 
 export function createGitHubSupabaseCompat({
   store,
+  storageClient = null,
   actorId = "YARDHUB-EDGE-SERVICE",
   rpcHandlers = {},
   handlers = globalThis.__YARDHUB_EDGE_HANDLERS__ || {},
@@ -18,7 +19,7 @@ export function createGitHubSupabaseCompat({
 } = {}) {
   if (!store) throw new TypeError("A GitHub data store is required.");
   const tables = createGitHubTableClient({ store, actorId, rpcHandlers });
-  const storage = createGitHubStorageClient({ store });
+  const storage = storageClient || createGitHubStorageClient({ store });
 
   const auth = {
     async getSession() {
