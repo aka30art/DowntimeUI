@@ -7,6 +7,42 @@ function makeResponseError(message, status = 500) {
   return error;
 }
 
+/**
+ * Creates a transaction-scoped table store for one broker request. All
+ * compatibility-client writes are staged into the broker's outer transaction
+ * rather than committing one Git ref per SQL statement.
+ */
+export function createGitHubBrokerTransactionStore(context) {
+  if (!context || !context.tables || !Number.isInteger(context.revision)) {
+    throw new TypeError("A broker transaction context with tables and revision is required.");
+  }
+  return {
+    async readDatabase() {
+      return {
+        revision: context.revision,
+        tables: structuredClone(context.tables),
+        manifest: { revision: context.revision }
+      };
+    },
+    async readTable(name) {
+      return structuredClone(context.tables[name] || []);
+    },
+    async transactDatabase({ expectedRevision, mutate } = {}) {
+      if (expectedRevision !== context.revision) {
+        const error = new Error("Broker-local transaction revision changed.");
+        error.status = 409;
+        throw error;
+      }
+      if (typeof mutate !== "function") throw new TypeError("A broker-local table mutator is required.");
+      const draft = structuredClone(context.tables);
+      const result = await mutate(draft);
+      for (const name of Object.keys(draft)) context.tables[name] = draft[name];
+      context.revision += 1;
+      return { committed: true, revision: context.revision, result };
+    }
+  };
+}
+
 export function createGitHubSupabaseCompat({
   store,
   storageClient = null,
