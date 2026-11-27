@@ -98,7 +98,7 @@ These are not merely DDL table definitions. The source migration sequence encode
 
 ## 5. Open source-drift and acceptance items
 
-1. Reconcile the live 49-row migration history with the 45 tracked migration files at the exact pinned source tree. Identify all four unmatched applied migration versions and all tracked-but-unapplied versions.
+1. Reconcile the live 49-row migration history with the 45 tracked migration files at the exact pinned source tree. The count difference is four, but it does not by itself prove that exactly four applied migrations are missing: tracked-but-unapplied files may also exist. Obtain the full applied version list, compare both sets, and identify every missing, extra or mismatched version.
 2. Resolve the differing canonical USER/session migration timestamps:
    - live inventory: `20261127095422_canonical_user_session_tier_nullable`;
    - pinned Git tree: `20261127110000_canonical_user_session_tier_nullable.sql`.
