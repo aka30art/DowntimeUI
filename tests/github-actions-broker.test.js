@@ -81,11 +81,6 @@ function createBrokerHarness({
       return authorised;
     },
     async createServiceSession(args) {
-      calls.sessions = (calls.sessions || []);
-      calls.sessions.push(args);
-      return { token: "broker-issued-short-lived-session-token", async dispose() { calls.sessionDisposed = true; } };
-    },
-    async createServiceSession(args) {
       calls.sessions.push(args);
       return { token: "broker-created-short-lived-service-session-token", async dispose() { calls.sessionDisposals += 1; } };
     },
@@ -141,7 +136,6 @@ test("broker maps GitHub numeric actor to canonical active USER and authorises b
   assert.equal(harness.calls.authorised[0].authorityEpoch, 4);
   assert.equal(harness.calls.executed[0].principal.userId, USER_ID);
   assert.equal(harness.calls.executed[0].service, "gatelog-api");
-  assert.equal(harness.calls.executed[0].sessionToken, "broker-issued-short-lived-session-token");
   assert.equal(harness.calls.sessions[0].principal.userId, USER_ID);
   assert.equal(harness.calls.sessionDisposed, true);
   assert.equal(harness.calls.sessionDisposals, 1);
@@ -203,9 +197,8 @@ test("broker refuses execution if the current authority epoch is unavailable", a
     expectedRepositoryId: REPOSITORY_ID,
     resolvePrincipal: async id => ({ githubUserId: id, userId: USER_ID, staffId: "staff-01", enabled: true, status: "ACTIVE" }),
     authorizeInboxIssue: async () => true,
-    decryptRequest: async () => ({ requestId: REQUEST_ID, service: "gatelog-api", action: "history", args: {}, sessionToken: "session-token-test" }),
+    decryptRequest: async () => ({ requestId: REQUEST_ID, service: "gatelog-api", action: "history", args: {} }),
     authorize: async () => true,
-    createServiceSession: async () => { throw new Error("Must not create a session without authority epoch."); },
     createServiceSession: async () => { throw new Error("Must not create a session without authority epoch."); },
     execute: async () => { throw new Error("Must not execute without authority epoch."); },
     encryptResponse: async () => "encrypted",
