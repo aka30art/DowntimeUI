@@ -1,7 +1,7 @@
 (()=>{
   'use strict';
-  const API=window.REPAIR_MAINTENANCE_API||'https://ygwfipksbbprqynvbklk.supabase.co/functions/v1/repair-maintenance-api';
-  const KEY=window.DOWNTIME_CENTRAL_API_KEY||'';
+  const API=window.REPAIR_MAINTENANCE_API||'https://github-native.invalid/functions/v1/repair-maintenance-api';
+  const KEY='github-native-local';
   const $=id=>document.getElementById(id);
   async function checkAccess(){
     const session=window.DowntimeCentral?.session;
