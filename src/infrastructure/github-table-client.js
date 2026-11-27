@@ -316,7 +316,7 @@ export function createGitHubTableClient({
       });
       return { data: result, error: null, status: 200 };
     } catch (error) {
-      return { data: null, error: { message: error.message, code: error.code || "GITHUB_RPC_ERROR" }, status: error.status || 500 };
+      return { data: null, error: { message: error.message, code: error.code || "GITHUB_RPC_ERROR", status: error.status || 500 }, status: error.status || 500 };
     }
   }
 
