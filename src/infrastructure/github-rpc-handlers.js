@@ -327,7 +327,7 @@ export const GITHUB_YARDHUB_RPC_HANDLERS = Object.freeze({
     rows(tables, "gatelog_visit_waste_types").splice(0, rows(tables, "gatelog_visit_waste_types").length,
       ...rows(tables, "gatelog_visit_waste_types").filter(x => x.visit_id !== visit.id));
     return visit.id;
-  }
+  },
 
   downtime_roots_manage_identity({ tables, args, now }) {
     const userId = cleanText(args.p_user_id, 120), staffId = cleanText(args.p_staff_id, 120);
@@ -547,8 +547,7 @@ export const GITHUB_YARDHUB_RPC_HANDLERS = Object.freeze({
       created_at: now().toISOString()
     });
     return { user_id: userId, staff_id: staffId, yard_role_id: roleId, status: assignment.status, version: assignment.version, verified_at: assignment.verified_at, replayed: false };
-  }
-
+  },
 
   downtime_identity_reset_preserve_dev({ tables, args, now }) {
     const actorUserId = cleanText(args.p_actor_user_id, 120);
