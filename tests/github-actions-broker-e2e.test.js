@@ -93,7 +93,7 @@ test("encrypted browser request traverses the Actions broker core and returns on
       assert.equal(service, "gatelog-api");
       assert.ok(requestId);
       assert.equal(authorityEpoch, 3);
-      return { token: "test-session-token", async dispose() { calls.sessionDisposed = true; } };
+      return { token: "test-session-token-1234567890", async dispose() { calls.sessionDisposed = true; } };
     },
     async execute({ principal, service, action, args, sessionToken, requestId, authorityEpoch }) {
       calls.execute.push({ principal, service, action, args, sessionToken, requestId, authorityEpoch });
@@ -189,6 +189,7 @@ test("broker denies a comment when its event actor differs from the comment auth
     authorizeInboxIssue: async () => true,
     decryptRequest: async () => { throw new Error("Must not decrypt a mismatched actor."); },
     authorize: async () => true,
+    createServiceSession: async () => { throw new Error("Must not create a session for a mismatched actor."); },
     execute: async () => { throw new Error("Must not execute a mismatched actor."); },
     encryptResponse: async () => null,
     publishEncryptedResponse: async () => {},
