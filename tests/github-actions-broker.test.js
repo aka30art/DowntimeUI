@@ -1,5 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { webcrypto } from "node:crypto";
+import { createGitHubCentralServiceSession } from "../src/infrastructure/github-central-service-session.js";
 import {
   createGitHubActionsBroker,
   parseGitHubIssueCommentEvent
@@ -234,4 +236,57 @@ test("broker rejects unregistered service names before authorisation or executio
   await assert.rejects(harness.broker.handleIssueComment(event()), /schema validation/);
   assert.equal(harness.calls.authorised.length, 0);
   assert.equal(harness.calls.executed.length, 0);
+});
+
+
+test("broker service sessions store only a hash and are revoked after the service action", async () => {
+  const state = {
+    revision: 0,
+    tables: { downtime_central_sessions: [] }
+  };
+  const store = {
+    async readDatabase() {
+      return { revision: state.revision, tables: structuredClone(state.tables) };
+    },
+    async transactDatabase({ expectedRevision, mutate }) {
+      if (expectedRevision !== state.revision) {
+        const error = new Error("revision conflict");
+        error.status = 409;
+        throw error;
+      }
+      const draft = structuredClone(state.tables);
+      await mutate(draft);
+      state.tables = draft;
+      state.revision += 1;
+      return { committed: true, revision: state.revision };
+    }
+  };
+  const session = await createGitHubCentralServiceSession({
+    store,
+    principal: { userId: USER_ID, staffId: "staff-01", username: "operator", tier: "USER", enabled: true, status: "ACTIVE" },
+    requestId: REQUEST_ID,
+    cryptoProvider: webcrypto,
+    now: () => new Date("2026-11-27T12:00:00.000Z")
+  });
+  assert.match(session.token, /^[a-f0-9]{64}$/);
+  assert.equal(state.tables.downtime_central_sessions.length, 1);
+  const row = state.tables.downtime_central_sessions[0];
+  assert.equal(row.username, "operator");
+  assert.equal(row.tier, "USER");
+  assert.equal(row.created_at, "2026-11-27T12:00:00.000Z");
+  assert.equal(row.expires_at, "2026-11-27T12:02:00.000Z");
+  assert.equal(Object.hasOwn(row, "token"), false);
+  assert.notEqual(row.token_hash, session.token);
+  await session.dispose();
+  assert.equal(state.tables.downtime_central_sessions.length, 0);
+  await session.dispose();
+  assert.equal(state.revision, 2);
+});
+
+test("broker service session refuses non-active or incomplete canonical identities", async () => {
+  const store = { readDatabase: async () => ({ revision: 0, tables: {} }), transactDatabase: async () => { throw new Error("must not write"); } };
+  await assert.rejects(createGitHubCentralServiceSession({
+    store, principal: { userId: USER_ID, staffId: "staff-01", username: "operator", enabled: false, status: "ACTIVE" },
+    requestId: REQUEST_ID, cryptoProvider: webcrypto
+  }), /active canonical USER/);
 });
