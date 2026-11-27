@@ -99,7 +99,18 @@ test("DEV bootstrap code rotates after a reload and expires after fifteen minute
 test("DEV bootstrap code is not generated once a DEV account exists", async () => {
   const store = memoryStore();
   await ensureGitHubDatabaseReady({ store, generateBootstrapCode: () => "C".repeat(48) });
-  store.tables.downtime_central_bank[0].payload.users = [{ username: "DEV", userId: store.tables.downtime_roots_bootstrap[0].user_id }];
+  const current = await store.readDatabase();
+  await store.transactDatabase({
+    expectedRevision: current.revision,
+    actorId: "test-installer",
+    mutate(tables) {
+      tables.downtime_central_bank[0].payload.users = [{
+        username: "DEV",
+        userId: tables.downtime_roots_bootstrap[0].user_id
+      }];
+    }
+  });
   const result = await ensureGitHubDatabaseReady({ store });
   assert.equal(result.bootstrapCode, null);
+  assert.equal(globalThis.__YARDHUB_BOOTSTRAP_CODE__, null);
 });
