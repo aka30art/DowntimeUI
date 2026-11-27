@@ -29,7 +29,9 @@ test("encrypted browser request traverses the Actions broker core and returns on
   const brokerPublicKey = base64Url(await webcrypto.subtle.exportKey("raw", brokerKeyPair.publicKey));
   const requestContext = await createEncryptedBrokerRequest({
     payload: {
+      service: "gatelog-api",
       action: "gatelog-customer-arrival",
+      sessionToken: "test-session-token",
       args: {
         customer: "Private customer",
         registration: "AB12 CDE",
@@ -79,15 +81,17 @@ test("encrypted browser request traverses the Actions broker core and returns on
         cryptoProvider: webcrypto
       });
     },
-    async authorize({ principal, action, args, authorityEpoch }) {
-      calls.authorize.push({ principal, action, args, authorityEpoch });
+    async authorize({ principal, service, action, args, sessionToken, authorityEpoch }) {
+      calls.authorize.push({ principal, service, action, args, sessionToken, authorityEpoch });
       return principal.userId === userId &&
+        service === "gatelog-api" &&
+        sessionToken === "test-session-token" &&
         action === "gatelog-customer-arrival" &&
         args.registration === "AB12 CDE" &&
         authorityEpoch === 3;
     },
-    async execute({ principal, action, args, requestId, authorityEpoch }) {
-      calls.execute.push({ principal, action, args, requestId, authorityEpoch });
+    async execute({ principal, service, action, args, sessionToken, requestId, authorityEpoch }) {
+      calls.execute.push({ principal, service, action, args, sessionToken, requestId, authorityEpoch });
       return {
         visitId: "private-visit-1001",
         customerName: args.customer,
