@@ -73,6 +73,163 @@ function parseCommentBody(body, marker) {
   return decodeJson(bytes, "Encrypted broker envelope");
 }
 
+function isNonExtractableEcdhKey(key, type) {
+  return Boolean(key && typeof key === "object" &&
+    key.type === type && key.extractable === false &&
+    key.algorithm?.name === "ECDH");
+}
+
+function validatePendingRequestRecord(record) {
+  if (!record || typeof record !== "object" || Array.isArray(record) ||
+      typeof record.requestId !== "string" || !/^[0-9a-f-]{36}$/i.test(record.requestId) ||
+      !isNonExtractableEcdhKey(record.clientPrivateKey, "private") ||
+      !isNonExtractableEcdhKey(record.brokerPublicKey, "public") ||
+      !Number.isSafeInteger(record.accountId) || record.accountId < 1 ||
+      typeof record.accountLogin !== "string" || !/^[A-Za-z0-9-]{1,39}$/.test(record.accountLogin) ||
+      !Number.isFinite(Date.parse(record.expiresAt)) ||
+      !["SUBMITTING", "SUBMITTED", "SUBMISSION_UNKNOWN"].includes(record.status)) {
+    throw new TypeError("Pending broker request record is invalid.");
+  }
+  if (record.commentId !== null && record.commentId !== undefined &&
+      (!Number.isSafeInteger(record.commentId) || record.commentId < 1)) {
+    throw new TypeError("Pending broker comment ID is invalid.");
+  }
+  return {
+    requestId: record.requestId,
+    clientPrivateKey: record.clientPrivateKey,
+    brokerPublicKey: record.brokerPublicKey,
+    accountId: record.accountId,
+    accountLogin: record.accountLogin,
+    createdAt: Number.isFinite(record.createdAt) ? record.createdAt : Date.now(),
+    expiresAt: new Date(record.expiresAt).toISOString(),
+    commentId: record.commentId ?? null,
+    status: record.status
+  };
+}
+
+/**
+ * Persists only encrypted-request recovery material and non-extractable
+ * CryptoKeys. It never stores GitHub access tokens, OAuth secrets, plaintext
+ * request payloads or operational records.
+ */
+export function createIndexedDbPendingRequestStore({
+  indexedDBProvider = globalThis.indexedDB,
+  databaseName = "yardhub-github-broker",
+  storeName = "pending-requests",
+  now = () => Date.now()
+} = {}) {
+  if (!indexedDBProvider || typeof indexedDBProvider.open !== "function") {
+    throw new Error("IndexedDB is required to recover pending encrypted broker requests.");
+  }
+  const dbName = requiredString(databaseName, "Pending request database name", /^[A-Za-z0-9_-]{1,80}$/);
+  const objectStoreName = requiredString(storeName, "Pending request store name", /^[A-Za-z0-9_-]{1,80}$/);
+  let databasePromise = null;
+
+  function openDatabase() {
+    if (databasePromise) return databasePromise;
+    databasePromise = new Promise((resolve, reject) => {
+      const request = indexedDBProvider.open(dbName, 1);
+      request.onupgradeneeded = () => {
+        const db = request.result;
+        if (!db.objectStoreNames.contains(objectStoreName)) {
+          const store = db.createObjectStore(objectStoreName, { keyPath: "requestId" });
+          store.createIndex("accountId", "accountId", { unique: false });
+          store.createIndex("expiresAt", "expiresAt", { unique: false });
+        }
+      };
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error || new Error("Pending request database could not be opened."));
+      request.onblocked = () => reject(new Error("Pending request database upgrade is blocked by another tab."));
+    }).catch(error => {
+      databasePromise = null;
+      throw error;
+    });
+    return databasePromise;
+  }
+
+  async function transact(mode, operation) {
+    const db = await openDatabase();
+    return new Promise((resolve, reject) => {
+      let result;
+      let settled = false;
+      const transaction = db.transaction(objectStoreName, mode);
+      const store = transaction.objectStore(objectStoreName);
+      let request;
+      try {
+        request = operation(store);
+      } catch (error) {
+        transaction.abort();
+        reject(error);
+        return;
+      }
+      if (request) {
+        request.onsuccess = () => { result = request.result; };
+        request.onerror = () => {
+          if (!settled) {
+            settled = true;
+            reject(request.error || new Error("Pending request database operation failed."));
+          }
+        };
+      }
+      transaction.oncomplete = () => {
+        if (!settled) {
+          settled = true;
+          resolve(result);
+        }
+      };
+      transaction.onerror = transaction.onabort = () => {
+        if (!settled) {
+          settled = true;
+          reject(transaction.error || new Error("Pending request database transaction failed."));
+        }
+      };
+    });
+  }
+
+  return Object.freeze({
+    async put(record) {
+      const safeRecord = validatePendingRequestRecord(record);
+      await transact("readwrite", store => store.put(safeRecord));
+      return safeRecord.requestId;
+    },
+    async get(requestId) {
+      const id = requiredString(requestId, "Pending request ID", /^[0-9a-f-]{36}$/i);
+      const record = await transact("readonly", store => store.get(id));
+      if (!record) return null;
+      if (Date.parse(record.expiresAt) <= now()) {
+        await transact("readwrite", store => store.delete(id));
+        return null;
+      }
+      return validatePendingRequestRecord(record);
+    },
+    async list(accountId) {
+      if (!Number.isSafeInteger(accountId) || accountId < 1) {
+        throw new TypeError("A canonical GitHub account ID is required to list pending requests.");
+      }
+      const records = await transact("readonly", store => store.index("accountId").getAll(accountId));
+      const valid = [];
+      for (const record of records || []) {
+        if (Date.parse(record.expiresAt) <= now()) {
+          await transact("readwrite", store => store.delete(record.requestId));
+        } else {
+          valid.push(validatePendingRequestRecord(record));
+        }
+      }
+      return valid;
+    },
+    async remove(requestId) {
+      const id = requiredString(requestId, "Pending request ID", /^[0-9a-f-]{36}$/i);
+      await transact("readwrite", store => store.delete(id));
+    },
+    async close() {
+      if (!databasePromise) return;
+      const db = await databasePromise;
+      db.close();
+      databasePromise = null;
+    }
+  });
+}
+
 async function importEcdhPublicKey(subtle, raw) {
   return subtle.importKey("raw", raw, { name: "ECDH", namedCurve: "P-256" }, false, []);
 }
@@ -295,7 +452,8 @@ export function createGitHubAppBrokerClient({
   fetchImpl = globalThis.fetch,
   cryptoProvider = globalThis.crypto,
   now = () => Date.now(),
-  storage = globalThis.sessionStorage
+  storage = globalThis.sessionStorage,
+  pendingRequestStore = null
 } = {}) {
   const appClientId = requiredString(clientId, "GitHub App client ID");
   const repoId = Number(repositoryId);
@@ -312,6 +470,9 @@ export function createGitHubAppBrokerClient({
   const authStorage = storage || globalThis.sessionStorage;
   const authStateKey = "yardhub.github-app.oauth-state.v1";
   const localTokenLifetimeMs = 30 * 60 * 1000;
+  const pendingStore = pendingRequestStore || (globalThis.indexedDB?.open
+    ? createIndexedDbPendingRequestStore({ indexedDBProvider: globalThis.indexedDB, now })
+    : null);
 
   async function request(url, options, label) {
     const response = await fetchImpl(url, options);
@@ -440,26 +601,93 @@ export function createGitHubAppBrokerClient({
     return { account, expiresAt: new Date(tokenExpiresAt).toISOString() };
   }
 
+  function requirePendingStore() {
+    if (!pendingStore || typeof pendingStore.put !== "function" ||
+        typeof pendingStore.get !== "function" || typeof pendingStore.list !== "function" ||
+        typeof pendingStore.remove !== "function") {
+      throw new Error("IndexedDB-backed pending request recovery is unavailable; no broker request was submitted.");
+    }
+    return pendingStore;
+  }
+
+  function pendingRecord(context, { commentId = null, status = "SUBMITTING" } = {}) {
+    if (!account?.id || !account?.login) throw new Error("A verified GitHub account is required for pending request recovery.");
+    return {
+      requestId: context.requestId,
+      clientPrivateKey: context.clientPrivateKey,
+      brokerPublicKey: context.brokerPublicKey,
+      accountId: account.id,
+      accountLogin: account.login,
+      createdAt: now(),
+      expiresAt: context.expiresAt,
+      commentId,
+      status
+    };
+  }
+
   async function submitEncryptedRequest({ payload, brokerPublicKey } = {}) {
     const token = requireToken();
+    const store = requirePendingStore();
     const context = await createEncryptedBrokerRequest({ payload, brokerPublicKey, cryptoProvider, now: () => new Date(now()) });
-    const response = await request(API_BASE + "/repos/" + repoOwner + "/" + repoName + "/issues/" + issue + "/comments", {
-      method: "POST",
-      headers: {
-        Accept: "application/vnd.github+json",
-        Authorization: "Bearer " + token,
-        "Content-Type": "application/json",
-        "X-GitHub-Api-Version": "2026-03-10"
-      },
-      body: JSON.stringify({ body: context.commentBody })
-    }, "Encrypted broker request submission");
-    if (!Number.isSafeInteger(response?.id)) throw new Error("GitHub did not return a broker request comment ID.");
+    // Save the non-extractable ECDH private key before posting. If the POST
+    // outcome is ambiguous, the pending record can be reconciled without
+    // resubmitting the operational action or generating a duplicate.
+    await store.put(pendingRecord(context, { status: "SUBMITTING" }));
+    let response;
+    try {
+      response = await request(API_BASE + "/repos/" + repoOwner + "/" + repoName + "/issues/" + issue + "/comments", {
+        method: "POST",
+        headers: {
+          Accept: "application/vnd.github+json",
+          Authorization: "Bearer " + token,
+          "Content-Type": "application/json",
+          "X-GitHub-Api-Version": "2026-03-10"
+        },
+        body: JSON.stringify({ body: context.commentBody })
+      }, "Encrypted broker request submission");
+      if (!Number.isSafeInteger(response?.id)) throw new Error("GitHub did not return a broker request comment ID.");
+      await store.put(pendingRecord(context, { commentId: response.id, status: "SUBMITTED" }));
+    } catch (error) {
+      await store.put(pendingRecord(context, { status: "SUBMISSION_UNKNOWN" })).catch(() => {});
+      throw error;
+    }
     return { ...context, commentId: response.id, account };
+  }
+
+  async function listPendingRequests() {
+    if (!account?.id) throw new Error("Re-authorise GitHub before listing pending broker requests.");
+    const store = requirePendingStore();
+    const records = await store.list(account.id);
+    return records.map(record => ({
+      requestId: record.requestId,
+      clientPrivateKey: record.clientPrivateKey,
+      brokerPublicKey: record.brokerPublicKey,
+      expiresAt: record.expiresAt,
+      commentId: record.commentId,
+      account: { id: record.accountId, login: record.accountLogin }
+    }));
+  }
+
+  async function restorePendingRequest(requestId) {
+    if (!account?.id) throw new Error("Re-authorise GitHub before recovering a pending broker request.");
+    const record = await requirePendingStore().get(requestId);
+    if (!record || record.accountId !== account.id) {
+      throw new Error("No pending request belongs to the currently authorised GitHub account.");
+    }
+    return {
+      requestId: record.requestId,
+      clientPrivateKey: record.clientPrivateKey,
+      brokerPublicKey: record.brokerPublicKey,
+      expiresAt: record.expiresAt,
+      commentId: record.commentId,
+      account: { id: record.accountId, login: record.accountLogin }
+    };
   }
 
   async function pollEncryptedResponse(context) {
     const token = requireToken();
     if (!context?.requestId || context.expiresAt && Date.parse(context.expiresAt) <= now()) {
+      if (context?.requestId) await pendingStore?.remove?.(context.requestId);
       throw new Error("The pending broker request has expired.");
     }
     for (let page = 1; page <= 5; page += 1) {
@@ -474,7 +702,9 @@ export function createGitHubAppBrokerClient({
       for (const comment of comments) {
         const envelope = parseBrokerResponseComment(comment?.body);
         if (envelope?.requestId === context.requestId) {
-          return { pending: false, payload: await decryptBrokerResponse(context, envelope, cryptoProvider), commentId: comment.id };
+          const payload = await decryptBrokerResponse(context, envelope, cryptoProvider);
+          await pendingStore?.remove?.(context.requestId);
+          return { pending: false, payload, commentId: comment.id };
         }
       }
       if (comments.length < 100) break;
@@ -493,6 +723,8 @@ export function createGitHubAppBrokerClient({
     completeWebAuthorization,
     submitEncryptedRequest,
     pollEncryptedResponse,
+    listPendingRequests,
+    restorePendingRequest,
     disconnect,
     get currentAccount() { return account; },
     get tokenExpiresAt() { return tokenExpiresAt ? new Date(tokenExpiresAt).toISOString() : null; }
