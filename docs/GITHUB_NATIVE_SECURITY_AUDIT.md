@@ -50,26 +50,26 @@ The GitHub data store is a repository transaction engine, not an authorization e
 
 `src/infrastructure/github-supabase-compat.js` implements:
 - `getSession()` by returning `globalThis.DowntimeCentral?.session`;
-- `signInAnonymously()` with a fabricated `github-native-local-session` fallback;
-- `signOut()` as a no-op.
+- `signInAnonymously()` now returns no session and a 401 error; the fabricated `github-native-local-session` fallback has been removed;
+- `signOut()` remains a no-op, and `getSession()` still reads a browser-global session object rather than verifying it with a trusted broker.
 
 The adapter does not verify the browser session with a trusted identity service. Its `functions.invoke()` constructs a local request to a handler; it is not an authenticated network boundary. The original Edge Functions' session checks cannot be treated as production authentication when the compatibility layer and data store are browser-resident.
 
-**Required remediation:** remove synthetic sessions from production execution. Broker principal creation must be tied to verified GitHub actor identity; expired, disabled or unmapped users must be rejected before any data read or write.
+**Partial remediation on PR head `5918ef7`:** the anonymous fallback session is removed and anonymous sign-in now fails closed with HTTP 401. **Still open:** browser-global `getSession()` is not a trusted identity proof, sign-out does not revoke a server-side session, and no production broker has been connected. Broker principal creation must be tied to verified GitHub actor identity; expired, disabled or unmapped users must be rejected before any data read or write.
 
 ### SEC-005 — Placeholder service secrets are injected into the Edge runtime
 **Severity: HIGH · Status: OPEN**
 
-`yardhub/runtime/github-edge-runtime.js` currently supplies fallback values including:
+`yardhub/runtime/github-edge-runtime.js` previously supplied fallback values including:
 - `SUPABASE_SERVICE_ROLE_KEY = "github-native-service-adapter"`
 - `DOWNTIME_IDENTITY_FINGERPRINT_SECRET = "github-native-fingerprint"`
 - `GITHUB_STAFF_IMAGE_TOKEN = "github-native-storage"`
 - `PHOTO_CLEANUP_SECRET = "github-native-cleanup"`
 - `DOWNTIME_CANONICAL_AUTH_READY = "true"`
 
-These are constants, not secret material or verified readiness signals. A configured-looking environment must not be allowed to imply that canonical authentication or trusted service access is active.
+Those earlier constants were not secret material or verified readiness signals. On PR head `5918ef7`, the fingerprint, staff-image and cleanup secret fallbacks have been removed; canonical authentication now defaults to `false`; the only service-role-shaped value is the explicit non-secret compatibility marker `GITHUB_NATIVE_COMPAT_ADAPTER`, used solely because preserved source handlers require a non-empty constructor argument while the Supabase client shim intercepts the call. It is not accepted by Supabase and is not a credential. The runtime now returns `undefined` for absent secret values, including explicitly null values.
 
-**Required remediation:** eliminate security-sensitive fallback strings. Required values must come from a protected runtime secret store and startup must fail closed when absent. The GitHub-native port should use explicit broker/storage interfaces rather than impersonating configured Supabase service credentials.
+**Partial remediation on PR head `5918ef7`:** the fabricated fingerprint/image/cleanup secrets are removed and canonical-auth readiness defaults to false. **Still open:** there is no protected runtime secret store or trusted broker, and the compatibility marker is only suitable for the local shim. Production startup must fail closed until an actual broker/storage interface and protected secrets are configured.
 
 ### SEC-006 — Storage and realtime adapters bypass authorization
 **Severity: HIGH · Status: OPEN**
@@ -165,3 +165,19 @@ No commits, API calls, workflow runs, secrets, deployments, backups, exports or 
 - CI run `46082765580` (run #479) on `521a283534011aef346611facda2fbc39cf17534` passed with the new STAFF runtime layout contract and full Chromium browser QA.
 - CI run `46083145309` (run #486) on exact implementation head `a0f438ad48e21d17117261f471d46b1151625a4c` passed `npm run check`, Chromium installation, Playwright browser QA and screenshot artifact upload. This run includes the 39-table/five-bucket/19-RPC inventory contract.
 - All of these are code and regression results. They do not close any SEC-001 to SEC-009 finding or any private-infrastructure, real-repository, full-recovery or authority-transfer gate.
+
+
+## GitHub Actions broker protocol core (27 November 2026)
+
+A testable protocol core has now been added at `src/infrastructure/github-actions-broker.js`. It is deliberately not represented as a working broker deployment.
+
+The core:
+- accepts only newly created issue comments from the configured broker repository ID and rejects pull-request events, bot actors, mismatched comment authors and oversized/malformed envelopes;
+- derives the actor only from the authenticated GitHub event's numeric `sender.id`, never from request JSON;
+- resolves that actor to a canonical active USER/STAFF principal with registered signing and response-encryption public keys;
+- verifies a signature over repository, issue, comment, request ID and ciphertext before decrypting;
+- requires a current positive authority epoch and a separate authorization callback before executing an action;
+- rejects caller-supplied actor, username, user ID, role, tier or permission fields;
+- requires an atomic idempotency claim and only publishes encrypted responses through an injected publisher.
+
+The corresponding tests cover event-source identity, repository/issue restrictions, active USER mapping, signature rejection, permission denial, caller identity injection, replay and unavailable authority epoch. The cryptographic implementation, key enrollment/rotation/revocation, private data repository adapter, GitHub App installation token, workflow, encrypted comment publisher, real concurrency and two-account end-to-end test are not implemented. The core therefore remains a protocol scaffold and does not close SEC-001 to SEC-009.
