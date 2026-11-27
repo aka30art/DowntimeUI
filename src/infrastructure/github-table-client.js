@@ -201,6 +201,7 @@ export function createGitHubTableClient({
                       resultRows = rows.filter(row => matches(row, this.filters)).map(clone);
                     } else if (this.operation === "delete") {
                       tables[table] = rows.filter(row => !matches(row, this.filters));
+                      return { affected: resultRows.length };
                     }
                   }
                   tables[table] = rows;
