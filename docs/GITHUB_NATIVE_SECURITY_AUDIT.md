@@ -96,6 +96,11 @@ GitHub Pages is static. The current repository credential cannot remain in the b
 
 **Required remediation:** run a disposable-private-repository proof with no production records. Reject the design if users must receive private data-repository Contents access, if private data appears in public logs/issues/artifacts, or if user-specific authorization cannot be enforced.
 
+**Updated candidate:** a GitHub App user access token restricted to a public request-inbox repository (Issues: write only), combined with an Actions installation token restricted to a separate private data repository. Device Flow requires App registration/configuration; the web OAuth flow requires a client secret and is not suitable for a static Pages-only client. GitHub's current documentation states that fine-grained PATs have a gap for contributing to public repos where the user is not a member and for outside/repository collaborators, so a PAT-based issue inbox is not assumed to work. GitHub App user tokens are a distinct supported token type for issue comments, but their effective permissions are the intersection of app permissions and the user's repository access. A repository-ID restriction can further limit a user token to the broker inbox only.
+
+**Proof still open:** no App is registered, no broker/data repositories are provisioned, and no real second-account request has been tested. Do not treat this candidate as production authentication until the token's actual repository/endpoint permissions and encrypted response path have been proven end-to-end.
+
+
 ### SEC-009 — Operational data destination and real-repository tests are outstanding
 **Severity: HIGH · Status: OPEN**
 
@@ -152,3 +157,11 @@ The source port audit records 39 public operational tables, five private storage
 ## Protection boundary
 
 No commits, API calls, workflow runs, secrets, deployments, backups, exports or production data operations may target `aka30art/DOWNTIME`. The unrelated `aka30art/DOP-website` repository is not a data destination. No operational data has been migrated and YARDHUB remains primary.
+
+
+## Newer CI evidence (27 November 2026)
+
+- CI run `46081812603` (run #466) on `39f46c0c47d8407c9b2091f0583c759ef113bbd5` passed build/checks, Chromium installation, Playwright browser QA and screenshot artifact upload.
+- CI run `46082765580` (run #479) on `521a283534011aef346611facda2fbc39cf17534` passed with the new STAFF runtime layout contract and full Chromium browser QA.
+- CI run `46083145309` (run #486) on exact implementation head `a0f438ad48e21d17117261f471d46b1151625a4c` passed `npm run check`, Chromium installation, Playwright browser QA and screenshot artifact upload. This run includes the 39-table/five-bucket/19-RPC inventory contract.
+- All of these are code and regression results. They do not close any SEC-001 to SEC-009 finding or any private-infrastructure, real-repository, full-recovery or authority-transfer gate.
