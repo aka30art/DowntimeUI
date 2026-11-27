@@ -1,10 +1,6 @@
 import { createGitHubActionsBroker } from "./github-actions-broker.js";
-import {
-  authorizeGitHubBrokerInboxIssue,
-  createGitHubBrokerIdempotencyStore,
-  getGitHubBrokerAuthorityEpoch,
-  resolveGitHubBrokerPrincipal
-} from "./github-actions-broker-store.js";
+import { createGitHubBrokerIdempotencyStore } from "./github-actions-broker-store.js";
+import { createGitHubBrokerAuthority } from "./github-broker-authority.js";
 import {
   decryptBrokerRequest,
   encryptBrokerResponse,
@@ -29,6 +25,8 @@ export function createGitHubYardHubBroker({
   store,
   handlers,
   expectedRepositoryId,
+  bootstrapGitHubUserId = null,
+  bootstrapIssueId = null,
   brokerPrivateKey,
   githubToken,
   brokerOwner,
@@ -51,24 +49,26 @@ export function createGitHubYardHubBroker({
     throw new TypeError("A broker-repository issue-comment token and repository identity are required.");
   }
 
+  const authority = createGitHubBrokerAuthority({
+    store,
+    brokerRepositoryId: expectedRepositoryId,
+    bootstrapGitHubUserId,
+    bootstrapIssueId,
+    now
+  });
   const idempotencyStore = createGitHubBrokerIdempotencyStore({ store, now });
   const broker = createGitHubActionsBroker({
     expectedRepositoryId,
     store,
     cryptoProvider,
     now,
-    resolvePrincipal: githubUserId => resolveGitHubBrokerPrincipal({ store, githubUserId }),
-    authorizeInboxIssue: authorizeGitHubBrokerInboxIssue,
+    resolvePrincipal: authority.resolvePrincipal,
+    authorizeInboxIssue: authority.authorizeInboxIssue,
     decryptRequest: ({ envelope }) => decryptBrokerRequest({
       envelope, brokerPrivateKey, cryptoProvider, now
     }),
-    authorize: async ({ principal, service, action, authorityEpoch }) => {
-      if (!principal || principal.enabled !== true || principal.status !== "ACTIVE" ||
-          !SERVICES.has(service) || typeof action !== "string") return false;
-      // The preserved Edge Function performs the authoritative YARD ROLE
-      // VIEW/ENTER/EDIT/MANAGE decision using the broker-minted session.
-      return await getGitHubBrokerAuthorityEpoch({ store }) === authorityEpoch;
-    },
+    authorize: authority.authorize,
+    createServiceSession: authority.createServiceSession,
     execute: ({ principal, service, action, args, sessionToken, requestId }) =>
       executeGitHubEdgeAction({
         store,
@@ -79,8 +79,7 @@ export function createGitHubYardHubBroker({
         sessionToken,
         requestId,
         actorUserId: principal.userId,
-        origin,
-        now
+        origin
       }),
     encryptResponse: ({ requestEnvelope, payload }) => encryptBrokerResponse({
       requestEnvelope, payload, brokerPrivateKey, cryptoProvider, now
@@ -104,7 +103,7 @@ export function createGitHubYardHubBroker({
       }
     },
     idempotencyStore,
-    getAuthorityEpoch: () => getGitHubBrokerAuthorityEpoch({ store })
+    getAuthorityEpoch: authority.getAuthorityEpoch
   });
   return broker;
 }
