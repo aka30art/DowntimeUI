@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { createGitHubDataStore, GitHubStoreError } from "../src/infrastructure/github-data-store.js";
-import { GITHUB_YARDHUB_TABLES } from "../src/infrastructure/github-database-bootstrap.js";
+import { GITHUB_YARDHUB_TABLES, GITHUB_YARDHUB_SOURCE_TABLES } from "../src/infrastructure/github-database-bootstrap.js";
 
 const INITIAL_AUTHORITY = {
   schemaVersion: 1,
@@ -45,7 +45,7 @@ function createMockGitHub({ includeAuthority = true, includePrimaryBackup = fals
   if (includePrimaryBackup) {
     const checksums = {};
     const tableCounts = {};
-    for (const table of GITHUB_YARDHUB_TABLES) {
+    for (const table of GITHUB_YARDHUB_SOURCE_TABLES) {
       const rows = table === "downtime_shared_state"
         ? [{ id: 1, version: 7, payload: { source: "YARDHUB", checks: 24 } }]
         : table === "downtime_central_bank"
@@ -69,7 +69,7 @@ function createMockGitHub({ includeAuthority = true, includePrimaryBackup = fals
     addInitialFile("replication/yardhub-primary/manifest.json", JSON.stringify({
       schemaVersion: 1, source: "YARDHUB-SUPABASE",
       sourceProjectRef: "source-project", exportedAt: "2026-11-27T10:00:00.000Z",
-      tableCounts, tableCount: GITHUB_YARDHUB_TABLES.length,
+      tableCounts, tableCount: GITHUB_YARDHUB_SOURCE_TABLES.length,
       storageObjectCount: 1, storageBytes: 4, sessionsExcluded: true, checksums
     }) + "\n");
   }
@@ -522,14 +522,14 @@ test("YARDHUB primary backup is checksum-verified and restored atomically with t
   const server = createMockGitHub({ includePrimaryBackup: true });
   const store = makeStore(server);
   const info = await store.inspectYardHubPrimaryBackup();
-  assert.equal(info.tableCount, GITHUB_YARDHUB_TABLES.length);
+  assert.equal(info.tableCount, GITHUB_YARDHUB_SOURCE_TABLES.length);
   assert.equal(info.storageObjectCount, 1);
   assert.equal(info.exportedAt, "2026-11-27T10:00:00.000Z");
 
   const restored = await store.restoreYardHubPrimaryBackup({ expectedRevision: 0 });
   assert.equal(restored.restored, true);
   assert.equal(restored.checksumVerified, true);
-  assert.equal(restored.tableCount, GITHUB_YARDHUB_TABLES.length);
+  assert.equal(restored.tableCount, GITHUB_YARDHUB_SOURCE_TABLES.length);
   assert.equal(restored.storageObjectCount, 1);
   assert.equal(restored.storageBytes, 4);
 
