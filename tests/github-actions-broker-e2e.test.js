@@ -31,7 +31,6 @@ test("encrypted browser request traverses the Actions broker core and returns on
     payload: {
       service: "gatelog-api",
       action: "gatelog-customer-arrival",
-      sessionToken: "test-session-token",
       args: {
         customer: "Private customer",
         registration: "AB12 CDE",
@@ -150,6 +149,8 @@ test("encrypted browser request traverses the Actions broker core and returns on
   assert.equal(calls.issue.length, 1);
   assert.equal(calls.authorize.length, 1);
   assert.equal(calls.execute.length, 1);
+  assert.equal(calls.execute[0].service, "gatelog-api");
+  assert.equal(calls.execute[0].sessionToken, "broker-created-short-lived-service-session-token");
   assert.equal(calls.execute[0].sessionToken, "test-session-token");
   assert.equal(calls.sessionDisposed, true);
   assert.equal(published.length, 1);
