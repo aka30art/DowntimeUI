@@ -1,0 +1,142 @@
+{
+  "sourceRepository": "aka30art/DOWNTIME",
+  "sourceBranch": "main",
+  "sourceTreeSha": "ba99913d1eaff7d99785088fd0931b3815defd4c",
+  "targetRepository": "aka30art/DowntimeUI",
+  "targetBranch": "architecture/github-native-yardhub-twin",
+  "targetPrefix": "yardhub/reference/",
+  "snapshotType": "EXACT_RUNTIME_REFERENCE_ONLY",
+  "warning": "These original runtime files still contain Supabase dependencies. Do not load or deploy this reference copy as a GitHub-only build.",
+  "files": [
+    {
+      "path": "index.html",
+      "sourceBlobSha": "ff9c9309fc7b666a2a86c506240bc9530979019c",
+      "bytes": 325576
+    },
+    {
+      "path": "central-bank-admin.html",
+      "sourceBlobSha": "67d319603b406e4709ffdde5ae3fd067224a46d6",
+      "bytes": 151855
+    },
+    {
+      "path": "central-bank-client.js",
+      "sourceBlobSha": "0d0a507d02b3bcd8b26959153338fb4a5fefdccc",
+      "bytes": 3861
+    },
+    {
+      "path": "assets/staff/staff-image-library.js",
+      "sourceBlobSha": "2c316fbc52a424380c1042bcf974e8286fa71f1e",
+      "bytes": 1415
+    },
+    {
+      "path": "assets/staff/staff-images.json",
+      "sourceBlobSha": "f41e613c36eea8f1f6163787dfccff89bc7e4e86",
+      "bytes": 899
+    },
+    {
+      "path": "assets/rm-icons/excavators_360.svg",
+      "sourceBlobSha": "d902fb9a85203dd531fd900d8ec15c43f68d5dd9",
+      "bytes": 4301
+    },
+    {
+      "path": "assets/rm-icons/forklift.svg",
+      "sourceBlobSha": "7c97425b7700bffa5bff146431cf52cba9719726",
+      "bytes": 3211
+    },
+    {
+      "path": "assets/rm-icons/kiverco.svg",
+      "sourceBlobSha": "66cbedbf96c5f7064a60e06e3d494a7288de0a7e",
+      "bytes": 3493
+    },
+    {
+      "path": "assets/rm-icons/other_equipment.svg",
+      "sourceBlobSha": "92ebc3bf674d5d4352cdcf922172ce189447a80a",
+      "bytes": 2449
+    },
+    {
+      "path": "assets/rm-icons/tanna.svg",
+      "sourceBlobSha": "dc2f09870d1612d1fddca7aa4ed04327e7b14de3",
+      "bytes": 2561
+    },
+    {
+      "path": "assets/rm-icons/telehandler.svg",
+      "sourceBlobSha": "2118a77dde5c7cfc3235f5d9a42d4b294ef99f95",
+      "bytes": 3605
+    },
+    {
+      "path": "gatelog-app.css",
+      "sourceBlobSha": "4083308b5d9b5c7cdc17b8c3d0c078ece22055a7",
+      "bytes": 26376
+    },
+    {
+      "path": "gatelog-app.js",
+      "sourceBlobSha": "63f38a080b04518772f879ffb57ac6570d60a680",
+      "bytes": 24295
+    },
+    {
+      "path": "gatelog-day-management.js",
+      "sourceBlobSha": "4c6b28fed441e21b535610b7640634e6d493a1fb",
+      "bytes": 13765
+    },
+    {
+      "path": "gatelog-settings.js",
+      "sourceBlobSha": "3cdf1b4b24d89ec4aadb42fc43a23446c1d075ad",
+      "bytes": 7060
+    },
+    {
+      "path": "plant-overview-preview.html",
+      "sourceBlobSha": "ba7aecf9d9a20283403c20c9fddd9a1a9804a4b3",
+      "bytes": 50481
+    },
+    {
+      "path": "repair-maintenance-app.js",
+      "sourceBlobSha": "0caa41beeed0c954425b9096d7d32484215dcffd",
+      "bytes": 65098
+    },
+    {
+      "path": "repair-maintenance-launch.js",
+      "sourceBlobSha": "bf6bb3c14ef7574f79724d7601311e0742fb46fc",
+      "bytes": 2297
+    },
+    {
+      "path": "repair-maintenance-structure.js",
+      "sourceBlobSha": "36b46cd8d824f3477eb77ea2b1ec919cbeeff06b",
+      "bytes": 1389
+    },
+    {
+      "path": "repair-maintenance.html",
+      "sourceBlobSha": "f80c3b08f6e72a3e7d4b4cfa9da4b52b3f431bb0",
+      "bytes": 62983
+    },
+    {
+      "path": "shared-ui-system.css",
+      "sourceBlobSha": "6fe4a74321bce33d1b3fb2c5b9486694d794da38",
+      "bytes": 10476
+    },
+    {
+      "path": "yard-hub-settings.css",
+      "sourceBlobSha": "d6f9d9d636c30a10115819d182f472e81530dbef",
+      "bytes": 11800
+    },
+    {
+      "path": "yard-hub-settings.js",
+      "sourceBlobSha": "a02416afb3012664f379222769a868bbf8b1e803",
+      "bytes": 53697
+    },
+    {
+      "path": "yard-hub-structure.css",
+      "sourceBlobSha": "386fff9e3511191affcd574cd4d87605393d044f",
+      "bytes": 1842
+    },
+    {
+      "path": "yard-hub-structure.js",
+      "sourceBlobSha": "81eba456741470c6ae1c6f6990ce2964bad90975",
+      "bytes": 10442
+    },
+    {
+      "path": "yard-hub-visual-system.css",
+      "sourceBlobSha": "8fba879b498a689f9113b8ae412a7850e945f6ea",
+      "bytes": 10083
+    }
+  ]
+}
