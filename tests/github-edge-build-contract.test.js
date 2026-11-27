@@ -5,7 +5,7 @@ import { readFile } from "node:fs/promises";
 test("compiled Central Bank bootstrap binds DEV to the immutable ROOTS bootstrap UUID", async () => {
   const source = await readFile(new URL("../yardhub/runtime/functions/central-bank.js", import.meta.url), "utf8");
   assert.match(source, /downtime_roots_bootstrap/);
-  assert.match(source, /userId:bootstrapIdentity\.user_id/);
+  assert.match(source, /userId\s*:\s*bootstrapIdentity\.user_id/);
   assert.match(source, /Immutable DEV bootstrap identity is unavailable/);
   assert.doesNotMatch(
     source,
