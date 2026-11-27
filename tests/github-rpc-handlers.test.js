@@ -128,7 +128,7 @@ test("Central Bank writes enforce optimistic versions and append audit records",
     p_actor_username: "DEV", p_action: "USER_STAFF_PROVISIONING_ACTIVATED",
     p_details: {}
   });
-  assert.equal(conflict.error.status, 409);
+  assert.equal(conflict.status, 409);
   const snapshot = await store.readDatabase();
   assert.equal(snapshot.tables.downtime_central_bank[0].version, 5);
   assert.equal(snapshot.tables.downtime_central_audit.length, 1);
@@ -189,7 +189,7 @@ test("ROOTS lifecycle enforces assignment versions and appends immutable audit e
     p_user_id: "user-1", p_staff_id: "staff-1", p_roots_class: "ADMIN", p_action: "REVOKE",
     p_expected_version: 1, p_actor_user_id: "root-dev", p_actor_username: "DEV", p_actor_display_name: "Developer"
   });
-  assert.equal(stale.error.status, 409);
+  assert.equal(stale.status, 409);
   const revoked = await db.rpc("downtime_roots_manage_identity", {
     p_user_id: "user-1", p_staff_id: "staff-1", p_roots_class: "ADMIN", p_action: "REVOKE",
     p_expected_version: 2, p_actor_user_id: "root-dev", p_actor_username: "DEV", p_actor_display_name: "Developer"
