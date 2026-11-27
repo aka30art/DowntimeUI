@@ -233,7 +233,30 @@ export function createYardHubBackupRunner({
     const repository = requireEnv(env, "YARDHUB_DATA_REPOSITORY");
     const branch = String(env.YARDHUB_DATA_BRANCH || "main").trim();
     if (!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repository)) throw new Error("YARDHUB_DATA_REPOSITORY must be owner/repository.");
+    if (!/^[A-Za-z0-9._/-]+$/.test(branch) || branch.split("/").some(segment => !segment || segment === "." || segment === "..")) {
+      throw new Error("YARDHUB_DATA_BRANCH is invalid.");
+    }
+    const destination = repository.toLowerCase();
+    if (destination === "aka30art/downtime" || destination === "aka30art/downtimeui") {
+      throw new Error("The protected DOWNTIME repository and public DOWNTIMEUI source repository are forbidden backup destinations.");
+    }
+    const sourceUrl = new URL(supabaseUrl);
+    if (sourceUrl.protocol !== "https:" || sourceUrl.hostname !== "ygwfipksbbprqynvbklk.supabase.co" ||
+        sourceUrl.pathname !== "/" || sourceUrl.search || sourceUrl.hash) {
+      throw new Error("SUPABASE_URL must identify the approved YARDHUB primary Supabase project. No source records were read.");
+    }
     const api = "https://api.github.com";
+    const githubHeaders = {
+      Accept: "application/vnd.github+json",
+      Authorization: "Bearer " + token,
+      "X-GitHub-Api-Version": "2022-11-28"
+    };
+    const destinationMetadata = await request(api + "/repos/" + repository, { headers: githubHeaders });
+    if (destinationMetadata?.private !== true ||
+        String(destinationMetadata?.full_name || "").toLowerCase() !== destination) {
+      throw new Error("YARDHUB backup destination must be the exact requested PRIVATE GitHub repository. No source records were read.");
+    }
+    if (destinationMetadata.archived === true) throw new Error("YARDHUB backup destination is archived.");
 
     const tableRows = await mapLimit(YARDHUB_TABLES, 4, table => exportTable({ supabaseUrl, serviceKey, table }));
     const files = [];
