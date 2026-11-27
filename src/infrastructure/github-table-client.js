@@ -114,7 +114,6 @@ export function createGitHubTableClient({
       table, operation: "select", columns: "*", payload: null, filters: [],
       orders: [], maxRows: null, offset: 0, singleMode: null, returning: false,
       headOnly: false, countMode: null,
-      countMode: null, headOnly: false,
       conflictColumns: primaryKeys[table] || ["id"],
       select(columns = "*", options = {}) {
         this.columns = String(columns);
