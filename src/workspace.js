@@ -193,6 +193,7 @@ export function mountWorkspace(root,config,{onEditConfiguration=()=>{},onExportC
         token:root.querySelector("[data-github-token]")?.value||""
       },{storage:githubSettingsStorage,sessionStorage:githubSessionStorage});
       githubStore=await createConnectedGitHubStore({storage:githubSettingsStorage,fetchImpl:options.fetchImpl||globalThis.fetch});
+      await githubStore.ensureAuthority();
       githubAuthority=await githubStore.readAuthority();
       const snapshot=await githubStore.readSnapshot({module:"YARDHUB_WORKSPACE",snapshotId:config.installationId});
       githubSnapshotVersion=snapshot?.version??null;
