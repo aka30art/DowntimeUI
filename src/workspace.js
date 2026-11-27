@@ -73,7 +73,7 @@ export function mountWorkspace(root,config,{onEditConfiguration=()=>{},onExportC
   const githubSessionStorage=options.sessionStorage||globalThis.sessionStorage;
   const bindingController=new AbortController();
   let refreshInterval=null,githubSyncTimer=null,githubSyncInFlight=false,githubSyncQueued=false;
-  let githubStore=null,githubAuthority=null,githubSnapshotVersion=null,lastGitHubSyncAt=null;
+  let githubStore=null,githubAuthority=null,githubSnapshotVersion=null,lastGitHubSyncAt=null,githubSyncBlocked=false;
   const disposeBinding=()=>{
     bindingController.abort();
     if(refreshInterval!==null){globalThis.clearInterval?.(refreshInterval);refreshInterval=null;}
@@ -146,6 +146,11 @@ export function mountWorkspace(root,config,{onEditConfiguration=()=>{},onExportC
   }
   function queueGitHubSnapshot(){
     if(!githubStore)return;
+    if(githubSyncBlocked){
+      githubSyncQueued=false;
+      updateWorkspaceStatus("Local save retained. GitHub has a different snapshot; choose Restore latest snapshot or explicitly replace it using Sync workspace now.");
+      return;
+    }
     githubSyncQueued=true;
     if(githubSyncTimer!==null)globalThis.clearTimeout?.(githubSyncTimer);
     updateWorkspaceStatus("Saved locally. GitHub backup queued.");
@@ -155,7 +160,7 @@ export function mountWorkspace(root,config,{onEditConfiguration=()=>{},onExportC
     },Number.isFinite(options.githubSyncDebounceMs)?Math.max(250,options.githubSyncDebounceMs):900)??null;
   }
   async function flushGitHubSnapshot(){
-    if(!githubStore||githubSyncInFlight)return;
+    if(!githubStore||githubSyncInFlight||githubSyncBlocked)return;
     githubSyncInFlight=true;
     try{
       while(githubSyncQueued&&githubStore){
@@ -192,24 +197,32 @@ export function mountWorkspace(root,config,{onEditConfiguration=()=>{},onExportC
       const snapshot=await githubStore.readSnapshot({module:"YARDHUB_WORKSPACE",snapshotId:config.installationId});
       githubSnapshotVersion=snapshot?.version??null;
       lastGitHubSyncAt=snapshot?.updatedAt||null;
-      status="GitHub connected · "+saved.owner+"/"+saved.repo+" · primary: "+githubAuthority.primarySystemId+(snapshot?" · snapshot v"+snapshot.version:" · no remote snapshot yet");
+      const local= createWorkspaceBackup(config,JSON.parse(JSON.stringify(state)),{exportedAt:getNow()});
+      const remote=snapshot?.payload?.backup;
+      const equalState=Boolean(remote&&JSON.stringify(remote.configuration)===JSON.stringify(local.configuration)&&JSON.stringify(remote.operations)===JSON.stringify(local.operations));
+      githubSyncBlocked=Boolean(snapshot&&!equalState);
+      status="GitHub connected · "+saved.owner+"/"+saved.repo+" · primary: "+githubAuthority.primarySystemId+(snapshot?(githubSyncBlocked?" · snapshot v"+snapshot.version+" differs from this device":" · snapshot v"+snapshot.version+" matches this device"):" · no remote snapshot yet");
       render();
       if(!snapshot){githubSyncQueued=true;void flushGitHubSnapshot();}
     }catch(error){
-      githubStore=null;githubAuthority=null;githubSnapshotVersion=null;
+      githubStore=null;githubAuthority=null;githubSnapshotVersion=null;githubSyncBlocked=false;
       status="GitHub connection failed: "+(error?.message||"Check the repository and token.");
       render();
     }
   }
   function disconnectGitHubStore(){
     clearGitHubConnection({storage:githubSettingsStorage,sessionStorage:githubSessionStorage});
-    githubStore=null;githubAuthority=null;githubSnapshotVersion=null;githubSyncQueued=false;
+    githubStore=null;githubAuthority=null;githubSnapshotVersion=null;githubSyncQueued=false;githubSyncBlocked=false;
     updateWorkspaceStatus("GitHub disconnected. Local browser storage remains available.");
     render();
   }
   async function syncGitHubNow(){
     if(!githubStore){updateWorkspaceStatus("Connect the GitHub data store first.");return;}
     if(githubSyncTimer!==null){globalThis.clearTimeout?.(githubSyncTimer);githubSyncTimer=null;}
+    if(githubSyncBlocked){
+      if(typeof globalThis.confirm!=="function"||!globalThis.confirm("The GitHub snapshot differs from this browser. Replace the remote snapshot with this browser's current workspace? The remote version will remain in Git history."))return;
+      githubSyncBlocked=false;
+    }
     githubSyncQueued=true;
     await flushGitHubSnapshot();
   }
@@ -232,6 +245,8 @@ export function mountWorkspace(root,config,{onEditConfiguration=()=>{},onExportC
       state.plant=normalizePlantState(state.plant);
       lastPersistedState=JSON.parse(JSON.stringify(state));
       githubSnapshotVersion=snapshot.version;
+      githubSyncBlocked=false;
+      lastGitHubSyncAt=snapshot.updatedAt||null;
       selectedDate=getLocalDate();selectedWeek=weekStartFor(selectedDate);editingEntryId=null;
       status="GitHub workspace snapshot v"+snapshot.version+" restored.";
       ensureWeek();render();
@@ -664,7 +679,11 @@ export function mountWorkspace(root,config,{onEditConfiguration=()=>{},onExportC
           const snapshot=await githubStore.readSnapshot({module:"YARDHUB_WORKSPACE",snapshotId:config.installationId});
           githubSnapshotVersion=snapshot?.version??null;
           lastGitHubSyncAt=snapshot?.updatedAt||null;
-          status="GitHub connected · primary: "+githubAuthority.primarySystemId+(snapshot?" · snapshot v"+snapshot.version:" · no remote snapshot yet");
+          const local=createWorkspaceBackup(config,JSON.parse(JSON.stringify(state)),{exportedAt:getNow()});
+          const remote=snapshot?.payload?.backup;
+          const equalState=Boolean(remote&&JSON.stringify(remote.configuration)===JSON.stringify(local.configuration)&&JSON.stringify(remote.operations)===JSON.stringify(local.operations));
+          githubSyncBlocked=Boolean(snapshot&&!equalState);
+          status="GitHub connected · primary: "+githubAuthority.primarySystemId+(snapshot?(githubSyncBlocked?" · remote snapshot differs":" · snapshot v"+snapshot.version+" matches this device"):" · no remote snapshot yet");
           if(!snapshot){githubSyncQueued=true;void flushGitHubSnapshot();}
           render();
         }catch(error){
