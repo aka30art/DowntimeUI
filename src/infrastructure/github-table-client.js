@@ -99,7 +99,8 @@ export function createGitHubTableClient({
   actorId = "GITHUB-OPERATOR",
   primaryKeys = DEFAULT_PRIMARY_KEYS,
   now = () => new Date(),
-  maxConflictRetries = 2
+  maxConflictRetries = 2,
+  rpcHandlers = {}
 } = {}) {
   if (!store || typeof store.readDatabase !== "function" || typeof store.transactDatabase !== "function") {
     throw new TypeError("A GitHub data store with readDatabase and transactDatabase is required.");
@@ -193,6 +194,7 @@ export function createGitHubTableClient({
           let resultRows = [];
           let finalError = null;
           for (let attempt = 0; attempt <= maxConflictRetries; attempt += 1) {
+            resultRows = [];
             const db = await store.readDatabase();
             try {
               const transaction = await store.transactDatabase({
