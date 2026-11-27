@@ -108,7 +108,7 @@ async function verifyPrivateRepository({ owner, repo, token, fetchImpl }) {
   return metadata;
 }
 
-export function createConnectedGitHubStore({
+export async function createConnectedGitHubStore({
   storage = globalThis.localStorage,
   systemId = "DOWNTIMEUI-GITHUB",
   fetchImpl = globalThis.fetch
@@ -119,12 +119,11 @@ export function createConnectedGitHubStore({
   const token = activeToken;
   if (!token) throw new Error("Enter a GitHub access token to connect. Tokens are memory-only and must be re-entered after a reload.");
   if (typeof fetchImpl !== "function") throw new TypeError("A fetch implementation is required.");
-  return verifyPrivateRepository({ owner: saved.owner, repo: saved.repo, token, fetchImpl }).then(() =>
-    createGitHubDataStore({
-      owner: saved.owner, repo: saved.repo, branch: saved.branch,
-      token, systemId, fetchImpl
-    })
-  );
+  await verifyPrivateRepository({ owner: saved.owner, repo: saved.repo, token, fetchImpl });
+  return createGitHubDataStore({
+    owner: saved.owner, repo: saved.repo, branch: saved.branch,
+    token, systemId, fetchImpl
+  });
 }
 
 export async function createConnectedGitHubServices({
