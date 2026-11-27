@@ -244,3 +244,35 @@ test("nested GATELOG relation projections resolve customer and waste labels", as
   assert.equal(result.data.gatelog_customers.customer_name, "Example Customer");
   assert.deepEqual(result.data.gatelog_visit_waste_types.map(x => x.gatelog_waste_types.label), ["GENERAL", "WOOD"]);
 });
+
+test("first DEV bootstrap update binds the immutable ROOTS identity and seeds protected ROOTED definitions", async () => {
+  const store = createMemoryStore({
+    downtime_central_bank: [{ id: 1, version: 0, payload: { users: [] } }],
+    downtime_roots_bootstrap: [{ singleton: true, user_id: "immutable-dev-user" }],
+    downtime_roots_role_definitions: []
+  });
+  const client = createGitHubTableClient({ store });
+  const result = await client.from("downtime_central_bank")
+    .update({ version: 1, payload: { users: [{ username: "DEV", enabled: true }] } })
+    .eq("id", 1)
+    .select()
+    .single();
+  assert.equal(result.error, null);
+  assert.equal(result.data.payload.users[0].userId, "immutable-dev-user");
+  const snapshot = await store.readDatabase();
+  assert.deepEqual(snapshot.tables.downtime_roots_role_definitions.map(x => x.role_key).sort(), ["ADMIN", "DEV1"]);
+  assert.equal(snapshot.tables.downtime_roots_role_definitions.every(x => x.created_by_user_id === "immutable-dev-user"), true);
+});
+
+test("DEV bootstrap update is rejected when the immutable ROOTS bootstrap row is missing", async () => {
+  const store = createMemoryStore({
+    downtime_central_bank: [{ id: 1, version: 0, payload: { users: [] } }],
+    downtime_roots_role_definitions: []
+  });
+  const client = createGitHubTableClient({ store });
+  const result = await client.from("downtime_central_bank")
+    .update({ version: 1, payload: { users: [{ username: "DEV", enabled: true }] } })
+    .eq("id", 1);
+  assert.equal(result.error.code, "ROOTS_BOOTSTRAP_MISSING");
+  assert.equal((await store.readDatabase()).tables.downtime_central_bank[0].version, 0);
+});
