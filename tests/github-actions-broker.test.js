@@ -306,3 +306,56 @@ test("broker service session refuses non-active or incomplete canonical identiti
     requestId: REQUEST_ID, cryptoProvider: webcrypto
   }), /active canonical USER/);
 });
+
+
+test("broker uses the private-store Central Bank session factory when no override is supplied", async () => {
+  const state = { revision: 0, tables: { downtime_central_sessions: [] } };
+  const store = {
+    async readDatabase() { return { revision: state.revision, tables: structuredClone(state.tables) }; },
+    async transactDatabase({ expectedRevision, mutate }) {
+      if (expectedRevision !== state.revision) {
+        const error = new Error("revision conflict");
+        error.status = 409;
+        throw error;
+      }
+      const draft = structuredClone(state.tables);
+      await mutate(draft);
+      state.tables = draft;
+      state.revision += 1;
+      return { committed: true, revision: state.revision };
+    }
+  };
+  let executedToken = null;
+  const broker = createGitHubActionsBroker({
+    expectedRepositoryId: REPOSITORY_ID,
+    store,
+    cryptoProvider: webcrypto,
+    now: () => new Date("2026-11-27T12:00:00.000Z"),
+    resolvePrincipal: async id => ({
+      githubUserId: id, userId: USER_ID, staffId: "staff-01",
+      username: "operator", tier: "USER", enabled: true, status: "ACTIVE"
+    }),
+    authorizeInboxIssue: async () => true,
+    decryptRequest: async () => ({
+      requestId: REQUEST_ID, service: "gatelog-api", action: "history", args: {}
+    }),
+    authorize: async () => true,
+    execute: async ({ sessionToken }) => {
+      executedToken = sessionToken;
+      assert.match(sessionToken, /^[a-f0-9]{64}$/);
+      return { ok: true };
+    },
+    encryptResponse: async () => "encrypted-response",
+    publishEncryptedResponse: async () => {},
+    idempotencyStore: {
+      claim: async () => ({ acquired: true }),
+      complete: async () => {},
+      fail: async () => {}
+    },
+    getAuthorityEpoch: async () => 2
+  });
+  await broker.handleIssueComment(event());
+  assert.match(executedToken, /^[a-f0-9]{64}$/);
+  assert.equal(state.tables.downtime_central_sessions.length, 0);
+  assert.equal(state.revision, 2);
+});
