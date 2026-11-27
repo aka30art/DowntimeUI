@@ -103,7 +103,7 @@ function project(row, columns, tableName = "", allTables = {}) {
   const selected = splitSelectColumns(columns);
   if (selected.includes("*")) Object.assign(result, clone(row));
   for (const part of selected) {
-    const relationMatch = /^([A-Za-z0-9_]+)(?::([A-Za-z0-9_]+))?\\((.*)\\)$/.exec(part);
+    const relationMatch = /^([A-Za-z0-9_]+)(?::([A-Za-z0-9_]+))?\((.*)\)$/.exec(part);
     if (relationMatch) {
       const relationName = relationMatch[1];
       const outputName = relationMatch[2] || relationName;
