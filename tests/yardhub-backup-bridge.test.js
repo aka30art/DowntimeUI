@@ -56,7 +56,6 @@ function createMockServices({ privateRepository = true } = {}) {
 
     if (parsed.hostname === "api.github.com") {
       const path = parsed.pathname.replace("/repos/owner/data", "");
-      if (method === "GET" && path === "") return response(200, { private: true, full_name: "owner/data", archived: false });
       if (method === "GET" && path === "") return response(200, { private: privateRepository, full_name: "owner/data", archived: false });
       if (method === "GET" && path === "/git/ref/heads/main") {
         return response(200, { object: { sha: head } });
