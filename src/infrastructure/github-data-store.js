@@ -274,6 +274,36 @@ export function createGitHubDataStore({
   return Object.freeze({
     owner, repo, branch, systemId,
 
+    async ensureAuthority() {
+      for (let attempt = 0; attempt < maxRetries; attempt += 1) {
+        const headSha = await getHead();
+        const treeSha = await getCommitTree(headSha);
+        const current = await readJsonAt(AUTHORITY_PATH, headSha);
+        if (current) return validateAuthority(current);
+        const authority = validateAuthority({
+          schemaVersion: 1,
+          systemId: "YARDHUB-ECOSYSTEM",
+          primarySystemId: "YARDHUB-PRIMARY",
+          secondarySystemId: "DOWNTIMEUI-GITHUB",
+          epoch: 1,
+          status: "ACTIVE",
+          replication: {
+            direction: "YARDHUB-PRIMARY_TO_DOWNTIMEUI-GITHUB",
+            status: "NOT_CONFIGURED",
+            lastSuccessfulCheckpoint: null
+          },
+          updatedAt: now().toISOString()
+        });
+        const result = await commitJsonAtHead({
+          headSha, treeSha, path: AUTHORITY_PATH, value: authority,
+          message: "Initialise YARDHUB GitHub data authority"
+        });
+        if (result.committed) return authority;
+        await sleep(Math.min(100 * (2 ** attempt), 1200));
+      }
+      throw new GitHubStoreError("Could not initialise GitHub data authority because the branch changed repeatedly.", 409);
+    },
+
     async readAuthority() {
       const headSha = await getHead();
       return validateAuthority(await readJsonAt(AUTHORITY_PATH, headSha));
