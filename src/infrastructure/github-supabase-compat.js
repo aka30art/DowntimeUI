@@ -57,6 +57,7 @@ export function createGitHubSupabaseCompat({
     }
   };
 
+  const activeChannels = new Set();
   const channel = (name) => {
     const listeners = [];
     let timer = null, polling = false;
@@ -64,28 +65,55 @@ export function createGitHubSupabaseCompat({
       if (polling) return;
       polling = true;
       try {
+        const tableReads = new Map();
+        const readTable = async (table) => {
+          if (!tableReads.has(table)) tableReads.set(table, await store.readTable(table));
+          return tableReads.get(table);
+        };
         for (const listener of listeners) {
-          if (listener.event !== "postgres_changes" || !listener.filter?.table) continue;
-          const current = await store.readTable(listener.filter.table);
-          const serialised = JSON.stringify(current);
-          if (listener.lastSerialised === undefined) {
-            listener.lastSerialised = serialised;
-            listener.lastValue = current;
-            continue;
-          }
-          if (serialised !== listener.lastSerialised) {
-            const previous = listener.lastValue;
-            listener.lastSerialised = serialised;
-            listener.lastValue = current;
-            try {
-              listener.callback({
-                schema: listener.filter.schema || "public",
-                table: listener.filter.table,
-                eventType: listener.filter.event || "*",
-                new: current,
-                old: previous
-              });
-            } catch { /* A subscriber cannot break the polling loop. */ }
+          if (listener.event === "postgres_changes" && listener.filter?.table) {
+            const current = await readTable(listener.filter.table);
+            const serialised = JSON.stringify(current);
+            if (listener.lastSerialised === undefined) {
+              listener.lastSerialised = serialised;
+              listener.lastValue = current;
+              continue;
+            }
+            if (serialised !== listener.lastSerialised) {
+              const previous = listener.lastValue;
+              listener.lastSerialised = serialised;
+              listener.lastValue = current;
+              try {
+                listener.callback({
+                  schema: listener.filter.schema || "public",
+                  table: listener.filter.table,
+                  eventType: listener.filter.event || "*",
+                  new: current,
+                  old: previous
+                });
+              } catch { /* A subscriber cannot break the polling loop. */ }
+            }
+          } else if (listener.event === "broadcast" && listener.filter?.event === "central_state_changed") {
+            const rows = await readTable("downtime_central_bank");
+            const row = rows.find(item => Number(item.id) === 1);
+            const signal = row ? {
+              version: Number(row.version) || 0,
+              updated_at: row.updated_at || null
+            } : { version: 0, updated_at: null };
+            const serialised = JSON.stringify(signal);
+            if (listener.lastSerialised === undefined) {
+              listener.lastSerialised = serialised;
+              continue;
+            }
+            if (serialised !== listener.lastSerialised) {
+              listener.lastSerialised = serialised;
+              try {
+                listener.callback({
+                  event: "central_state_changed",
+                  payload: signal
+                });
+              } catch { /* A subscriber cannot break the polling loop. */ }
+            }
           }
         }
       } catch { /* Temporary GitHub API failures are retried on the next poll. */ }
@@ -99,19 +127,20 @@ export function createGitHubSupabaseCompat({
       subscribe(callback) {
         if (typeof callback === "function") callback("SUBSCRIBED");
         void poll();
-        if (timer === null && listeners.some(listener => listener.event === "postgres_changes")) {
+        if (timer === null && listeners.some(listener => listener.event === "postgres_changes" || listener.event === "broadcast")) {
           timer = globalThis.setInterval(poll, Math.max(50, pollIntervalMs));
         }
         return instance;
       },
       unsubscribe() {
         if (timer !== null) globalThis.clearInterval(timer);
-        timer = null; listeners.length = 0;
+        timer = null; listeners.length = 0; activeChannels.delete(instance);
         return Promise.resolve("ok");
       },
       send() { return Promise.resolve({ status: "ok" }); },
       topic: name
     };
+    activeChannels.add(instance);
     return instance;
   };
 
@@ -122,6 +151,7 @@ export function createGitHubSupabaseCompat({
     functions,
     channel,
     async removeChannel(target) { await target?.unsubscribe?.(); return "ok"; },
+    async dispose() { await Promise.all([...activeChannels].map(target => target.unsubscribe())); return true; },
     rpc: tables.rpc
   });
 }
