@@ -9,9 +9,14 @@
 
 The current browser-direct GitHub Contents-token design is rejected for multi-user operations. A token that can read/write the data repository bypasses application USER/STAFF, ROOTS and YARD ROLE controls.
 
-The only GitHub-native broker candidate carried forward for proof is a **private GitHub Actions request broker**, triggered by comments on pre-registered issues in a private broker repository. The public DOWNTIMEUI Pages app remains a static client. It sends encrypted request envelopes to the broker issue channel; an Actions workflow derives the actor from GitHub's webhook event, authorizes against the canonical USER/ROOTS/YARD ROLE records, performs a transaction against a separate private data repository, and returns an encrypted result.
+The GitHub-native candidate is a **GitHub Actions request broker**, triggered by `issue_comment.created` in a dedicated broker/inbox repository. Two inbox deployment modes remain under comparison:
 
-This is an asynchronous message broker, not a synchronous HTTP API. It must be rejected if measured latency, throughput, queue limits or availability cannot support the actual YARDHUB operational workflows.
+- **Private inbox (preferred for confidentiality):** users need access to the private broker repository to comment. The broker code and request metadata are not public; ciphertext still protects payloads from other repository collaborators.
+- **Public inbox (accessibility alternative):** staff do not need private-repository membership, but GitHub usernames, request timing/frequency and ciphertext metadata become public. This mode must pass an explicit metadata/privacy and abuse/denial-of-service review before use.
+
+The public DOWNTIMEUI Pages app remains a static client. It submits encrypted request envelopes; the Actions workflow derives the actor from GitHub's authenticated event, resolves the canonical USER/ROOTS/YARD ROLE records, performs a transaction against a separate private data repository, and returns an encrypted result.
+
+This is an asynchronous message broker, not a synchronous HTTP API. It must be rejected if measured latency, throughput, queue limits or availability cannot support the actual YARDHUB operational workflows. The request-channel authentication flow and binary evidence transport are not yet selected or proven.
 
 ## 2. Repository and credential boundaries
 
@@ -20,28 +25,35 @@ Three distinct repositories are required:
 | Repository | Visibility | Purpose | Who receives access |
 |---|---|---|---|
 | `DowntimeUI` | Public source/Pages | Static UI, source code, public broker encryption key, no operational records or secrets | Public |
-| `YARDHUB-BROKER` | Private | Default-branch workflow, protocol implementation, public-key registry if not stored in data, broker configuration and issue/comment request channel | Approved staff receive issue/comment capability only; broker maintainers own code |
-| `YARDHUB-DATA` | Private | Operational JSON tables, audit history, authority manifest, idempotency ledger, binary storage objects, recovery checkpoints | Broker GitHub App only; no staff Contents access |
+| `YARDHUB-BROKER` | Private preferred; public variant requires separate approval | Default-branch workflow, protocol implementation, broker config and encrypted request/response channel; no operational records | Staff receive request-channel permission only; broker maintainers own workflow code |
+| `YARDHUB-DATA` | Private | Operational JSON tables, audit history, authority manifest, idempotency ledger, binary storage objects, recovery checkpoints | Separate Data GitHub App only; no staff Contents access |
 
 The broker and data repositories must be newly provisioned for this purpose. Do not reuse `DOWNTIME`, `DOP-website` or any public repository as the operational data store.
 
 ### Browser credential
 
-The UI must not receive a token with `Contents` access to `YARDHUB-DATA`. The submission credential may only operate the broker request channel. A candidate is a fine-grained GitHub App user token or fine-grained PAT with the minimum Issues permission needed to create/read a comment in the private broker repository, and no Contents, Actions, Administration or data-repository permission.
+The UI must not receive a token with `Contents` access to `YARDHUB-DATA`. Use **two separate GitHub Apps** so inbox and data permissions cannot be combined in one user token:
 
-GitHub's create-issue-comment API documents Issues: write (or Pull requests: write) as the fine-grained permission requirement. The proof must establish the actual least-privilege permission set, whether users require repository triage access, and whether that access enables unwanted issue/repository operations. Treat this as a risk to test, not an assumed security guarantee.
+1. **Inbox App:** only Issues: write on the broker repository. A GitHub App user access token authorizes the request comment. The app must not have Contents, Actions, Administration or data-repository permissions. A user access token is limited by the intersection of App permissions and the user's own repository access. In the web authorization exchange, the optional `repository_id` parameter can further restrict it to the one broker repository ID.
+2. **Data App:** installed only on `YARDHUB-DATA`. Its private key exists only as a protected broker Actions secret. The workflow mints an installation token restricted to the single data repository ID and the minimum required Contents permission. No user token is issued from this App.
+
+For a browser client, GitHub documents the web application flow and strongly recommends PKCE. The client secret cannot be kept secret in a static public client; GitHub explicitly discusses this public-client limitation. Do not treat that embedded value as secret or as an identity proof. The app's fine-grained permissions, PKCE, OAuth state, repository restriction and authenticated event actor must provide the actual boundary. GitHub Device Flow is intended for headless environments and carries a documented phishing risk; do not select it by default for the browser UI.
+
+A fine-grained token with Actions: write is **not** the default request transport: that permission also allows actions such as cancelling/rerunning runs, deleting artifacts/logs and disabling workflows. This broader authority needs a separate justification and is not accepted merely because it can dispatch a workflow.
+
+The create-issue-comment API requires Issues: write for a fine-grained GitHub App user token. The proof must establish the least-privilege permission set, whether private-inbox users require repository membership, and whether that membership enables unwanted issue/repository operations. Treat these as test gates, not assumptions.
 
 ## 3. Request flow
 
-1. User signs into the static YARDHUB UI with the GitHub account that is mapped to their canonical USER record.
-2. The UI obtains a narrowly scoped broker-channel credential. It is never granted access to the private data repository.
+1. User authorizes the Inbox GitHub App using the web application flow with PKCE and OAuth state. The resulting user access token is restricted to the broker repository ID and the app's Issues: write permission. The token is kept in memory only and never grants access to the private data repository.
+2. User's GitHub account is mapped by immutable numeric account ID to the canonical USER record. If a private inbox is selected, that account must also have the intended minimum access to the broker repository.
 3. The UI builds a strict, versioned request envelope. Its payload is encrypted to the broker's public encryption key before it is submitted as an issue comment. Plaintext operational fields, record names, customer data, fault descriptions, images, PINs and tokens must not appear in the issue title/body or comment.
 4. The comment is posted to the pre-registered request issue assigned to that user. The issue number is not selected from arbitrary client input.
 5. GitHub emits an `issue_comment.created` event. The private broker workflow is loaded from the broker repository's default branch. It rejects pull-request comments and events for unknown issue IDs.
 6. The broker derives the transport actor exclusively from `github.event.sender.id` and the event's repository/issue/comment identifiers. It does not accept `actorId`, username, tier, role, department, permission, audit actor or tenant identity from the decrypted request as authority.
 7. The broker decrypts and validates the envelope, resolves the immutable GitHub account ID to an active canonical USER, then obtains the actor's ROOTS/YARD ROLE/department rights from the private data repository.
 8. The broker authorizes the exact service, action, tenant, module, record and current authority epoch. All checks are default-deny and server-side.
-9. A broker-only GitHub App installation token with access restricted to `YARDHUB-DATA` performs the operation. The data store uses optimistic ref compare-and-swap, bounded retries and an idempotency ledger. The workflow never checks out an issue, comment, branch or fork supplied by the user as executable code.
+9. A **separate Data App** installation token, restricted to the `YARDHUB-DATA` repository ID and required Contents permission, performs the operation. The Inbox App never receives data-repository access. The data store uses optimistic ref compare-and-swap, bounded retries and an idempotency ledger. The workflow never checks out an issue, comment, branch or fork supplied by the user as executable code.
 10. The result is encrypted to the requesting USER's registered public key and posted as a comment to that user's request issue. The UI polls the comment channel and decrypts only its own response.
 
 The event actor is the authentication evidence. A field inside the request envelope is only a requested operation or target, never proof of identity.
@@ -75,10 +87,11 @@ on:
 Required workflow guardrails:
 - The workflow file must exist on the private broker repository's default branch before `issue_comment` can trigger it. A workflow file only present on this PR branch cannot prove this design.
 - Ignore pull-request comments: require `github.event.issue.pull_request` to be absent.
-- Accept only comments on the exact pre-registered broker issue(s) and from mapped human GitHub accounts.
+- Accept only comments on exact pre-registered broker issue(s) and from mapped human GitHub accounts. For a public inbox, reject unknown sender IDs before any secret-bearing step is eligible to run; protect the public repo from comment spam and workflow-cost exhaustion.
 - Use a fixed, pinned workflow implementation from the broker's default branch; never execute event text, issue content, user branch content or a checkout ref supplied by the user.
 - Keep `GITHUB_TOKEN` permissions minimal. Use it only for required broker-repository response comments.
-- Use a GitHub App installation token for cross-repository data access, installed only on `YARDHUB-DATA` with the minimum repository permissions required. Do not store this token in the browser.
+- Use a separate Data App installation token for cross-repository data access, installed only on `YARDHUB-DATA` with the minimum repository permissions required. Do not store this token in the browser.
+- Use a separate Inbox App whose only user-token permission is Issues: write on the broker repository. Never add Contents permission to that App.
 - Protect the App private key and encryption private key as broker secrets; mask them and never print secret-bearing objects.
 - Do not expose operational payloads in logs, output variables, artifacts or caches. Disable verbose debug output in the broker job.
 - Reject stale authority epochs before every read/write operation, and reject stale epoch at commit.
@@ -105,7 +118,7 @@ Unknown identity, missing mappings, disabled users, expired/revoked keys, malfor
 
 ## 7. Proof environment and acceptance tests
 
-This proof must use newly provisioned disposable private broker and data repositories, with synthetic records only. No DOWNTIME production records or credentials are permitted.
+This proof must use a newly provisioned disposable broker/inbox repository (private preferred; public mode requires a separate metadata/abuse approval) and a separate disposable private data repository, with synthetic records only. No DOWNTIME production records or credentials are permitted.
 
 | Gate | Required test evidence |
 |---|---|
@@ -122,8 +135,10 @@ This proof must use newly provisioned disposable private broker and data reposit
 | B-11 Latency/throughput | Measure cold-start, median, p95/p99, queue wait and completion time under representative simultaneous operators and burst load |
 | B-12 Two-device use | Same USER can securely use two devices; key recovery, rotation and revocation work without server-held plaintext private keys |
 | B-13 Credential revocation | Revoke user's broker token and disable USER; further requests are denied while other users continue |
-| B-14 Secret/repo isolation | Only broker App can access data repo; no human user can obtain broker private key, App key or data Contents permission |
+| B-14 Secret/repo isolation | Only Data App can access data repo; no human user can obtain either App private key or data Contents permission |
 | B-15 Failure mode | Missing secrets, revoked App installation, API throttling, Actions outage and full queue are visible as recoverable errors, never silent success |
+| B-16 Binary evidence transport | Upload/download/delete for photos and PDFs can move through the broker without granting users Contents access; encrypted chunking, integrity, size limits, resume, retries and queue cost are measured against all five source Storage buckets |
+| B-17 Inbox privacy and abuse | Private/public inbox trade-off approved; public-mode metadata is assessed; unauthorised comments do not reach secret-bearing steps; comment spam cannot exhaust Actions budget or starve valid operators |
 
 **Pass condition:** every gate above passes on the private test infrastructure, all results are reproducible, and measured latency is accepted for actual Yardhub operations. A passing local mock is not sufficient.
 
@@ -131,7 +146,7 @@ This proof must use newly provisioned disposable private broker and data reposit
 
 The connected GitHub tooling available in this workspace supports reading repositories/PRs and committing source files. It does not provide a repository-creation, GitHub App-registration, repository-secret management or private broker provisioning action. The only accessible private repository is the unrelated `DOP-website`, which is explicitly excluded.
 
-Therefore Phase 3 cannot be honestly called implemented or accepted in this workspace. The next technical dependency is a dedicated private broker repository, separate private data repository, GitHub App installed on the data repo, broker secrets and a test USER roster. Do not weaken the permission model, place a data token in the browser, use the existing DOP repository, or merge this PR merely to make a default-branch workflow trigger.
+Therefore Phase 3 cannot be honestly called implemented or accepted in this workspace. The next technical dependency is a dedicated broker/inbox repository, a separate private data repository, two distinct GitHub Apps (Inbox App with Issues: write only; Data App with private-data Contents permission only), protected broker secrets, PKCE/user onboarding and synthetic test USER accounts. Do not weaken the permission model, place a data token in the browser, use the existing DOP repository, or merge this PR merely to make a default-branch workflow trigger.
 
 ## 9. Sources and protected boundary
 
@@ -140,5 +155,8 @@ Official GitHub documentation:
 - [Control the concurrency of workflows and jobs](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/control-workflow-concurrency)
 - [REST API endpoints for issue comments](https://docs.github.com/en/rest/issues/comments)
 - [Permissions required for GitHub Apps](https://docs.github.com/en/rest/authentication/permissions-required-for-github-apps)
+- [GitHub App user access tokens — user/app permission intersection and repository restriction](https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-a-user-access-token-for-a-github-app)
+- [GitHub App best practices — public-client PKCE and device-flow phishing risk](https://docs.github.com/en/apps/creating-github-apps/about-creating-github-apps/best-practices-for-creating-a-github-app)
+- [Create a workflow dispatch event — Actions: write permission](https://docs.github.com/en/rest/actions/workflows)
 
 This document does not grant authority to create external infrastructure or change protected repositories. All source changes are confined to `aka30art/DowntimeUI`. `aka30art/DOWNTIME` remains untouched. YARDHUB remains primary. No production record has been migrated, no authority switch has occurred, and PR #3 remains open/draft.
