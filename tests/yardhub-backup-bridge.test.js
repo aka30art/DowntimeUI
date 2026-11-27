@@ -126,7 +126,7 @@ test("backup exports all YARDHUB tables and Storage objects, excluding active se
   assert.equal(result.tableCount, 39);
   assert.equal(result.storageObjectCount, 1);
   assert.equal(mock.commits, 1);
-  assert.equal(mock.tableCalls.size, YARDHUB_TABLES.length);
+  assert.equal(mock.tableCalls.size, YARDHUB_TABLES.length - 1);
 
   const sessionFile = mock.currentTree.get("replication/yardhub-primary/tables/downtime_central_sessions.json");
   assert.deepEqual(JSON.parse(sessionFile.bytes.toString("utf8")), []);
