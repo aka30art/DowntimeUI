@@ -1,7 +1,7 @@
 function toBytes(file) {
   if (file instanceof Uint8Array) return file;
   if (file instanceof ArrayBuffer) return new Uint8Array(file);
-  if (typeof Blob !== "undefined" && file instanceof Blob) return new Uint8Array(file.arrayBuffer());
+  if (typeof Blob !== "undefined" && file instanceof Blob) return new Uint8Array(await file.arrayBuffer());
   throw new TypeError("Storage upload requires a Blob, ArrayBuffer or Uint8Array.");
 }
 
