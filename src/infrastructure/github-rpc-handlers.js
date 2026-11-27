@@ -147,8 +147,16 @@ function ensureDate(value) {
 }
 
 export const GITHUB_YARDHUB_RPC_HANDLERS = Object.freeze({
-  downtime_get_bootstrap_code() {
-    return "YARDHUB-INITIAL-SETUP";
+  async downtime_get_bootstrap_code({ tables, now }) {
+    const bootstrap = rows(tables, "downtime_roots_bootstrap").find(row => row.singleton === true);
+    const bank = rows(tables, "downtime_central_bank").find(row => Number(row.id) === 1);
+    const code = globalThis.__YARDHUB_BOOTSTRAP_CODE__;
+    if (!code || !bootstrap?.bootstrap_code_hash || !bootstrap?.bootstrap_code_expires_at ||
+        !bank || (Array.isArray(bank.payload?.users) && bank.payload.users.length > 0) ||
+        Date.parse(bootstrap.bootstrap_code_expires_at) <= now().getTime()) return null;
+    const digest = await globalThis.crypto.subtle.digest("SHA-256", new TextEncoder().encode(code));
+    const hash = Array.from(new Uint8Array(digest), value => value.toString(16).padStart(2, "0")).join("");
+    return hash === bootstrap.bootstrap_code_hash ? code : null;
   },
 
   downtime_central_commit_identity_event({ tables, args, now }) {
