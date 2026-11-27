@@ -61,3 +61,21 @@ test("existing bootstrap identity is retained when filling missing schema tables
   assert.equal(store.tables.downtime_roots_bootstrap[0].user_id, "existing-dev-id");
   assert.equal(store.tables.downtime_central_bank.length, 1);
 });
+
+test("bootstrap adds missing singleton records without replacing non-empty tables", async () => {
+  const store = memoryStore({
+    downtime_shared_state: [{ id: 7, payload: { preserved: true }, version: 4 }],
+    downtime_central_bank: [{ id: 7, version: 8, payload: { users: [{ username: "EXISTING" }] } }],
+    downtime_central_config_state: [{ id: 7, draft_payload: { preserved: true }, published_payload: {} }],
+    yard_hub_tier_config: [{ id: 7, version: 3, payload: { preserved: true } }],
+    downtime_reports: [{ id: "report-existing", title: "Keep this report" }]
+  });
+  await ensureGitHubDatabaseReady({ store });
+  assert.equal(store.tables.downtime_shared_state.find(row => row.id === 7).payload.preserved, true);
+  assert.ok(store.tables.downtime_shared_state.some(row => row.id === 1));
+  assert.ok(store.tables.downtime_central_bank.some(row => row.id === 1));
+  assert.equal(store.tables.downtime_central_bank.find(row => row.id === 7).payload.users[0].username, "EXISTING");
+  assert.ok(store.tables.downtime_central_config_state.some(row => row.id === 1));
+  assert.ok(store.tables.yard_hub_tier_config.some(row => row.id === 1));
+  assert.equal(store.tables.downtime_reports[0].title, "Keep this report");
+});
