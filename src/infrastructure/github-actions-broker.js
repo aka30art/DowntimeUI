@@ -1,4 +1,5 @@
 import { parseBrokerRequestComment } from "./github-app-broker-client.js";
+import { createGitHubCentralServiceSession } from "./github-central-service-session.js";
 
 const ENVELOPE_PREFIX = "YARDHUB_REQUEST_V1:";
 const MAX_COMMENT_LENGTH = 16 * 1024;
@@ -88,14 +89,20 @@ export function createGitHubActionsBroker({
   authorizeInboxIssue,
   decryptRequest,
   authorize,
-  createServiceSession,
+  createServiceSession = null,
+  store = null,
+  cryptoProvider = globalThis.crypto,
+  now = () => new Date(),
   execute,
   encryptResponse,
   publishEncryptedResponse,
   idempotencyStore,
   getAuthorityEpoch
 } = {}) {
-  const required = { resolvePrincipal, authorizeInboxIssue, decryptRequest, authorize, createServiceSession, execute, encryptResponse, publishEncryptedResponse, getAuthorityEpoch };
+  const sessionFactory = createServiceSession || (store
+    ? args => createGitHubCentralServiceSession({ store, cryptoProvider, now, ...args })
+    : null);
+  const required = { resolvePrincipal, authorizeInboxIssue, decryptRequest, authorize, sessionFactory, execute, encryptResponse, publishEncryptedResponse, getAuthorityEpoch };
   for (const [name, callback] of Object.entries(required)) {
     if (typeof callback !== "function") throw new TypeError("GitHub Actions broker requires " + name + ".");
   }
@@ -181,7 +188,7 @@ export function createGitHubActionsBroker({
 
         // The broker creates a fresh short-lived service session from the verified USER.
         // It is never supplied by the browser and is never included in the public inbox.
-        serviceSession = await createServiceSession({
+        serviceSession = await sessionFactory({
           principal,
           service: request.service,
           requestId: parsed.envelope.requestId,
