@@ -18,7 +18,8 @@ const SOURCE_TABLES = [
 ];
 const BROKER_TABLES = [
   "downtime_github_identities",
-  "downtime_github_broker_requests"
+  "downtime_github_broker_requests",
+  "downtime_github_broker_identity_audit"
 ];
 const TABLES = [...SOURCE_TABLES, ...BROKER_TABLES];
 
