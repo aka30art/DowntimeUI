@@ -111,9 +111,14 @@ test("broker rejects expired requests and malformed public comment envelopes", a
   assert.throws(() => parseBrokerRequestComment("YARDHUB_REQUEST_V1:not-json"), /not valid JSON|Base64URL/i);
 });
 
-test("GitHub App Device Flow restricts the user token to the broker repository and posts only ciphertext", async () => {
+test("GitHub App browser OAuth uses PKCE, validates state and scopes the user token to the broker repository", async () => {
   let clock = 0;
-  let tokenPolls = 0;
+  const entries = new Map();
+  const storage = {
+    getItem(key) { return entries.get(key) ?? null; },
+    setItem(key, value) { entries.set(key, String(value)); },
+    removeItem(key) { entries.delete(key); }
+  };
   let submittedComment = null;
   let decryptedPayload = null;
   let comments = [];
@@ -124,28 +129,20 @@ test("GitHub App Device Flow restricts the user token to the broker repository a
   const fetchImpl = async (url, options = {}) => {
     calls.push({ url: String(url), options });
     const method = options.method || "GET";
-    if (String(url).endsWith("/login/device/code") && method === "POST") {
+    if (String(url) === "https://github.com/login/oauth/access_token" && method === "POST") {
       const form = new URLSearchParams(options.body);
       assert.equal(form.get("client_id"), "test-client-id");
-      assert.equal(form.get("scope"), "offline_access");
-      assert.equal(form.has("repository_id"), false, "repository scoping is applied when the access token is minted");
-      return reply(200, {
-        device_code: "device-code-test",
-        user_code: "ABCD-EFGH",
-        verification_uri: "https://github.com/login/device",
-        expires_in: 900,
-        interval: 5
-      });
-    }
-    if (String(url).endsWith("/login/oauth/access_token") && method === "POST") {
-      const form = new URLSearchParams(options.body);
-      assert.equal(form.get("client_id"), "test-client-id");
-      assert.equal(form.get("device_code"), "device-code-test");
-      assert.equal(form.get("grant_type"), "urn:ietf:params:oauth:grant-type:device_code");
+      assert.equal(form.get("client_secret"), "public-client-config-not-a-secret");
+      assert.equal(form.get("code"), "oauth-code-test");
+      assert.equal(form.get("redirect_uri"), "https://yardhub.example/auth/github/callback");
       assert.equal(form.get("repository_id"), "12345678");
-      tokenPolls += 1;
-      if (tokenPolls === 1) return reply(200, { error: "authorization_pending" });
-      if (tokenPolls === 2) return reply(200, { error: "slow_down" });
+      const verifier = form.get("code_verifier");
+      assert.ok(verifier);
+      const digest = await webcrypto.subtle.digest("SHA-256", new TextEncoder().encode(verifier));
+      assert.equal(
+        Buffer.from(digest).toString("base64url"),
+        new URLSearchParams(authorization.search).get("code_challenge")
+      );
       return reply(200, { access_token: "ghu_test_user_token", token_type: "bearer", expires_in: 28800 });
     }
     if (String(url) === "https://api.github.com/user") {
@@ -160,8 +157,10 @@ test("GitHub App Device Flow restricts the user token to the broker repository a
       assert.equal(submittedComment.includes("Confidential customer"), false);
       const requestEnvelope = parseBrokerRequestComment(submittedComment);
       decryptedPayload = await decryptBrokerRequest({
-        envelope: requestEnvelope, brokerPrivateKey: broker.privateKey,
-        cryptoProvider: webcrypto, now: () => new Date(clock)
+        envelope: requestEnvelope,
+        brokerPrivateKey: broker.privateKey,
+        cryptoProvider: webcrypto,
+        now: () => new Date(clock)
       });
       const responseEnvelope = await encryptBrokerResponse({
         requestEnvelope,
@@ -192,24 +191,44 @@ test("GitHub App Device Flow restricts the user token to the broker repository a
     issueNumber: 77,
     fetchImpl,
     cryptoProvider: webcrypto,
-    now: () => clock
+    now: () => clock,
+    storage
   });
 
-  const device = await client.startDeviceAuthorization();
-  assert.equal(device.userCode, "ABCD-EFGH");
-  assert.equal(device.verificationUri, "https://github.com/login/device");
+  const authorizationRequest = await client.startWebAuthorization({
+    redirectUri: "https://yardhub.example/auth/github/callback",
+    login: "yard-operator"
+  });
+  const authorization = new URL(authorizationRequest.authorizationUrl);
+  assert.equal(authorization.origin, "https://github.com");
+  assert.equal(authorization.pathname, "/login/oauth/authorize");
+  assert.equal(authorization.searchParams.get("client_id"), "test-client-id");
+  assert.equal(authorization.searchParams.get("redirect_uri"), "https://yardhub.example/auth/github/callback");
+  assert.equal(authorization.searchParams.get("code_challenge_method"), "S256");
+  assert.equal(authorization.searchParams.get("repository_id"), "12345678");
+  assert.equal(authorization.searchParams.get("allow_signup"), "false");
+  assert.equal(authorization.searchParams.get("login"), "yard-operator");
 
-  clock = 5000;
-  assert.deepEqual(await client.pollDeviceAuthorization(), { pending: true, intervalMs: 5000 });
-  clock = 10_000;
-  const slowed = await client.pollDeviceAuthorization();
-  assert.equal(slowed.pending, true);
-  assert.equal(slowed.slowedDown, true);
-  assert.equal(slowed.intervalMs, 10_000);
-  clock = 20_000;
-  const authorised = await client.pollDeviceAuthorization();
-  assert.equal(authorised.pending, false);
-  assert.deepEqual(authorised.account, { id: 990011, login: "yard-operator" });
+  const storedState = [...entries.values()].map(value => JSON.parse(value))[0];
+  const wrongState = client.completeWebAuthorization({
+    callbackUrl: "https://yardhub.example/auth/github/callback?code=oauth-code-test&state=forged-state",
+    clientSecret: "public-client-config-not-a-secret"
+  });
+  await assert.rejects(wrongState, /state, callback or PKCE/);
+
+  const secondAuthorization = await client.startWebAuthorization({
+    redirectUri: "https://yardhub.example/auth/github/callback",
+    login: "yard-operator"
+  });
+  const secondUrl = new URL(secondAuthorization.authorizationUrl);
+  const secondState = secondUrl.searchParams.get("state");
+  const completed = await client.completeWebAuthorization({
+    callbackUrl: "https://yardhub.example/auth/github/callback?code=oauth-code-test&state=" + encodeURIComponent(secondState),
+    clientSecret: "public-client-config-not-a-secret"
+  });
+  assert.deepEqual(completed.account, { id: 990011, login: "yard-operator" });
+  assert.ok(completed.expiresAt);
+  assert.equal(entries.size, 0, "PKCE verifier/state must be removed after callback; access tokens are never persisted.");
 
   const submitted = await client.submitEncryptedRequest({
     payload: { action: "gatelog-customer-arrival", args: { customer: "Confidential customer" } },
@@ -224,10 +243,8 @@ test("GitHub App Device Flow restricts the user token to the broker repository a
   assert.equal(response.pending, false);
   assert.deepEqual(response.payload, { ok: true, visitId: "private-visit-id" });
 
-  const accessTokenRequests = calls.filter(call => call.url.endsWith("/login/oauth/access_token"));
-  assert.equal(accessTokenRequests.length, 3);
-  const repoScopedRequest = accessTokenRequests[2].options.body;
-  assert.equal(new URLSearchParams(repoScopedRequest).get("repository_id"), "12345678");
+  const exchange = calls.find(call => call.url === "https://github.com/login/oauth/access_token");
+  assert.ok(exchange);
   assert.equal(calls.some(call => call.url.includes("api.github.com/repos/yardhub/private-data")), false);
 
   client.disconnect();
@@ -235,4 +252,4 @@ test("GitHub App Device Flow restricts the user token to the broker repository a
   await assert.rejects(client.pollEncryptedResponse(submitted), /missing or expired/);
 });
 
-console.log("PASS: GitHub App broker client device flow, repo-scoped token, encrypted requests and encrypted response contract");
+console.log("PASS: GitHub App browser PKCE, state validation, repo-scoped token, encrypted requests and encrypted response contract");
