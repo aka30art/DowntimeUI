@@ -97,6 +97,46 @@ function splitSelectColumns(value) {
   return result.filter(Boolean);
 }
 
+function applyBootstrapIdentityTrigger(tables, tableName, values, now) {
+  if (tableName !== "downtime_central_bank" || !values?.payload || !Array.isArray(values.payload.users)) return values;
+  const dev = values.payload.users.find(account => String(account.username || "").trim().toUpperCase() === "DEV" && !account.userId);
+  if (!dev) return values;
+  const bootstrap = (tables.downtime_roots_bootstrap || []).find(row => row.singleton === true);
+  if (!bootstrap?.user_id) throw new GitHubTableQueryError("The immutable DEV bootstrap identity has not been prepared.", "ROOTS_BOOTSTRAP_MISSING", 409);
+  dev.userId = bootstrap.user_id;
+  const definitions = tables.downtime_roots_role_definitions || (tables.downtime_roots_role_definitions = []);
+  const timestamp = now().toISOString();
+  const seeds = [
+    {
+      role_key: "DEV1", display_name: "DEV1", visibility: "DEV_ONLY",
+      description: "Protected ROOTED role. May manage YARD ROLE definitions and assign ADMIN ROOTS; cannot browse the ROOTS directory, assign DEV1, reclassify or revoke ROOTS.",
+      capabilities: {
+        canBrowseRoots: false, canAssignDev1: false, canAssignAdmin: true,
+        canManageYardRoles: true, hasAutomaticDepartmentManage: true,
+        canReclassifyRoots: false, canRevokeRoots: false
+      }
+    },
+    {
+      role_key: "ADMIN", display_name: "ADMIN", visibility: "DEV_ONLY",
+      description: "Protected ROOTED role. May manage YARD ROLE definitions; cannot browse the ROOTS directory or assign, reclassify or revoke ROOTS.",
+      capabilities: {
+        canBrowseRoots: false, canAssignDev1: false, canAssignAdmin: false,
+        canManageYardRoles: true, hasAutomaticDepartmentManage: true,
+        canReclassifyRoots: false, canRevokeRoots: false
+      }
+    }
+  ];
+  for (const seed of seeds) {
+    if (!definitions.some(row => row.role_key === seed.role_key)) {
+      definitions.push({
+        ...seed, version: 1, created_by_user_id: bootstrap.user_id,
+        created_at: timestamp, updated_at: timestamp
+      });
+    }
+  }
+  return values;
+}
+
 function project(row, columns, tableName = "", allTables = {}) {
   if (!columns || columns.trim() === "*") return clone(row);
   const result = {};
@@ -269,7 +309,10 @@ export function createGitHubTableClient({
                     resultRows = matched.map(clone);
                     if (this.operation === "update") {
                       const matchedRows = rows.filter(row => matches(row, this.filters));
-                      for (const row of matchedRows) Object.assign(row, clone(this.payload), { updated_at: now().toISOString() });
+                      for (const row of matchedRows) {
+                        const values = applyBootstrapIdentityTrigger(tables, table, clone(this.payload), now);
+                        Object.assign(row, values, { updated_at: now().toISOString() });
+                      }
                       resultRows = matchedRows.map(clone);
                     } else if (this.operation === "delete") {
                       tables[table] = rows.filter(row => !matches(row, this.filters));
