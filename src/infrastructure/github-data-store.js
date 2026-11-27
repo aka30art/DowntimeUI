@@ -184,6 +184,32 @@ export function createGitHubDataStore({
   const commitJsonAtHead = ({ headSha, treeSha, path, value, message }) =>
     commitJsonFilesAtHead({ headSha, treeSha, files: [{ path, value }], message });
 
+  const commitTreeEntriesAtHead = async ({ headSha, treeSha, entries, message }) => {
+    const tree = await request("/git/trees", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ base_tree: treeSha, tree: entries })
+    });
+    const commit = await request("/git/commits", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message, tree: tree.sha, parents: [headSha] })
+    });
+    try {
+      await request("/git/refs/heads/" + branchPath(branch), {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sha: commit.sha, force: false })
+      });
+      return { committed: true, commitSha: commit.sha };
+    } catch (error) {
+      if (error instanceof GitHubStoreError && (error.status === 409 || error.status === 422)) {
+        return { committed: false, conflict: error };
+      }
+      throw error;
+    }
+  };
+
   const databaseManifestPath = "database/" + systemId.toLowerCase() + "/manifest.json";
   const databaseTablePath = (table) => "database/" + systemId.toLowerCase() + "/tables/" + table + ".json";
   const validTableName = (table) => requiredString(table, "Database table", /^[a-z][a-z0-9_]{0,62}$/);
@@ -413,6 +439,114 @@ export function createGitHubDataStore({
         result,
         manifest: nextManifest
       };
+    },
+
+    async uploadObject({ bucket: bucketInput, path: pathInput, data, mimeType = "application/octet-stream", upsert = false } = {}) {
+      const bucket = requiredString(bucketInput, "Storage bucket", /^[a-z0-9][a-z0-9_-]{0,62}$/);
+      const objectName = requiredString(pathInput, "Storage object path");
+      const segments = objectName.split("/");
+      if (segments.some(segment => !segment || segment === "." || segment === ".." || !/^[A-Za-z0-9._-]+$/.test(segment))) {
+        throw new TypeError("Storage object path contains an invalid segment.");
+      }
+      if (!/^[\w.+-]+\/[\w.+-]+$/.test(mimeType)) throw new TypeError("Storage MIME type is invalid.");
+      let bytes;
+      if (data instanceof Uint8Array) bytes = data;
+      else if (data instanceof ArrayBuffer) bytes = new Uint8Array(data);
+      else if (typeof Blob !== "undefined" && data instanceof Blob) bytes = new Uint8Array(await data.arrayBuffer());
+      else throw new TypeError("Storage data must be a Blob, ArrayBuffer or Uint8Array.");
+      if (!bytes.byteLength) throw new GitHubStoreError("Empty storage objects are not supported.");
+      if (bytes.byteLength > 10 * 1024 * 1024) throw new GitHubStoreError("Storage object exceeds the 10 MB GitHub prototype limit.");
+      const binaryPath = "storage/" + systemId.toLowerCase() + "/" + bucket + "/" + objectName;
+      const metadataPath = "storage/" + systemId.toLowerCase() + "/metadata/" + bucket + "/" + objectName + ".json";
+      let binary = "";
+      for (let offset = 0; offset < bytes.length; offset += 0x8000) {
+        binary += String.fromCharCode(...bytes.subarray(offset, offset + 0x8000));
+      }
+      const base64 = globalThis.btoa(binary);
+
+      for (let attempt = 0; attempt < maxRetries; attempt += 1) {
+        const headSha = await getHead();
+        const treeSha = await getCommitTree(headSha);
+        const existing = await request("/contents/" + contentPath(binaryPath) + "?ref=" + encodeURIComponent(headSha), {}, { allowNotFound: true });
+        if (existing && !upsert) throw new GitHubStoreError("Storage object already exists: " + bucket + "/" + objectName, 409);
+        const blob = await request("/git/blobs", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ content: base64, encoding: "base64" })
+        });
+        const metadata = {
+          schemaVersion: 1, bucket, path: objectName, mimeType,
+          size: bytes.byteLength, blobSha: blob.sha, updatedAt: now().toISOString()
+        };
+        const metadataBlob = await request("/git/blobs", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ content: encodeJson(metadata), encoding: "utf-8" })
+        });
+        const committed = await commitTreeEntriesAtHead({
+          headSha, treeSha,
+          entries: [
+            { path: binaryPath, mode: "100644", type: "blob", sha: blob.sha },
+            { path: metadataPath, mode: "100644", type: "blob", sha: metadataBlob.sha }
+          ],
+          message: "YARDHUB storage upload: " + bucket + "/" + objectName
+        });
+        if (committed.committed) return { ok: true, path: objectName, bucket, mimeType, size: bytes.byteLength, sha: blob.sha, commitSha: committed.commitSha };
+        await sleep(Math.min(100 * (2 ** attempt), 1200));
+      }
+      throw new GitHubStoreError("Storage upload conflicted repeatedly. Retry the upload.", 409);
+    },
+
+    async downloadObject({ bucket: bucketInput, path: pathInput } = {}) {
+      const bucket = requiredString(bucketInput, "Storage bucket", /^[a-z0-9][a-z0-9_-]{0,62}$/);
+      const objectName = requiredString(pathInput, "Storage object path");
+      const segments = objectName.split("/");
+      if (segments.some(segment => !segment || segment === "." || segment === ".." || !/^[A-Za-z0-9._-]+$/.test(segment))) {
+        throw new TypeError("Storage object path contains an invalid segment.");
+      }
+      const binaryPath = "storage/" + systemId.toLowerCase() + "/" + bucket + "/" + objectName;
+      const metadataPath = "storage/" + systemId.toLowerCase() + "/metadata/" + bucket + "/" + objectName + ".json";
+      const headSha = await getHead();
+      const file = await request("/contents/" + contentPath(binaryPath) + "?ref=" + encodeURIComponent(headSha), {}, { allowNotFound: true });
+      if (!file) throw new GitHubStoreError("Storage object not found: " + bucket + "/" + objectName, 404);
+      const blob = await request("/git/blobs/" + encodeURIComponent(file.sha));
+      if (blob.encoding !== "base64" || typeof blob.content !== "string") throw new GitHubStoreError("GitHub returned an unsupported storage blob encoding.");
+      const binary = globalThis.atob(blob.content.replace(/\s/g, ""));
+      const bytes = Uint8Array.from(binary, character => character.charCodeAt(0));
+      const metadata = await readJsonAt(metadataPath, headSha);
+      return {
+        bucket, path: objectName, bytes,
+        mimeType: metadata?.mimeType || "application/octet-stream",
+        size: bytes.byteLength, sha: file.sha
+      };
+    },
+
+    async deleteObject({ bucket: bucketInput, path: pathInput } = {}) {
+      const bucket = requiredString(bucketInput, "Storage bucket", /^[a-z0-9][a-z0-9_-]{0,62}$/);
+      const objectName = requiredString(pathInput, "Storage object path");
+      const segments = objectName.split("/");
+      if (segments.some(segment => !segment || segment === "." || segment === ".." || !/^[A-Za-z0-9._-]+$/.test(segment))) {
+        throw new TypeError("Storage object path contains an invalid segment.");
+      }
+      const binaryPath = "storage/" + systemId.toLowerCase() + "/" + bucket + "/" + objectName;
+      const metadataPath = "storage/" + systemId.toLowerCase() + "/metadata/" + bucket + "/" + objectName + ".json";
+      for (let attempt = 0; attempt < maxRetries; attempt += 1) {
+        const headSha = await getHead();
+        const treeSha = await getCommitTree(headSha);
+        const existing = await request("/contents/" + contentPath(binaryPath) + "?ref=" + encodeURIComponent(headSha), {}, { allowNotFound: true });
+        if (!existing) return { deleted: false, bucket, path: objectName };
+        const committed = await commitTreeEntriesAtHead({
+          headSha, treeSha,
+          entries: [
+            { path: binaryPath, mode: "100644", type: "blob", sha: null },
+            { path: metadataPath, mode: "100644", type: "blob", sha: null }
+          ],
+          message: "YARDHUB storage delete: " + bucket + "/" + objectName
+        });
+        if (committed.committed) return { deleted: true, bucket, path: objectName, commitSha: committed.commitSha };
+        await sleep(Math.min(100 * (2 ** attempt), 1200));
+      }
+      throw new GitHubStoreError("Storage delete conflicted repeatedly. Retry the operation.", 409);
     },
 
     async readEvents({ module: moduleInput, date, writerSystemId = systemId } = {}) {
