@@ -402,6 +402,12 @@ export function createGitHubDataStore({
       return readJsonAt(path, headSha);
     },
 
+    async readTable(tableInput) {
+      const table = requiredString(tableInput, "Database table", /^[a-z][a-z0-9_]{0,62}$/);
+      const result = await readJsonAt(databaseTablePath(table), branch);
+      return Array.isArray(result) ? result : [];
+    },
+
     async readDatabase() {
       const headSha = await getHead();
       const { manifest, tables } = await readDatabaseAtHead(headSha);
