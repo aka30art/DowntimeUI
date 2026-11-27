@@ -100,7 +100,7 @@ export function createGitHubSupabaseCompat({
         if (typeof callback === "function") callback("SUBSCRIBED");
         void poll();
         if (timer === null && listeners.some(listener => listener.event === "postgres_changes")) {
-          timer = globalThis.setInterval(poll, Math.max(5000, pollIntervalMs));
+          timer = globalThis.setInterval(poll, Math.max(50, pollIntervalMs));
         }
         return instance;
       },
