@@ -167,17 +167,25 @@ No commits, API calls, workflow runs, secrets, deployments, backups, exports or 
 - All of these are code and regression results. They do not close any SEC-001 to SEC-009 finding or any private-infrastructure, real-repository, full-recovery or authority-transfer gate.
 
 
-## GitHub Actions broker protocol core (27 November 2026)
+## GitHub Actions broker client and orchestration core (27 November 2026)
 
-A testable protocol core has now been added at `src/infrastructure/github-actions-broker.js`. It is deliberately not represented as a working broker deployment.
+A local client and callback-driven orchestration core now exist. They are not a deployed or accepted broker.
 
-The core:
-- accepts only newly created issue comments from the configured broker repository ID and rejects pull-request events, bot actors, mismatched comment authors and oversized/malformed envelopes;
-- derives the actor only from the authenticated GitHub event's numeric `sender.id`, never from request JSON;
-- resolves that actor to a canonical active USER/STAFF principal with registered signing and response-encryption public keys;
-- verifies a signature over repository, issue, comment, request ID and ciphertext before decrypting;
-- requires a current positive authority epoch and a separate authorization callback before executing an action;
-- rejects caller-supplied actor, username, user ID, role, tier or permission fields;
-- requires an atomic idempotency claim and only publishes encrypted responses through an injected publisher.
+`src/infrastructure/github-app-broker-client.js`:
+- implements GitHub App Device Flow and includes the `repository_id` restriction during token exchange;
+- verifies the returned GitHub numeric account ID and keeps the short-lived user token in module memory;
+- encrypts request/response payloads using ephemeral P-256 ECDH, HKDF-SHA-256 and AES-256-GCM;
+- rejects expired/tampered envelopes and ensures the tested issue comment contains ciphertext rather than plaintext operational fields.
 
-The corresponding tests cover event-source identity, repository/issue restrictions, active USER mapping, signature rejection, permission denial, caller identity injection, replay and unavailable authority epoch. The cryptographic implementation, key enrollment/rotation/revocation, private data repository adapter, GitHub App installation token, workflow, encrypted comment publisher, real concurrency and two-account end-to-end test are not implemented. The core therefore remains a protocol scaffold and does not close SEC-001 to SEC-009.
+`src/infrastructure/github-actions-broker.js`:
+- accepts only newly created issue comments from the configured repository ID, rejects pull requests/bots/author mismatches and validates the ECDH envelope;
+- derives the transport actor only from the authenticated event's numeric `sender.id`;
+- resolves an active canonical USER/STAFF principal and requires the inbox issue to be assigned to that USER;
+- decrypts through an injected callback, rejects caller-supplied actor/privilege fields, checks a positive current authority epoch and calls a separate YARD ROLE authorization function;
+- requires an atomic idempotency store and encrypted-response publisher.
+
+Local tests cover the ECDH client, Device Flow polling, repository restriction, event identity, inbox ownership, canonical USER mapping, decryption/permission denial, caller identity injection, replay and missing authority epoch.
+
+**Still not implemented or proven:** the final browser sign-in flow (Device Flow is intended for headless clients; GitHub recommends the web application flow for browser apps and strongly recommends PKCE), real broker cryptographic key custody, USER/inbox mapping against the private data repository, concrete YARD ROLE authorization, Data App installation-token minting, actual `issue_comment` workflow on a dedicated broker repository's default branch, durable atomic idempotency, encrypted response publication, key/device recovery, two-device support, real GitHub permission isolation, queue/concurrency/latency tests and two-account end-to-end acceptance.
+
+The broker core is callback-driven and does not itself provide any of these missing trust boundaries. It remains a testable integration scaffold. Phase 3 and SEC-001 to SEC-009 remain open.
