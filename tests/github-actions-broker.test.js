@@ -218,8 +218,6 @@ test("broker denies a valid USER when the request issue is not assigned to that 
     decryptRequest: async () => { throw new Error("Must not decrypt an unassigned inbox issue."); },
     authorize: async () => true,
     createServiceSession: async () => { throw new Error("Must not create a session for an unassigned inbox issue."); },
-    createServiceSession: async () => { throw new Error("Must not create a session for an unassigned inbox issue."); },
-    createServiceSession: async () => { throw new Error("Must not create a session for an unassigned inbox issue."); },
     execute: async () => { throw new Error("Must not execute an unassigned inbox issue."); },
     encryptResponse: async () => "encrypted",
     publishEncryptedResponse: async () => {},
