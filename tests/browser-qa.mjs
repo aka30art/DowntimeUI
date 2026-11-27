@@ -284,7 +284,45 @@ try{
   const remainingAppKeys=await page.evaluate(()=>Object.keys(localStorage).filter(key=>key.startsWith("downtimeui:")));
   assert.deepEqual(remainingAppKeys,[],"Factory reset must remove all DOWNTIMEUI-owned local storage and return to empty installer.");
   assert.equal(resetDialogIndex,3,"WIPE OUT must require three explicit confirmation choices.");
-  console.log("PASS: Chromium installer, daily operations, plant overview, task-lock persistence, reports, Settings edits, backup/restore, 390px mobile layout and WIPE OUT reset");
+  const yardhubPage=await browser.newPage({viewport:{width:1440,height:900},deviceScaleFactor:1});
+  const yardhubRequests=[];
+  yardhubPage.on("request",request=>yardhubRequests.push(request.url()));
+  yardhubPage.on("pageerror",error=>failures.push("YARDHUB: "+error.message));
+  await yardhubPage.route("https://github-native.invalid/**",route=>route.fulfill({status:503,contentType:"application/json",body:JSON.stringify({error:"Isolated browser QA: no live repository token supplied"})}));
+  await yardhubPage.goto("http://127.0.0.1:"+address.port+"/yardhub/runtime/index.html",{waitUntil:"networkidle"});
+  await yardhubPage.getByRole("heading",{name:"Connect YARDHUB to GitHub"}).waitFor();
+  assert.equal(await yardhubPage.locator("#yardhub-github-connect-overlay").isVisible(),true,"YARDHUB must remain locked behind the private GitHub setup gate.");
+  assert.equal(await yardhubPage.locator('[name="owner"]').inputValue(),"aka30art");
+  assert.equal(await yardhubPage.locator('[name="repo"]').inputValue(),"");
+  assert.equal(await yardhubPage.locator('[name="token"]').inputValue(),"");
+  assert.equal(await yardhubPage.locator("[data-create-private]").isEnabled(),true,"First-run private repository creation must be available.");
+  assert.equal(await yardhubPage.locator("#firstDevBootstrapPanel").isHidden(),true,"DEV bootstrap must remain hidden until a private database issues a one-time code.");
+  assert.ok(yardhubRequests.some(url=>url.startsWith("https://github-native.invalid/")),"Unconnected login lookup must use only the disabled GitHub-native adapter endpoint.");
+  assert.equal(yardhubRequests.some(url=>url.includes("supabase.co")),false,"The YARDHUB runtime must not call any original Supabase endpoint.");
+  await yardhubPage.setViewportSize({width:390,height:844});
+  const setupLayout=await yardhubPage.evaluate(()=>{
+    const card=document.querySelector(".yardhub-github-connect-card").getBoundingClientRect();
+    return {viewport:innerWidth,document:document.documentElement.scrollWidth,cardLeft:card.left,cardRight:card.right};
+  });
+  assert.ok(setupLayout.document<=setupLayout.viewport+1,"YARDHUB connection gate must not overflow mobile width: "+JSON.stringify(setupLayout));
+  assert.ok(setupLayout.cardLeft>=0&&setupLayout.cardRight<=setupLayout.viewport+1,"YARDHUB connection card must fit the mobile viewport: "+JSON.stringify(setupLayout));
+  await yardhubPage.screenshot({path:"artifacts/yardhub-private-setup-mobile.png",fullPage:true});
+
+  const rmPage=await browser.newPage({viewport:{width:390,height:844},deviceScaleFactor:1});
+  const rmRequests=[];
+  rmPage.on("request",request=>rmRequests.push(request.url()));
+  rmPage.on("pageerror",error=>failures.push("R&M: "+error.message));
+  await rmPage.route("https://github-native.invalid/**",route=>route.fulfill({status:503,contentType:"application/json",body:JSON.stringify({error:"Isolated browser QA: no live repository token supplied"})}));
+  await rmPage.goto("http://127.0.0.1:"+address.port+"/yardhub/runtime/repair-maintenance.html",{waitUntil:"networkidle"});
+  await rmPage.getByRole("heading",{name:"Connect YARDHUB to GitHub"}).waitFor();
+  assert.equal(await rmPage.locator("#yardhub-github-connect-overlay").isVisible(),true,"Standalone R&M must use the same private data setup gate.");
+  assert.equal(rmRequests.some(url=>url.includes("supabase.co")),false,"Standalone R&M must not call the original Supabase project.");
+  const rmLayout=await rmPage.evaluate(()=>({viewport:innerWidth,document:document.documentElement.scrollWidth}));
+  assert.ok(rmLayout.document<=rmLayout.viewport+1,"Standalone R&M connection gate must not overflow mobile width: "+JSON.stringify(rmLayout));
+  await rmPage.screenshot({path:"artifacts/yardhub-rm-setup-mobile.png",fullPage:true});
+  await rmPage.close();
+  await yardhubPage.close();
+\n  console.log("PASS: Chromium installer, daily operations, plant overview, task-lock persistence, reports, Settings edits, backup/restore, 390px mobile layout and WIPE OUT reset, YARDHUB private setup gate, standalone R&M lock and mobile layout");
 }finally{
   await browser.close();
   await new Promise(resolve=>server.close(resolve));
