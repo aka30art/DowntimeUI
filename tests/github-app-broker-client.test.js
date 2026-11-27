@@ -125,6 +125,7 @@ test("GitHub App browser OAuth uses PKCE, validates state and scopes the user to
   const broker = await brokerKeyPair();
   const brokerPublicKey = base64Url(await webcrypto.subtle.exportKey("raw", broker.publicKey));
   const calls = [];
+  let expectedCodeChallenge = null;
 
   const fetchImpl = async (url, options = {}) => {
     calls.push({ url: String(url), options });
@@ -141,7 +142,7 @@ test("GitHub App browser OAuth uses PKCE, validates state and scopes the user to
       const digest = await webcrypto.subtle.digest("SHA-256", new TextEncoder().encode(verifier));
       assert.equal(
         Buffer.from(digest).toString("base64url"),
-        new URLSearchParams(authorization.search).get("code_challenge")
+        expectedCodeChallenge
       );
       return reply(200, { access_token: "ghu_test_user_token", token_type: "bearer", expires_in: 28800 });
     }
@@ -209,7 +210,6 @@ test("GitHub App browser OAuth uses PKCE, validates state and scopes the user to
   assert.equal(authorization.searchParams.get("allow_signup"), "false");
   assert.equal(authorization.searchParams.get("login"), "yard-operator");
 
-  const storedState = [...entries.values()].map(value => JSON.parse(value))[0];
   const wrongState = client.completeWebAuthorization({
     callbackUrl: "https://yardhub.example/auth/github/callback?code=oauth-code-test&state=forged-state",
     clientSecret: "public-client-config-not-a-secret"
@@ -222,6 +222,7 @@ test("GitHub App browser OAuth uses PKCE, validates state and scopes the user to
   });
   const secondUrl = new URL(secondAuthorization.authorizationUrl);
   const secondState = secondUrl.searchParams.get("state");
+  expectedCodeChallenge = secondUrl.searchParams.get("code_challenge");
   const completed = await client.completeWebAuthorization({
     callbackUrl: "https://yardhub.example/auth/github/callback?code=oauth-code-test&state=" + encodeURIComponent(secondState),
     clientSecret: "public-client-config-not-a-secret"
