@@ -65,9 +65,12 @@ export async function ensureGitHubDatabaseReady({ store, now = () => new Date() 
     mutate(tables) {
       for (const name of TABLES) {
         if (!Array.isArray(tables[name])) tables[name] = [];
-        if (!tables[name].length) {
-          const seeded = initialRows(name, bootstrapUserId, now);
-          if (seeded.length) tables[name] = seeded;
+        const seeded = initialRows(name, bootstrapUserId, now);
+        for (const row of seeded) {
+          const exists = name === "downtime_roots_bootstrap"
+            ? tables[name].some(current => current.singleton === true)
+            : tables[name].some(current => current.id !== undefined && Number(current.id) === Number(row.id));
+          if (!exists) tables[name].push(row);
         }
       }
       if (!(tables.downtime_roots_bootstrap || []).some(row => row.singleton === true)) {
