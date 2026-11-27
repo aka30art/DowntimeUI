@@ -329,7 +329,7 @@ export const GITHUB_YARDHUB_RPC_HANDLERS = Object.freeze({
     return visit.id;
   },
 
-  downtime_roots_manage_identity({ tables, args, now }) {
+  downtime_roots_manage_identity: function({ tables, args, now }) {
     const userId = cleanText(args.p_user_id, 120), staffId = cleanText(args.p_staff_id, 120);
     const action = cleanText(args.p_action, 20).toUpperCase();
     const rootsClass = cleanText(args.p_roots_class, 20).toUpperCase();
@@ -403,7 +403,7 @@ export const GITHUB_YARDHUB_RPC_HANDLERS = Object.freeze({
     };
   },
 
-  yard_role_save_definition({ tables, args, now }) {
+  yard_role_save_definition: function({ tables, args, now }) {
     const roleId = cleanText(args.p_role_id, 120);
     const name = cleanText(args.p_name, 80);
     const description = cleanText(args.p_description, 500);
@@ -472,7 +472,7 @@ export const GITHUB_YARDHUB_RPC_HANDLERS = Object.freeze({
     return next;
   },
 
-  yard_role_assign_user({ tables, args, now }) {
+  yard_role_assign_user: function({ tables, args, now }) {
     const userId = cleanText(args.p_user_id, 120), staffId = cleanText(args.p_staff_id, 120);
     const roleId = cleanText(args.p_yard_role_id, 120);
     const actorUserId = cleanText(args.p_actor_user_id, 120);
@@ -511,7 +511,7 @@ export const GITHUB_YARDHUB_RPC_HANDLERS = Object.freeze({
     };
   },
 
-  yard_role_reassign_user({ tables, args, now }) {
+  yard_role_reassign_user: function({ tables, args, now }) {
     const userId = cleanText(args.p_user_id, 120), staffId = cleanText(args.p_staff_id, 120);
     const roleId = cleanText(args.p_yard_role_id, 120);
     const actorUserId = cleanText(args.p_actor_user_id, 120);
@@ -549,7 +549,7 @@ export const GITHUB_YARDHUB_RPC_HANDLERS = Object.freeze({
     return { user_id: userId, staff_id: staffId, yard_role_id: roleId, status: assignment.status, version: assignment.version, verified_at: assignment.verified_at, replayed: false };
   },
 
-  downtime_identity_reset_preserve_dev({ tables, args, now }) {
+  downtime_identity_reset_preserve_dev: function({ tables, args, now }) {
     const actorUserId = cleanText(args.p_actor_user_id, 120);
     const actorUsername = cleanText(args.p_actor_username, 80).toUpperCase();
     const actorDisplayName = cleanText(args.p_actor_display_name, 120);
