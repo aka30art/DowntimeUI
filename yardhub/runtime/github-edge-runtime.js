@@ -125,6 +125,8 @@ export async function executeGitHubEdgeAction({
   args = {},
   sessionToken = null,
   requestId,
+  actorUserId = null,
+  now = () => new Date(),
   origin = "https://aka30art.github.io"
 } = {}) {
   if (!store || typeof store.readDatabase !== "function" || typeof store.transactDatabase !== "function") {
@@ -173,6 +175,19 @@ export async function executeGitHubEdgeAction({
           error.status = response.status;
           error.response = responseBody;
           throw error;
+        }
+        if (actorUserId) {
+          const ledger = Array.isArray(tables.downtime_github_broker_requests)
+            ? tables.downtime_github_broker_requests
+            : [];
+          const claim = ledger.find(row => row.request_id === requestId && row.actor_user_id === actorUserId);
+          if (!claim || claim.state !== "PROCESSING") {
+            throw new Error("The broker idempotency claim is missing or no longer active.");
+          }
+          claim.state = "COMMITTED";
+          claim.committed_at = now().toISOString();
+          claim.updated_at = now().toISOString();
+          claim.lease_until = null;
         }
         return { status: responseStatus, body: responseBody };
       }
