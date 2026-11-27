@@ -33,7 +33,7 @@ function createMockServices({ privateRepository = true } = {}) {
   const fetchImpl = async (url, options = {}) => {
     const parsed = new URL(url);
     const method = options.method || "GET";
-    if (parsed.hostname === "example.supabase.co") {
+    if (parsed.hostname === "ygwfipksbbprqynvbklk.supabase.co") {
       if (parsed.pathname.startsWith("/rest/v1/")) {
         const table = parsed.pathname.split("/").pop();
         tableCalls.set(table, (tableCalls.get(table) || 0) + 1);
@@ -56,6 +56,7 @@ function createMockServices({ privateRepository = true } = {}) {
 
     if (parsed.hostname === "api.github.com") {
       const path = parsed.pathname.replace("/repos/owner/data", "");
+      if (method === "GET" && path === "") return response(200, { private: true, full_name: "owner/data", archived: false });
       if (method === "GET" && path === "") return response(200, { private: privateRepository, full_name: "owner/data", archived: false });
       if (method === "GET" && path === "/git/ref/heads/main") {
         return response(200, { object: { sha: head } });
