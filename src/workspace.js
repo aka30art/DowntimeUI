@@ -206,7 +206,8 @@ export function mountWorkspace(root,config,{onEditConfiguration=()=>{},onExportC
       if(!snapshot){githubSyncQueued=true;void flushGitHubSnapshot();}
     }catch(error){
       githubStore=null;githubAuthority=null;githubSnapshotVersion=null;githubSyncBlocked=false;
-      status="GitHub connection failed: "+(error?.message||"Check the repository and token.");
+      clearGitHubConnection({storage:githubSettingsStorage});
+      status="GitHub connection failed: "+(error?.message||"Check the private repository and token.");
       render();
     }
   }
