@@ -694,6 +694,7 @@ export function mountWorkspace(root,config,{onEditConfiguration=()=>{},onExportC
     void (async()=>{
       try{
         githubStore=await createConnectedGitHubStore({storage:githubSettingsStorage,fetchImpl:options.fetchImpl||globalThis.fetch});
+        await githubStore.ensureAuthority();
         githubAuthority=await githubStore.readAuthority();
         const snapshot=await githubStore.readSnapshot({module:"YARDHUB_WORKSPACE",snapshotId:config.installationId});
         githubSnapshotVersion=snapshot?.version??null;
