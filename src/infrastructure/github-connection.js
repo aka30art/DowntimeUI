@@ -1,4 +1,6 @@
 import { createGitHubDataStore } from "./github-data-store.js";
+import { createGitHubTableClient } from "./github-table-client.js";
+import { createGitHubStorageClient } from "./github-storage-client.js";
 
 export const DEFAULT_GITHUB_DATA_CONNECTION = Object.freeze({
   owner: "aka30art",
@@ -80,5 +82,20 @@ export function createConnectedGitHubStore({
   return createGitHubDataStore({
     owner: saved.owner, repo: saved.repo, branch: saved.branch,
     token, systemId, fetchImpl
+  });
+}
+
+export function createConnectedGitHubServices({
+  storage = globalThis.localStorage,
+  sessionStorage = globalThis.sessionStorage,
+  systemId = "DOWNTIMEUI-GITHUB",
+  fetchImpl = globalThis.fetch,
+  actorId = "LOCAL-OPERATOR"
+} = {}) {
+  const store = createConnectedGitHubStore({ storage, sessionStorage, systemId, fetchImpl });
+  return Object.freeze({
+    store,
+    database: createGitHubTableClient({ store, actorId }),
+    storage: createGitHubStorageClient({ store })
   });
 }
