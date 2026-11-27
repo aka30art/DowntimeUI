@@ -13,7 +13,8 @@ export function createGitHubSupabaseCompat({
   rpcHandlers = {},
   handlers = globalThis.__YARDHUB_EDGE_HANDLERS__ || {},
   sessionProvider = () => globalThis.DowntimeCentral?.session || null,
-  originProvider = () => globalThis.location?.origin || "https://aka30art.github.io"
+  originProvider = () => globalThis.location?.origin || "https://aka30art.github.io",
+  pollIntervalMs = 15000
 } = {}) {
   if (!store) throw new TypeError("A GitHub data store is required.");
   const tables = createGitHubTableClient({ store, actorId, rpcHandlers });
@@ -58,6 +59,38 @@ export function createGitHubSupabaseCompat({
 
   const channel = (name) => {
     const listeners = [];
+    let timer = null, polling = false;
+    const poll = async () => {
+      if (polling) return;
+      polling = true;
+      try {
+        for (const listener of listeners) {
+          if (listener.event !== "postgres_changes" || !listener.filter?.table) continue;
+          const current = await store.readTable(listener.filter.table);
+          const serialised = JSON.stringify(current);
+          if (listener.lastSerialised === undefined) {
+            listener.lastSerialised = serialised;
+            listener.lastValue = current;
+            continue;
+          }
+          if (serialised !== listener.lastSerialised) {
+            const previous = listener.lastValue;
+            listener.lastSerialised = serialised;
+            listener.lastValue = current;
+            try {
+              listener.callback({
+                schema: listener.filter.schema || "public",
+                table: listener.filter.table,
+                eventType: listener.filter.event || "*",
+                new: current,
+                old: previous
+              });
+            } catch { /* A subscriber cannot break the polling loop. */ }
+          }
+        }
+      } catch { /* Temporary GitHub API failures are retried on the next poll. */ }
+      finally { polling = false; }
+    };
     const instance = {
       on(event, filter, callback) {
         if (typeof callback === "function") listeners.push({ event, filter, callback });
@@ -65,9 +98,17 @@ export function createGitHubSupabaseCompat({
       },
       subscribe(callback) {
         if (typeof callback === "function") callback("SUBSCRIBED");
+        void poll();
+        if (timer === null && listeners.some(listener => listener.event === "postgres_changes")) {
+          timer = globalThis.setInterval(poll, Math.max(5000, pollIntervalMs));
+        }
         return instance;
       },
-      unsubscribe() { listeners.length = 0; return Promise.resolve("ok"); },
+      unsubscribe() {
+        if (timer !== null) globalThis.clearInterval(timer);
+        timer = null; listeners.length = 0;
+        return Promise.resolve("ok");
+      },
       send() { return Promise.resolve({ status: "ok" }); },
       topic: name
     };
