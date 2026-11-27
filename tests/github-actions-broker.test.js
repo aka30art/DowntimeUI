@@ -41,7 +41,7 @@ function createBrokerHarness({
   authorised = true,
   decryptError = null
 } = {}) {
-  const calls = { resolved: [], decrypted: [], authorised: [], executed: [], encrypted: [], published: [] };
+  const calls = { resolved: [], issueChecks: [], decrypted: [], authorised: [], executed: [], encrypted: [], published: [] };
   const records = new Map();
   const idempotencyStore = {
     async claim({ requestId, actorUserId, commentId }) {
@@ -70,6 +70,7 @@ function createBrokerHarness({
         ...principalOverrides
       };
     },
+    async authorizeInboxIssue(args) { calls.issueChecks.push(args); return true; },
     async decryptRequest(args) {
       calls.decrypted.push(args);
       if (decryptError) throw decryptError;
@@ -120,6 +121,8 @@ test("broker maps GitHub numeric actor to canonical active USER and authorises b
   const result = await harness.broker.handleIssueComment(event());
   assert.deepEqual(result, { accepted: true, replayed: false, requestId: REQUEST_ID });
   assert.deepEqual(harness.calls.resolved, [String(ACTOR_ID)]);
+  assert.equal(harness.calls.issueChecks[0].principal.userId, USER_ID);
+  assert.equal(harness.calls.issueChecks[0].issueId, 333);
   assert.equal(harness.calls.decrypted[0].actorUserId, USER_ID);
   assert.equal(harness.calls.decrypted[0].envelope.protocol, "YARDHUB_GITHUB_BROKER");
   assert.equal(harness.calls.authorised[0].principal.userId, USER_ID);
@@ -182,6 +185,7 @@ test("broker refuses execution if the current authority epoch is unavailable", a
   const broker = createGitHubActionsBroker({
     expectedRepositoryId: REPOSITORY_ID,
     resolvePrincipal: async id => ({ githubUserId: id, userId: USER_ID, staffId: "staff-01", enabled: true, status: "ACTIVE" }),
+    authorizeInboxIssue: async () => true,
     decryptRequest: async () => ({ requestId: REQUEST_ID, action: "gatelog-history" }),
     authorize: async () => true,
     execute: async () => { throw new Error("Must not execute without authority epoch."); },
@@ -191,4 +195,21 @@ test("broker refuses execution if the current authority epoch is unavailable", a
     getAuthorityEpoch: async () => null
   });
   await assert.rejects(broker.handleIssueComment(event()), /authority epoch is unavailable/);
+});
+
+
+test("broker denies a valid USER when the request issue is not assigned to that USER", async () => {
+  const restricted = createGitHubActionsBroker({
+    expectedRepositoryId: REPOSITORY_ID,
+    resolvePrincipal: async id => ({ githubUserId: id, userId: USER_ID, staffId: "staff-01", enabled: true, status: "ACTIVE" }),
+    authorizeInboxIssue: async () => false,
+    decryptRequest: async () => { throw new Error("Must not decrypt an unassigned inbox issue."); },
+    authorize: async () => true,
+    execute: async () => { throw new Error("Must not execute an unassigned inbox issue."); },
+    encryptResponse: async () => "encrypted",
+    publishEncryptedResponse: async () => {},
+    idempotencyStore: { claim: async () => ({ acquired: true }), complete: async () => {} },
+    getAuthorityEpoch: async () => 1
+  });
+  await assert.rejects(restricted.handleIssueComment(event()), error => error.code === "BROKER_ISSUE_OWNERSHIP_DENIED");
 });
