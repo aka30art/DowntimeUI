@@ -36,9 +36,12 @@ export async function createGitHubCentralServiceSession({
   if (!store || typeof store.readDatabase !== "function" || typeof store.transactDatabase !== "function") {
     throw new TypeError("A private GitHub data store is required.");
   }
-  if (!principal?.userId || !principal?.staffId || !principal?.username ||
+  const immutableDevRoot = principal?.rootsClass === "DEV" &&
+    String(principal?.username || "").trim().toUpperCase() === "DEV";
+  if (!principal?.userId || !principal?.username ||
+      (!principal.staffId && !immutableDevRoot) ||
       principal.enabled !== true || principal.status !== "ACTIVE") {
-    throw new Error("An active canonical USER/STAFF principal is required.");
+    throw new Error("An active canonical USER/STAFF identity or immutable DEV root is required.");
   }
   if (typeof requestId !== "string" || !/^[0-9a-f-]{36}$/i.test(requestId)) {
     throw new TypeError("A valid broker request ID is required.");
