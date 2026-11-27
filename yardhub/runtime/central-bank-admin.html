@@ -215,7 +215,28 @@ small,.muted{color:var(--muted)}
 #cdbBackToMenu{display:none;min-height:46px;margin:0 0 16px;text-align:left}
 #workspace.cdb-section-page #cdbBackToMenu{display:inline-flex;align-items:center;gap:9px}
 @media(max-width:760px){#workspace.cdb-section-page .main{padding-top:12px}#workspace.cdb-section-page #cdbBackToMenu{width:100%;justify-content:flex-start}}
-</style></head>
+</style><style id="yardhub-github-connect-style">
+body.yardhub-github-locked{overflow:hidden}
+body.yardhub-github-locked>:not(#yardhub-github-connect-overlay){visibility:hidden!important}
+#yardhub-github-connect-overlay{position:fixed;inset:0;z-index:999999;display:grid;place-items:center;padding:22px;background:#07111f;color:#e9eef5;font-family:Arial,sans-serif}
+#yardhub-github-connect-overlay[hidden]{display:none}
+.yardhub-github-connect-card{width:min(620px,100%);padding:30px;border:1px solid #344256;border-top:4px solid #f0c43b;border-radius:12px;background:#111d2c;box-shadow:0 24px 80px #0009}
+.yardhub-github-connect-kicker{font-size:11px;font-weight:700;letter-spacing:.16em;color:#f0c43b;margin-bottom:16px}
+.yardhub-github-connect-card h1{font-size:25px;margin:0 0 12px}
+.yardhub-github-connect-card p{font-size:14px;line-height:1.55;color:#b9c5d3}
+.yardhub-github-connect-note{padding:11px 13px;border-left:3px solid #f0c43b;background:#182638}
+#yardhub-github-connect-form{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:20px 0}
+#yardhub-github-connect-form label{display:grid;gap:6px;font-size:12px;color:#cbd5e1}
+#yardhub-github-connect-form label:nth-child(3),#yardhub-github-connect-form label:nth-child(4),#yardhub-github-connect-form button{grid-column:1/-1}
+#yardhub-github-connect-form input{width:100%;box-sizing:border-box;padding:12px;border:1px solid #40516a;border-radius:6px;background:#081321;color:#fff;font:inherit}
+#yardhub-github-connect-form button{padding:13px;border:0;border-radius:6px;background:#f0c43b;color:#111827;font-weight:800;letter-spacing:.08em;cursor:pointer}
+#yardhub-github-connect-form button:disabled{opacity:.55;cursor:wait}
+#yardhub-github-connect-form [data-create-private]{background:transparent;border:1px solid #f0c43b;color:#f0c43b}
+.yardhub-github-connect-status{min-height:22px;font-weight:700}
+.yardhub-github-connect-status[data-state=error]{color:#ff9c9c}
+@media(max-width:520px){.yardhub-github-connect-card{padding:20px}#yardhub-github-connect-form{grid-template-columns:1fr}#yardhub-github-connect-form label{grid-column:1/-1}}
+</style>
+</head>
 <body>
 <section id="login">
  <div class="login-card">
@@ -223,8 +244,8 @@ small,.muted{color:var(--muted)}
   <p class="muted">Configuration control plane for organisation structure, master registries, operational libraries and approved system defaults.</p>
   <p class="muted" style="font-size:11px">Connection settings are remembered on this device after you change them. PINs are never saved.</p>
   <div class="formgrid" style="margin-top:20px">
-   <div class="field"><label for="projectUrl">Supabase project URL</label><input id="projectUrl" value="https://ygwfipksbbprqynvbklk.supabase.co" autocomplete="url"></div>
-   <div class="field"><label for="pubKey">Publishable API key</label><input id="pubKey" value="sb_publishable_PDLmXilBlFT-aC3G14XcbA_GsZlgJGx" autocomplete="off"></div>
+   <div class="field"><label for="projectUrl">GitHub-native service endpoint</label><input id="projectUrl" value="https://github-native.invalid" readonly autocomplete="off"></div>
+   <div class="field"><label for="pubKey">GitHub service adapter</label><input id="pubKey" value="github-native" readonly autocomplete="off"></div>
    <div class="field"><label for="username">Username</label><input id="username" autocomplete="username"></div>
    <div class="field"><label for="pin">PIN</label><input id="pin" type="password" inputmode="numeric" maxlength="8" autocomplete="current-password"></div>
   </div>
@@ -502,17 +523,10 @@ small,.muted{color:var(--muted)}
  const $=id=>document.getElementById(id);
  const rememberedConnectionKey="downtime-central-bank-connection-v2";
  function restoreRememberedConnection(){
-  try{
-   const saved=JSON.parse(localStorage.getItem(rememberedConnectionKey)||"null");
-   if(saved&&typeof saved.projectUrl==="string"&&typeof saved.pubKey==="string"){
-    $("projectUrl").value=saved.projectUrl;
-    $("pubKey").value=saved.pubKey;
-   }
-  }catch{}
+  $("projectUrl").value="https://github-native.invalid";
+  $("pubKey").value="github-native";
  }
- function rememberConnection(){
-  try{localStorage.setItem(rememberedConnectionKey,JSON.stringify({projectUrl:$("projectUrl").value.trim(),pubKey:$("pubKey").value.trim()}));}catch{}
- }
+ function rememberConnection(){}
  restoreRememberedConnection();
  let token=null,me=null,model=null,draftVersion=0,publishedVersion=0,nextVersion=0,versions=[],baseline="",auditEvents=[],auditLoaded=false,impactReport=null,impactReviewedToken="";
  const DAYS=["MONDAY","TUESDAY","WEDNESDAY","THURSDAY","FRIDAY","SATURDAY","SUNDAY"];
@@ -1133,5 +1147,25 @@ function defaultDepartmentSettings(){
 .rm-category-preview-note{margin:12px 0 0;color:#9eafbe;font-size:10px;line-height:1.5}
 @media(max-width:620px){.rm-category-preview-grid{grid-template-columns:1fr}}
 </style>
+<div id="yardhub-github-connect-overlay" role="dialog" aria-modal="true" aria-labelledby="yardhub-github-connect-title">
+  <div class="yardhub-github-connect-card">
+    <div class="yardhub-github-connect-kicker">DOWNTIMEUI · INDEPENDENT DATA INFRASTRUCTURE</div>
+    <h1 id="yardhub-github-connect-title">Connect YARDHUB to GitHub</h1>
+    <p>Connect a dedicated <strong>private</strong> GitHub repository for operational data. Do not use the DOWNTIME or DOWNTIMEUI application-source repositories.</p>
+    <p class="yardhub-github-connect-note">Create a new private repository here using a one-time token with Repository creation (write) or Administration (write). This token is used only for repository creation.</p>
+    <p class="yardhub-github-connect-note">After creation, use a separate fine-grained token limited to this one private repository with Contents read/write and Metadata read. It stays in memory only.</p>
+    <form id="yardhub-github-connect-form">
+      <label>GitHub owner<input name="owner" value="aka30art" autocomplete="username" required></label>
+      <label>Private data repository<input name="repo" placeholder="e.g. YARDHUB-DATA" autocomplete="off" required></label>
+      <label>Data branch<input name="branch" value="main" autocomplete="off" required></label>
+      <label>Fine-grained GitHub token<input name="token" type="password" autocomplete="off" required></label>
+      <button type="submit">CONNECT & INITIALISE</button>
+      <button type="button" data-create-private>CREATE PRIVATE DATA REPOSITORY</button>
+    </form>
+    <p class="yardhub-github-connect-status" data-yardhub-github-status>Waiting for a private GitHub data repository.</p>
+    <p class="yardhub-github-connect-note">The one-time DEV bootstrap code is automatically inserted into the first-owner setup field after connection. It expires after 15 minutes and is invalidated after DEV is created.</p>
+  </div>
+</div>
+<script type="module" src="github-bootstrap.js"></script>
 </body>
 </html>
