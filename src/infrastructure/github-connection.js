@@ -70,6 +70,71 @@ export function clearGitHubConnection({ storage = globalThis.localStorage } = {}
   return true;
 }
 
+export async function createPrivateGitHubDataRepository({
+  owner,
+  repo,
+  description = "Private operational data store for the YARDHUB GitHub-native twin.",
+  token,
+  storage = globalThis.localStorage,
+  fetchImpl = globalThis.fetch
+} = {}) {
+  owner = String(owner || "").trim();
+  repo = String(repo || "").trim();
+  token = String(token || "").trim();
+  if (!/^[A-Za-z0-9-]+$/.test(owner)) throw new TypeError("Enter a valid GitHub owner.");
+  if (!/^[A-Za-z0-9_.-]+$/.test(repo)) throw new TypeError("Enter a valid GitHub repository name.");
+  if (!token) throw new TypeError("Enter a GitHub access token with repository-creation permission.");
+  if (FORBIDDEN_REPOSITORIES.has(normaliseRepository(owner, repo))) {
+    throw new GitHubStoreError("The application source and protected DOWNTIME repositories cannot be operational data stores.", 403);
+  }
+  if (typeof fetchImpl !== "function") throw new TypeError("A fetch implementation is required.");
+
+  let response;
+  try {
+    response = await fetchImpl("https://api.github.com/user/repos", {
+      method: "POST",
+      headers: {
+        Accept: "application/vnd.github+json",
+        Authorization: "Bearer " + token,
+        "Content-Type": "application/json",
+        "X-GitHub-Api-Version": "2022-11-28"
+      },
+      body: JSON.stringify({
+        name: repo,
+        description: String(description).slice(0, 350),
+        private: true,
+        auto_init: true,
+        has_issues: false,
+        has_projects: false,
+        has_wiki: false
+      })
+    });
+  } catch {
+    throw new GitHubStoreError("GitHub could not create the private data repository. Check the connection and token permissions.");
+  }
+  let metadata;
+  try {
+    metadata = typeof response.json === "function" ? await response.json() : JSON.parse(await response.text());
+  } catch {
+    throw new GitHubStoreError("GitHub returned unreadable repository-creation metadata.", response.status || 0);
+  }
+  if (!response.ok) {
+    const message = metadata?.message || "GitHub rejected private repository creation.";
+    throw new GitHubStoreError(message + " The token needs permission to create a private repository.", response.status);
+  }
+  const fullName = normaliseRepository(owner, repo);
+  if (metadata?.private !== true || String(metadata?.full_name || "").toLowerCase() !== fullName) {
+    throw new GitHubStoreError("GitHub did not create the exact requested private repository. No data connection was opened.", 403);
+  }
+  saveGitHubConnection({ owner, repo, branch: metadata.default_branch || "main", token }, { storage });
+  return {
+    owner, repo, fullName: metadata.full_name,
+    private: true, defaultBranch: metadata.default_branch || "main",
+    htmlUrl: metadata.html_url || null,
+    connected: true
+  };
+}
+
 async function verifyPrivateRepository({ owner, repo, token, fetchImpl }) {
   const fullName = normaliseRepository(owner, repo);
   if (FORBIDDEN_REPOSITORIES.has(fullName)) {
