@@ -420,7 +420,7 @@ The branch is currently a data-branch prototype inside the public DOWNTIMEUI rep
 2. The snapshot stores the DOWNTIMEUI installation's configuration and local operation state. It is not yet a replicated copy of the main YARDHUB data.
 3. The event API is available for subsequent module integration; the current existing workspace save paths are snapshot-backed rather than fully mapped to domain events.
 4. Cross-device restore currently assumes the target workspace has the matching installation ID/configuration. A clean-device discovery/restore workflow and shared installation registry remain to be implemented.
-5. The data branch currently holds metadata only. No operator should enter an actual GitHub token until they are ready to connect to the prototype. The app requires a repository token with Contents read/write access; tokens are held in the current browser session and are not committed to source.
+5. The `data/yardhub` branch currently holds metadata only. It is inside the public DOWNTIMEUI repository and is not an approved production data destination. The browser connection now refuses the DOWNTIMEUI source repository, the protected DOWNTIME repository, and every repository that GitHub does not explicitly report as private. A token is held only in module memory, is not written to localStorage/sessionStorage, and must be re-entered after a reload. Direct browser repository access still gives that trusted operator access to the repository's full contents; this prototype is not approved for shared staff access or production data.
 6. The snapshot uses a bounded JSON file size. Larger data volumes need sharding, checkpoint compaction and media storage handling before production.
 7. Primary-switch primitives are tested in isolation. They are not wired to live production YARDHUB or to a real replication checkpoint and must not be used for cutover yet.
 8. GitHub's API and rate limits, large-file boundaries and Pages terms remain part of the production feasibility review.
@@ -434,3 +434,38 @@ The branch is currently a data-branch prototype inside the public DOWNTIMEUI rep
 **Phase 1 status:** storage and browser connection prototype implemented. Phase 1 is not complete until the latest CI run finishes successfully, concurrent-writer behaviour is exercised with a real GitHub branch, and a clean-device restore is implemented and tested.
 
 No merge, production deployment, primary cutover or Supabase removal has been performed.
+
+
+## 12. Security and production deployment gate
+
+### Verified repository facts
+
+- `aka30art/DowntimeUI` is currently a **public** repository.
+- `aka30art/DOWNTIME` is a separate protected public repository. This project does not modify it.
+- The only accessible private repository found during the current audit is `aka30art/DOP-website`. It belongs to the unrelated AKASHI/DOP website and is deliberately excluded from all operational storage.
+- The public `data/yardhub` branch contains only the initial authority metadata. No operational records, staff details, customer information, vehicle registrations, credentials, reports or evidence have been copied there.
+
+### Security changes implemented in DOWNTIMEUI
+
+- The browser connection has no default data repository. Operators must configure a dedicated data repository explicitly.
+- The source repository and protected DOWNTIME repository are hard-blocked as data destinations.
+- A connection is opened only after GitHub repository metadata confirms `private: true` and the returned full repository name matches the configured owner/repository.
+- GitHub access tokens are held in module memory only. They are not written to localStorage or sessionStorage and are cleared on disconnect or a failed connection. The token must be re-entered after a page reload.
+- The workspace connection panel describes the private-repository requirement and the remaining server-side authorization limitation.
+- Tests cover public-repository rejection, repository identity mismatch, protected-repository rejection and memory-only token handling.
+
+### Remaining production security blocker
+
+The current GitHub data adapter calls GitHub's Contents/Git Data APIs directly from the browser. A private repository prevents public disclosure, but a user who receives a repository read/write token can inspect and modify the entire repository outside the application's YARD ROLE permissions. Moving the token from sessionStorage to memory reduces persistence; it does **not** create a server-side security boundary.
+
+GitHub Pages is a static host. It cannot keep a private GitHub credential server-side. GitHub Actions can provide a GitHub-only job broker, but it is an asynchronous workflow queue, not a synchronous application API. A production design using that route must include a separately protected data repository, a narrowly permissioned dispatch identity per operator, actor verification in the workflow, server-side YARD ROLE enforcement, request/response correlation, concurrency control and an encrypted or otherwise private response channel. It also needs measured latency and rate-limit acceptance before the operational modules can rely on it.
+
+The currently accessible repositories do not include a dedicated private YARDHUB data repository or a configured broker identity. The unrelated private DOP-website repository is not suitable and must not be repurposed. The GitHub connector available to this project can read and write existing repositories but cannot create a new repository or manage repository secrets. Until the dedicated private repository and broker credentials exist, the browser-direct store remains an administrator-only prototype and must not be used for staff accounts or live operational data.
+
+### Release gate
+
+- Do not connect the application to the public `DowntimeUI` data branch for operational use.
+- Do not put real records, personal data, customer/vehicle data, report PDFs or evidence into any public repository branch or workflow artifact.
+- Do not distribute one write token among staff.
+- Do not merge or deploy the YARDHUB runtime as a production system until the private storage gateway, server-enforced identity/permissions, recovery and multi-writer acceptance tests are complete.
+- No primary-system switch is permitted. YARDHUB remains the primary system and its production environment remains untouched.
