@@ -303,3 +303,64 @@ test("DEV-preserving identity reset retains DEV session and operational records"
   assert.equal(snapshot.tables.downtime_reports[0].title, "Preserved report");
   assert.equal(snapshot.tables.downtime_identity_reset_runs.length, 1);
 });
+
+
+async function sha256Hex(value) {
+  const digest = await globalThis.crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
+  return Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, "0")).join("");
+}
+
+test("DEV bootstrap RPC returns only the active hashed one-time code", async () => {
+  const code = "D".repeat(48);
+  const hash = await sha256Hex(code);
+  const store = memoryStore({
+    downtime_roots_bootstrap: [{
+      singleton: true,
+      user_id: "root-dev-id",
+      bootstrap_code_hash: hash,
+      bootstrap_code_expires_at: "2026-11-27T10:45:00.000Z"
+    }],
+    downtime_central_bank: [{
+      id: 1,
+      payload: { users: [] },
+      version: 0
+    }]
+  });
+  const db = createGitHubTableClient({ store, rpcHandlers: GITHUB_YARDHUB_RPC_HANDLERS, now: fixedNow });
+  globalThis.__YARDHUB_BOOTSTRAP_CODE__ = code;
+  try {
+    const active = await db.rpc("downtime_get_bootstrap_code");
+    assert.equal(active.error, null);
+    assert.equal(active.data, code);
+
+    const expiredStore = memoryStore({
+      downtime_roots_bootstrap: [{
+        singleton: true, user_id: "root-dev-id",
+        bootstrap_code_hash: hash,
+        bootstrap_code_expires_at: "2026-11-27T10:00:00.000Z"
+      }],
+      downtime_central_bank: [{ id: 1, payload: { users: [] }, version: 0 }]
+    });
+    const expired = await createGitHubTableClient({
+      store: expiredStore, rpcHandlers: GITHUB_YARDHUB_RPC_HANDLERS, now: fixedNow
+    }).rpc("downtime_get_bootstrap_code");
+    assert.equal(expired.data, null);
+
+    const claimedStore = memoryStore({
+      downtime_roots_bootstrap: [{
+        singleton: true, user_id: "root-dev-id",
+        bootstrap_code_hash: hash,
+        bootstrap_code_expires_at: "2026-11-27T10:45:00.000Z"
+      }],
+      downtime_central_bank: [{
+        id: 1, payload: { users: [{ username: "DEV", userId: "root-dev-id" }] }, version: 1
+      }]
+    });
+    const claimed = await createGitHubTableClient({
+      store: claimedStore, rpcHandlers: GITHUB_YARDHUB_RPC_HANDLERS, now: fixedNow
+    }).rpc("downtime_get_bootstrap_code");
+    assert.equal(claimed.data, null);
+  } finally {
+    globalThis.__YARDHUB_BOOTSTRAP_CODE__ = null;
+  }
+});
