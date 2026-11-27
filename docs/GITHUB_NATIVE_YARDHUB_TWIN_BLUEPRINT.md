@@ -361,3 +361,76 @@ The following row counts are the values returned by the live table inventory. Th
 - Selection and rehearsal of the YARDHUB → GitHub replication bridge.
 
 **Updated state:** repository audit and live platform inventory are documented. Phase 0 remains open until export completeness, source census and the write-gateway feasibility test are complete. No production system or application code has been changed.
+
+
+## 11. Phase 1 — GitHub-native storage engine prototype
+
+**Implementation branch:** `architecture/github-native-yardhub-twin`  
+**Data branch:** `data/yardhub`  
+**Application PR:** [#3 — Architecture: GitHub-native YARDHUB functional twin](https://github.com/aka30art/DowntimeUI/pull/3)
+
+### Data branch initialisation
+
+The `data/yardhub` branch was created with a data-only tree containing:
+- `README.md`
+- `control/authority.json`
+
+Initial authority:
+- Primary: `YARDHUB-PRIMARY`
+- Secondary: `DOWNTIMEUI-GITHUB`
+- Authority epoch: 1
+- Status: ACTIVE
+- Replication status: NOT_CONFIGURED
+
+No production YARDHUB/DOWNTIME records, sessions, credentials, reports or evidence were copied to this branch.
+
+The branch is currently a data-branch prototype inside the public DOWNTIMEUI repository, not yet a separate private/dedicated data repository. Its current manifest is safe test metadata only. Do not treat this branch as the long-term production destination until the final repository/storage layout is chosen.
+
+### Implemented source files
+
+- `src/infrastructure/github-data-store.js`
+  - GitHub Git Data API client.
+  - Optimistic non-fast-forward ref update for compare-and-swap commit behaviour.
+  - Append-only per-system, per-module, per-day event shards.
+  - Stable event IDs and duplicate suppression.
+  - Primary vs secondary-local write classification.
+  - Versioned workspace snapshots with expected-version checks.
+  - Authority manifest read/update.
+  - Prepare → freeze → complete/cancel primary-switch state machine.
+  - Reconciliation proof requirement: verified=true, zero unresolved conflicts and equal source/target checksums.
+- `src/infrastructure/github-connection.js`
+  - Repository/branch connection configuration.
+  - Session-scoped GitHub token storage.
+  - Store construction and disconnect handling.
+- `src/workspace.js`
+  - GitHub connection panel in DOWNTIMEUI Settings → People & settings.
+  - Connection verification against the authority manifest.
+  - Debounced automatic backup of the local workspace to a versioned GitHub snapshot after local saves.
+  - Manual Sync and Restore controls.
+  - Reconnect using the current browser session.
+  - Local browser persistence remains the immediate save path; GitHub snapshot is the remote backup path.
+- `tests/github-data-store.test.js`
+  - Secondary writes, idempotency, concurrent-write retry, authority switch sequencing, primary role, stale epochs, cancellation and snapshot version conflicts.
+- `tests/github-connection.test.js`
+  - Connection metadata/token separation, invalid settings, disconnect and missing-token behaviour.
+
+### Important behaviour and current limitations
+
+1. The DOWNTIMEUI runtime writes its own workspace snapshot under the DOWNTIMEUI system identity. The initial authority manifest keeps YARDHUB as primary, so these writes are labelled SECONDARY_LOCAL until a controlled authority switch is completed.
+2. The snapshot stores the DOWNTIMEUI installation's configuration and local operation state. It is not yet a replicated copy of the main YARDHUB data.
+3. The event API is available for subsequent module integration; the current existing workspace save paths are snapshot-backed rather than fully mapped to domain events.
+4. Cross-device restore currently assumes the target workspace has the matching installation ID/configuration. A clean-device discovery/restore workflow and shared installation registry remain to be implemented.
+5. The data branch currently holds metadata only. No operator should enter an actual GitHub token until they are ready to connect to the prototype. The app requires a repository token with Contents read/write access; tokens are held in the current browser session and are not committed to source.
+6. The snapshot uses a bounded JSON file size. Larger data volumes need sharding, checkpoint compaction and media storage handling before production.
+7. Primary-switch primitives are tested in isolation. They are not wired to live production YARDHUB or to a real replication checkpoint and must not be used for cutover yet.
+8. GitHub's API and rate limits, large-file boundaries and Pages terms remain part of the production feasibility review.
+
+### Validation checkpoint
+
+- A GitHub Actions PR run for commit `1d7260f296a54164ff91e6328afdd03c74df88e5` completed successfully, including `npm run check` and Chromium browser QA.
+- A later PR run for the workspace snapshot/connection integration reached `npm run check` successfully; Chromium browser QA was still running at the time of this documentation update.
+- The test suite is wired through the existing DOWNTIMEUI `npm run check` / `npm test` workflow.
+
+**Phase 1 status:** storage and browser connection prototype implemented. Phase 1 is not complete until the latest CI run finishes successfully, concurrent-writer behaviour is exercised with a real GitHub branch, and a clean-device restore is implemented and tested.
+
+No merge, production deployment, primary cutover or Supabase removal has been performed.
