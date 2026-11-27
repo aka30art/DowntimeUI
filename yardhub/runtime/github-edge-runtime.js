@@ -42,7 +42,7 @@ export async function installGitHubEdgeRuntime({
   globalThis.__YARDHUB_GITHUB_COMPAT__ = {
     createClient() { return createCompatClient(); }
   };
-  const { createGitHubSupabaseCompat } = await import("./github-supabase-compat.js");
+  const { createGitHubSupabaseCompat } = await import("../../src/infrastructure/github-supabase-compat.js");
   function createCompatClient() {
     return createGitHubSupabaseCompat({
       store, actorId, rpcHandlers, handlers,
