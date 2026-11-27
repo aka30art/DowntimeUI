@@ -80,6 +80,11 @@ function createBrokerHarness({
       calls.authorised.push(args);
       return authorised;
     },
+    async createServiceSession(args) {
+      calls.sessions = (calls.sessions || []);
+      calls.sessions.push(args);
+      return { token: "broker-issued-short-lived-session-token", async dispose() { calls.sessionDisposed = true; } };
+    },
     async execute(args) {
       calls.executed.push(args);
       return { count: 3 };
@@ -131,6 +136,9 @@ test("broker maps GitHub numeric actor to canonical active USER and authorises b
   assert.equal(harness.calls.authorised[0].authorityEpoch, 4);
   assert.equal(harness.calls.executed[0].principal.userId, USER_ID);
   assert.equal(harness.calls.executed[0].service, "gatelog-api");
+  assert.equal(harness.calls.executed[0].sessionToken, "broker-issued-short-lived-session-token");
+  assert.equal(harness.calls.sessions[0].principal.userId, USER_ID);
+  assert.equal(harness.calls.sessionDisposed, true);
   assert.equal(harness.calls.executed[0].sessionToken, "session-token-test");
   assert.equal(harness.calls.executed[0].authorityEpoch, 4);
   assert.equal(harness.calls.encrypted[0].requestEnvelope.requestId, REQUEST_ID);
@@ -192,6 +200,7 @@ test("broker refuses execution if the current authority epoch is unavailable", a
     authorizeInboxIssue: async () => true,
     decryptRequest: async () => ({ requestId: REQUEST_ID, service: "gatelog-api", action: "history", args: {}, sessionToken: "session-token-test" }),
     authorize: async () => true,
+    createServiceSession: async () => { throw new Error("Must not create a session without authority epoch."); },
     execute: async () => { throw new Error("Must not execute without authority epoch."); },
     encryptResponse: async () => "encrypted",
     publishEncryptedResponse: async () => {},
@@ -209,6 +218,7 @@ test("broker denies a valid USER when the request issue is not assigned to that 
     authorizeInboxIssue: async () => false,
     decryptRequest: async () => { throw new Error("Must not decrypt an unassigned inbox issue."); },
     authorize: async () => true,
+    createServiceSession: async () => { throw new Error("Must not create a session for an unassigned inbox issue."); },
     execute: async () => { throw new Error("Must not execute an unassigned inbox issue."); },
     encryptResponse: async () => "encrypted",
     publishEncryptedResponse: async () => {},
