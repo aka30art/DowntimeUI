@@ -54,7 +54,11 @@ const expectedRpcHandlers = [
 ].sort();
 
 test("GitHub database preserves the 39-table source inventory and isolates two broker tables", () => {
-  const expectedBrokerTables = ["downtime_github_broker_requests", "downtime_github_identities"].sort();
+  const expectedBrokerTables = [
+    "downtime_github_broker_requests",
+    "downtime_github_identities",
+    "downtime_github_broker_identity_audit"
+  ].sort();
   assert.equal(new Set(GITHUB_YARDHUB_TABLES).size, GITHUB_YARDHUB_TABLES.length, "database table names must not be duplicated");
   assert.equal(new Set(YARDHUB_TABLES).size, YARDHUB_TABLES.length, "backup table names must not be duplicated");
   assert.deepEqual([...GITHUB_YARDHUB_SOURCE_TABLES].sort(), expectedTables);
