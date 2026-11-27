@@ -154,7 +154,9 @@ No commits, pull requests, workflow runs, settings changes, deployments, Supabas
 
 ## Latest protocol and hardening work
 
-- Runtime hardening commit chain: `103e38b` removed placeholder secret fallbacks and changed canonical-auth readiness to fail closed; `012d41f` removed the synthetic anonymous session; `944d2e1` and `5918ef7` added regression assertions.
-- Broker protocol core: `d1ad377` adds event validation, trusted sender-ID extraction, canonical USER mapping, signature-verification callback, authority epoch check, authorization callback, identity-field rejection, idempotency and encrypted-response callbacks.
-- Broker protocol tests: `19da9e6` adds the test suite; `2ef1096` wires it into `npm test` and `npm run check`.
-- CI #487 on `19eae382` passed before these changes. No CI result has yet been observed for the current head. Phase 3 remains BLOCKED pending real cryptography, key lifecycle, private broker/data infrastructure, workflow and two-account end-to-end proof.
+- Runtime hardening: placeholder fingerprint/image/cleanup secrets were removed, canonical-auth readiness now defaults to false, and the compatibility layer no longer fabricates anonymous sessions.
+- Client: `src/infrastructure/github-app-broker-client.js` uses GitHub App Device Flow with the `repository_id` token restriction and ephemeral P-256 ECDH/HKDF/AES-GCM request/response encryption. Device Flow remains a prototype choice; GitHub recommends the web application flow for browser clients and strongly recommends PKCE.
+- Orchestration core: `src/infrastructure/github-actions-broker.js` validates GitHub issue-comment event identity, maps numeric sender IDs to canonical USER/STAFF, checks per-USER inbox ownership, decrypts via callback, checks action authorization and authority epoch, rejects caller identity injection, and uses injected idempotency and encrypted-response interfaces.
+- The core is not connected to a real GitHub Actions workflow, broker/data repositories, Data App credentials, concrete USER/role lookup, cryptographic key custody or response publisher. Ephemeral client keys are memory-only; device recovery and two-device use are open.
+- CI #487 on `19eae382` passed before the latest hardening and broker changes. Runs #506 passed `npm run check` and continued through Chromium/browser QA on earlier code. Run #508 is the first full validation attempt of the ECDH-envelope-aligned broker core; later changes add per-USER inbox ownership and need their own CI result.
+- Phase 3 remains BLOCKED pending final browser auth decision, real workflow/default-branch trigger, private broker/data infrastructure, protected secrets, two-account proof, recovery and measured throughput.
