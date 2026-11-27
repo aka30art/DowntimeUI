@@ -549,4 +549,113 @@ export const GITHUB_YARDHUB_RPC_HANDLERS = Object.freeze({
     return { user_id: userId, staff_id: staffId, yard_role_id: roleId, status: assignment.status, version: assignment.version, verified_at: assignment.verified_at, replayed: false };
   }
 
+
+  downtime_identity_reset_preserve_dev({ tables, args, now }) {
+    const actorUserId = cleanText(args.p_actor_user_id, 120);
+    const actorUsername = cleanText(args.p_actor_username, 80).toUpperCase();
+    const actorDisplayName = cleanText(args.p_actor_display_name, 120);
+    const sessionHash = cleanText(args.p_actor_session_hash, 200);
+    if (!actorUserId || actorUsername !== "DEV" || !actorDisplayName || !sessionHash) {
+      throw new Error("Identity reset requires the authenticated DEV actor and active session");
+    }
+    const bootstrap = rows(tables, "downtime_roots_bootstrap").find(x => x.singleton === true);
+    if (!bootstrap || bootstrap.user_id !== actorUserId) throw new Error("Identity reset actor is not the immutable current DEV bootstrap");
+    const sessions = rows(tables, "downtime_central_sessions");
+    if (!sessions.some(x => x.token_hash === sessionHash && String(x.username).trim().toUpperCase() === "DEV" && Date.parse(x.expires_at) > now().getTime())) {
+      throw new Error("The authenticated DEV session is no longer active");
+    }
+    if (rows(tables, "downtime_identity_reset_runs").some(x => x.singleton === true)) {
+      throw new Error("The one-time identity reset has already been completed");
+    }
+    const bank = rows(tables, "downtime_central_bank").find(x => Number(x.id) === 1);
+    if (!bank || !bank.payload || typeof bank.payload !== "object") throw new Error("Central USER directory is unavailable");
+    if (Number(bank.version) !== Number(args.p_expected_version)) throw Object.assign(new Error("IDENTITY_RESET_VERSION_CONFLICT"), { status: 409 });
+    const users = Array.isArray(bank.payload.users) ? bank.payload.users : [];
+    const devUser = users.find(account => String(account.userId).toLowerCase() === actorUserId.toLowerCase() && String(account.username).trim().toUpperCase() === "DEV" && account.enabled !== false);
+    if (!devUser) throw new Error("The existing DEV USER record is missing or disabled");
+
+    const previousUserCount = users.length;
+    const previousStaffCount = Object.keys(bank.payload.staff?.profiles || {}).length;
+    const previousRosterCount = Array.isArray(bank.payload.staff?.roster) ? bank.payload.staff.roster.length : 0;
+    const nextPayload = structuredClone(bank.payload);
+    nextPayload.users = [structuredClone(devUser)];
+    nextPayload.staff = { ...(nextPayload.staff && typeof nextPayload.staff === "object" ? nextPayload.staff : {}), roster: [], profiles: {} };
+    nextPayload.appData = {
+      ...(nextPayload.appData && typeof nextPayload.appData === "object" ? nextPayload.appData : {}),
+      staffRoster: [], operatorProfiles: {}
+    };
+
+    for (const assignment of rows(tables, "yard_role_assignments")) {
+      if (assignment.status !== "ACTIVE") continue;
+      assignment.status = "REVOKED";
+      assignment.version = Number(assignment.version || 0) + 1;
+      assignment.updated_at = now().toISOString();
+      rows(tables, "yard_role_assignment_audit").push({
+        id: id(), assignment_id: assignment.id, user_id: assignment.user_id,
+        staff_id: assignment.staff_id, yard_role_id: assignment.yard_role_id,
+        actor_user_id: actorUserId, actor_username: "DEV", actor_display_name: actorDisplayName,
+        action: "IDENTITY_RESET_REVOKED_ASSIGNMENT",
+        details: { reason: "USER and STAFF directory reset; YARD ROLE definitions retained" },
+        created_at: now().toISOString()
+      });
+    }
+    for (const assignment of rows(tables, "downtime_roots_assignments")) {
+      if (assignment.status !== "ACTIVE") continue;
+      assignment.status = "REVOKED";
+      assignment.version = Number(assignment.version || 0) + 1;
+      assignment.revoked_at = now().toISOString();
+      assignment.updated_at = now().toISOString();
+      rows(tables, "downtime_roots_assignment_audit").push({
+        id: id(), assignment_id: assignment.id, user_id: assignment.user_id,
+        staff_id: assignment.staff_id, roots_class: assignment.roots_class,
+        actor_user_id: actorUserId, actor_username: "DEV", actor_display_name: actorDisplayName,
+        action: "ROOTS_REVOKED", created_at: now().toISOString()
+      });
+    }
+
+    const tier = rows(tables, "yard_hub_tier_config").find(x => Number(x.id) === 1);
+    if (tier) {
+      const previous = structuredClone(tier.payload || {});
+      const next = { ...previous, userTiers: {} };
+      tier.payload = next;
+      tier.version = Number(tier.version || 0) + 1;
+      tier.updated_by = "DEV";
+      tier.updated_at = now().toISOString();
+      rows(tables, "yard_hub_access_audit").push({
+        id: id(), actor: "DEV", action: "identity-reset-clear-user-tiers",
+        previous_payload: previous, new_payload: next, created_at: now().toISOString()
+      });
+    }
+
+    bank.payload = nextPayload;
+    bank.version = Number(bank.version) + 1;
+    bank.updated_at = now().toISOString();
+    tables.downtime_central_sessions = sessions.filter(x => x.token_hash === sessionHash && String(x.username).trim().toUpperCase() === "DEV");
+    rows(tables, "downtime_identity_reset_runs").push({
+      singleton: true, old_dev_user_id: actorUserId, new_dev_user_id: actorUserId,
+      performed_at: now().toISOString()
+    });
+    rows(tables, "downtime_central_audit").push({
+      id: id(), username: "DEV", action: "identity-reset-preserve-dev",
+      details: {
+        devUserIdPreserved: true, previousUserCount,
+        removedUserCount: Math.max(previousUserCount - 1, 0),
+        removedStaffProfileCount: previousStaffCount,
+        removedStaffRosterCount: previousRosterCount,
+        staffPhotoObjectsRemovedByService: true,
+        ordinaryYardRoleDefinitionsPreserved: true,
+        rootedRoleDefinitionsPreserved: true,
+        operationalRecordsPreserved: true
+      },
+      created_at: now().toISOString()
+    });
+    return {
+      ok: true, version: bank.version, devUserId: actorUserId,
+      removedUserCount: Math.max(previousUserCount - 1, 0),
+      removedStaffProfileCount: previousStaffCount,
+      removedStaffRosterCount: previousRosterCount,
+      devSessionPreserved: true
+    };
+  }
+
 });
