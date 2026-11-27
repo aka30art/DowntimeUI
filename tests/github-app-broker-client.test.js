@@ -54,7 +54,7 @@ test("broker request and response are end-to-end encrypted with ephemeral P-256 
   const result = { ok: true, visitId: "visit-test-123", message: "Saved" };
   const responseEnvelope = await encryptBrokerResponse({
     requestEnvelope: parsedRequest, payload: result,
-    brokerPrivateKey: broker.privateKey, cryptoProvider: webcrypto
+    brokerPrivateKey: broker.privateKey, cryptoProvider: webcrypto, now
   });
   const responseComment = formatBrokerResponseComment(responseEnvelope);
   assert.equal(responseComment.includes("visit-test-123"), false);
@@ -81,7 +81,7 @@ test("broker rejects expired requests and malformed public comment envelopes", a
     cryptoProvider: webcrypto,
     now: () => new Date("2026-11-27T12:06:00.000Z")
   }), /expired/);
-  assert.throws(() => parseBrokerRequestComment("YARDHUB_REQUEST_V1:not-json"), /invalid JSON|Base64URL/i);
+  assert.throws(() => parseBrokerRequestComment("YARDHUB_REQUEST_V1:not-json"), /not valid JSON|Base64URL/i);
 });
 
 test("GitHub App Device Flow restricts the user token to the broker repository and posts only ciphertext", async () => {
@@ -140,7 +140,8 @@ test("GitHub App Device Flow restricts the user token to the broker repository a
         requestEnvelope,
         payload: { ok: true, visitId: "private-visit-id" },
         brokerPrivateKey: broker.privateKey,
-        cryptoProvider: webcrypto
+        cryptoProvider: webcrypto,
+        now: () => new Date(clock)
       });
       comments = [{
         id: 765,
