@@ -189,13 +189,38 @@ export function createYardHubBackupRunner({
     }
   }
 
-  function authorityPause(authority) {
-    if (authority && (authority.status !== "ACTIVE" || authority.primarySystemId !== "YARDHUB-PRIMARY")) {
+  function authorityPause(authority, expectedEpoch = null) {
+    if (!authority) {
+      return {
+        skipped: true,
+        reason: "The GitHub authority manifest is missing; backup stopped.",
+        primarySystemId: null,
+        authorityStatus: null
+      };
+    }
+    if (authority.status !== "ACTIVE" || authority.primarySystemId !== "YARDHUB-PRIMARY") {
       return {
         skipped: true,
         reason: "YARDHUB is not the active primary in the GitHub authority manifest.",
         primarySystemId: authority.primarySystemId || null,
         authorityStatus: authority.status || null
+      };
+    }
+    if (!Number.isSafeInteger(authority.epoch) || authority.epoch < 1) {
+      return {
+        skipped: true,
+        reason: "The GitHub authority manifest has an invalid epoch; backup stopped.",
+        primarySystemId: authority.primarySystemId,
+        authorityStatus: authority.status
+      };
+    }
+    if (expectedEpoch !== null && authority.epoch !== expectedEpoch) {
+      return {
+        skipped: true,
+        reason: "The GitHub authority epoch changed during export; backup stopped.",
+        primarySystemId: authority.primarySystemId,
+        authorityStatus: authority.status,
+        authorityEpoch: authority.epoch
       };
     }
     return null;
@@ -301,9 +326,10 @@ export function createYardHubBackupRunner({
     if (destinationMetadata.archived === true) throw new Error("YARDHUB backup destination is archived.");
 
     const destinationHead = await fetchGitHubHead({ api, repository, token, branch });
-    const initialPause = authorityPause(await readAuthorityAtHead({
+    const initialAuthority = await readAuthorityAtHead({
       api, repository, token, head: destinationHead
-    }));
+    });
+    const initialPause = authorityPause(initialAuthority);
     if (initialPause) return initialPause;
 
     const tableRows = await mapLimit(YARDHUB_TABLES, 4, table => exportTable({ supabaseUrl, serviceKey, table }));
@@ -362,9 +388,10 @@ export function createYardHubBackupRunner({
     const result = await commitSnapshot({
       api, repository, token, branch, files, deletions: stale,
       message: "backup: replicate YARDHUB primary snapshot " + manifest.exportedAt,
-      authorityCheck: async head => authorityPause(await readAuthorityAtHead({
-        api, repository, token, head
-      }))
+      authorityCheck: async head => {
+        const latestAuthority = await readAuthorityAtHead({ api, repository, token, head });
+        return authorityPause(latestAuthority, initialAuthority.epoch);
+      }
     });
     if (result.skipped) return result;
     return { ...result, tableCount: YARDHUB_TABLES.length, tableCounts, storageObjectCount: storageObjects.length, storageBytes: manifest.storageBytes };
