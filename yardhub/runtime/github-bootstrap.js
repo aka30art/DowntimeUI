@@ -53,7 +53,7 @@ async function activateRepository({ owner, repo, button, tokenInput }) {
       const primaryBackup = await store.inspectYardHubPrimaryBackup();
       if (primaryBackup) {
         const restore = globalThis.confirm(
-          "A verified YARDHUB primary backup was found (" + primaryBackup.tableCount +
+          "A YARDHUB primary backup manifest was found (" + primaryBackup.tableCount +
           " tables, " + primaryBackup.storageObjectCount + " files, exported " +
           primaryBackup.exportedAt + ").\n\nRestore this backup into the private GitHub database now?\n\nChoose Cancel to install a clean empty YARDHUB instead."
         );
