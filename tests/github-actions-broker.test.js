@@ -1,5 +1,14 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { webcrypto } from "node:crypto";
+import {
+  createEncryptedBrokerRequest,
+  decryptBrokerRequest,
+  encryptBrokerResponse,
+  decryptBrokerResponse,
+  parseBrokerResponseComment,
+  formatBrokerResponseComment
+} from "../src/infrastructure/github-app-broker-client.js";
 import {
   createGitHubActionsBroker,
   parseGitHubIssueCommentEvent
@@ -190,4 +199,100 @@ test("broker refuses execution if the current authority epoch is unavailable", a
   });
   await assert.rejects(broker.handleIssueComment(event({ requestId: REQUEST_ID, action: "gatelog-history" })), /authority epoch is unavailable/);
   assert.equal(harness.calls.executed.length, 0);
+});
+
+
+test("GitHub App inbox ECDH envelope flows through the Actions broker without caller identity fields or a shared repository token", async () => {
+  const repositoryId = REPOSITORY_ID;
+  const brokerKeys = await webcrypto.subtle.generateKey(
+    { name: "ECDH", namedCurve: "P-256" }, false, ["deriveBits"]
+  );
+  const brokerPublicRaw = await webcrypto.subtle.exportKey("raw", brokerKeys.publicKey);
+  const brokerPublicKey = Buffer.from(brokerPublicRaw).toString("base64url");
+  const requestContext = await createEncryptedBrokerRequest({
+    payload: {
+      action: "gatelog-history",
+      args: { range: "today" }
+    },
+    brokerPublicKey,
+    cryptoProvider: webcrypto
+  });
+  const eventPayload = {
+    action: "created",
+    repository: { id: repositoryId },
+    sender: { id: ACTOR_ID, login: "yard-operator", type: "User" },
+    issue: { id: 333, number: 7 },
+    comment: { id: 445, user: { id: ACTOR_ID }, body: requestContext.commentBody }
+  };
+  let savedResponse = null;
+  const ledger = new Map();
+  const broker = createGitHubActionsBroker({
+    expectedRepositoryId: repositoryId,
+    async resolvePrincipal(githubUserId) {
+      assert.equal(githubUserId, String(ACTOR_ID));
+      return {
+        githubUserId,
+        userId: USER_ID,
+        staffId: "staff-01",
+        enabled: true,
+        status: "ACTIVE"
+      };
+    },
+    async decryptRequest({ envelope, actorUserId }) {
+      assert.equal(actorUserId, USER_ID);
+      return decryptBrokerRequest({ envelope, brokerPrivateKey: brokerKeys.privateKey, cryptoProvider: webcrypto });
+    },
+    async authorize({ principal, action, args, authorityEpoch }) {
+      assert.equal(principal.userId, USER_ID);
+      assert.equal(action, "gatelog-history");
+      assert.deepEqual(args, { range: "today" });
+      assert.equal(authorityEpoch, 7);
+      return true;
+    },
+    async execute({ principal, action, args, requestId, authorityEpoch }) {
+      assert.equal(principal.userId, USER_ID);
+      assert.equal(action, "gatelog-history");
+      assert.equal(authorityEpoch, 7);
+      return { records: 2, scope: args.range, requestId };
+    },
+    async encryptResponse({ publicKey, response, requestEnvelope }) {
+      assert.equal(publicKey, requestEnvelope.clientPublicKey);
+      return encryptBrokerResponse({
+        requestEnvelope,
+        payload: response,
+        brokerPrivateKey: brokerKeys.privateKey,
+        cryptoProvider: webcrypto
+      });
+    },
+    async publishEncryptedResponse({ issueNumber, actorUserId, encryptedResponse }) {
+      assert.equal(issueNumber, 7);
+      assert.equal(actorUserId, USER_ID);
+      savedResponse = formatBrokerResponseComment(encryptedResponse);
+    },
+    idempotencyStore: {
+      async claim({ requestId, actorUserId }) {
+        if (ledger.has(requestId)) return { acquired: false, actorUserId: ledger.get(requestId).actorUserId, encryptedResponse: ledger.get(requestId).encryptedResponse };
+        ledger.set(requestId, { actorUserId, encryptedResponse: null });
+        return { acquired: true };
+      },
+      async complete({ requestId, actorUserId, encryptedResponse }) {
+        ledger.set(requestId, { actorUserId, encryptedResponse });
+      }
+    },
+    async getAuthorityEpoch() { return 7; }
+  });
+
+  const result = await broker.handleIssueComment(eventPayload);
+  assert.equal(result.accepted, true);
+  assert.equal(result.replayed, false);
+  assert.ok(savedResponse);
+  assert.equal(savedResponse.includes("records"), false);
+  const responseEnvelope = parseBrokerResponseComment(savedResponse);
+  const decoded = await decryptBrokerResponse(requestContext, responseEnvelope, webcrypto);
+  assert.equal(decoded.ok, true);
+  assert.deepEqual(decoded.result, {
+    records: 2,
+    scope: "today",
+    requestId: requestContext.requestId
+  });
 });
