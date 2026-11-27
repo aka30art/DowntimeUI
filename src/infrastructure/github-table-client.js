@@ -104,6 +104,10 @@ function applyBootstrapIdentityTrigger(tables, tableName, values, now) {
   const bootstrap = (tables.downtime_roots_bootstrap || []).find(row => row.singleton === true);
   if (!bootstrap?.user_id) throw new GitHubTableQueryError("The immutable DEV bootstrap identity has not been prepared.", "ROOTS_BOOTSTRAP_MISSING", 409);
   dev.userId = bootstrap.user_id;
+  bootstrap.bootstrap_code_hash = null;
+  bootstrap.bootstrap_code_expires_at = null;
+  bootstrap.bootstrap_code_consumed_at = now().toISOString();
+  globalThis.__YARDHUB_BOOTSTRAP_CODE__ = null;
   const definitions = tables.downtime_roots_role_definitions || (tables.downtime_roots_role_definitions = []);
   const timestamp = now().toISOString();
   const seeds = [
