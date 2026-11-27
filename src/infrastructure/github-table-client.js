@@ -3,10 +3,10 @@ const DEFAULT_PRIMARY_KEYS = Object.freeze({
   downtime_reports: ["id"],
   downtime_attachments: ["id"],
   downtime_central_bank: ["id"],
-  downtime_central_sessions: ["id"],
+  downtime_central_sessions: ["token_hash"],
   downtime_central_audit: ["id"],
   downtime_central_config_state: ["id"],
-  downtime_central_config_history: ["id"],
+  downtime_central_config_history: ["version"],
   repair_maintenance_faults: ["id"],
   repair_maintenance_notes: ["id"],
   repair_maintenance_attachments: ["id"],
@@ -29,15 +29,15 @@ const DEFAULT_PRIMARY_KEYS = Object.freeze({
   gatelog_daily_gateman_assignments: ["duty_date"],
   gatelog_report_archive: ["id"],
   yard_roles: ["id"],
-  yard_role_department_permissions: ["id"],
+  yard_role_department_permissions: ["yard_role_id", "department"],
   yard_role_assignments: ["id"],
   yard_role_assignment_audit: ["id"],
   downtime_roots_assignments: ["id"],
   downtime_roots_assignment_audit: ["id"],
   yard_role_definition_audit: ["id"],
-  downtime_roots_bootstrap: ["id"],
-  downtime_identity_reset_runs: ["id"],
-  downtime_roots_role_definitions: ["id"]
+  downtime_roots_bootstrap: ["singleton"],
+  downtime_identity_reset_runs: ["singleton"],
+  downtime_roots_role_definitions: ["role_key"]
 });
 
 function clone(value) {
@@ -65,6 +65,8 @@ function matches(row, filters) {
       case "lt": return compare(actual, value) < 0;
       case "lte": return compare(actual, value) <= 0;
       case "like": return new RegExp("^" + String(value).replace(/[.+^$\{\}()|[\]\\]/g, "\\$&").replace(/%/g, ".*").replace(/_/g, ".") + "$", "i").test(String(actual ?? ""));
+      case "contains": return Array.isArray(actual) ? Array.isArray(value) && value.every(item => actual.includes(item)) : !!actual && typeof actual === "object" && !!value && Object.entries(value).every(([key, item]) => actual[key] === item);
+      case "not": return !matches({ value: actual }, [{ column: "value", operator: value.operator || "eq", value: value.value }]);
       case "ilike": return new RegExp("^" + String(value).replace(/[.+^$\{\}()|[\]\\]/g, "\\$&").replace(/%/g, ".*").replace(/_/g, ".") + "$", "i").test(String(actual ?? ""));
       default: throw new TypeError("Unsupported GitHub table filter: " + operator);
     }
@@ -110,8 +112,15 @@ export function createGitHubTableClient({
     const query = {
       table, operation: "select", columns: "*", payload: null, filters: [],
       orders: [], maxRows: null, offset: 0, singleMode: null, returning: false,
+      countMode: null, headOnly: false,
       conflictColumns: primaryKeys[table] || ["id"],
-      select(columns = "*") { this.columns = String(columns); if (this.operation !== "select") this.returning = true; return this; },
+      select(columns = "*", options = {}) {
+        this.columns = String(columns);
+        if (this.operation !== "select") this.returning = true;
+        this.countMode = options?.count || null;
+        this.headOnly = options?.head === true;
+        return this;
+      },
       insert(rows) { this.operation = "insert"; this.payload = Array.isArray(rows) ? clone(rows) : [clone(rows)]; return this; },
       upsert(rows, options = {}) {
         this.operation = "upsert"; this.payload = Array.isArray(rows) ? clone(rows) : [clone(rows)];
@@ -130,6 +139,14 @@ export function createGitHubTableClient({
       lte(column, value) { this.filters.push({ column, operator: "lte", value }); return this; },
       like(column, value) { this.filters.push({ column, operator: "like", value }); return this; },
       ilike(column, value) { this.filters.push({ column, operator: "ilike", value }); return this; },
+      filter(column, operator, value) { this.filters.push({ column, operator: String(operator), value }); return this; },
+      match(values) {
+        if (!values || typeof values !== "object" || Array.isArray(values)) throw new TypeError("Match filters must be an object.");
+        for (const [column, value] of Object.entries(values)) this.filters.push({ column, operator: "eq", value });
+        return this;
+      },
+      not(column, operator, value) { this.filters.push({ column, operator: "not", value: { operator, value } }); return this; },
+      contains(column, value) { this.filters.push({ column, operator: "contains", value }); return this; },
       order(column, options = {}) { this.orders.push({ column, ascending: options.ascending !== false, nullsFirst: options.nullsFirst }); return this; },
       limit(count) { this.maxRows = Math.max(0, Number(count) || 0); return this; },
       range(fromIndex, toIndex) { this.offset = Math.max(0, Number(fromIndex) || 0); this.maxRows = Math.max(0, Number(toIndex) - this.offset + 1); return this; },
@@ -144,13 +161,13 @@ export function createGitHubTableClient({
             for (const order of [...this.orders].reverse()) {
               rows.sort((a, b) => compare(a[order.column], b[order.column]) * (order.ascending ? 1 : -1));
             }
-            const count = rows.length;
+            const count = this.countMode ? rows.length : null;
             if (this.offset) rows = rows.slice(this.offset);
             if (this.maxRows !== null) rows = rows.slice(0, this.maxRows);
             rows = rows.map(row => project(row, this.columns));
             if (this.singleMode === "single" && rows.length !== 1) throw new GitHubTableQueryError("Expected exactly one row, received " + rows.length + ".", "PGRST116", 406);
             if (this.singleMode === "maybe" && rows.length > 1) throw new GitHubTableQueryError("Expected zero or one row, received " + rows.length + ".", "PGRST116", 406);
-            return { data: this.singleMode ? (rows[0] ?? null) : rows, error: null, count, status: 200, statusText: "OK" };
+            return { data: this.headOnly ? null : this.singleMode ? (rows[0] ?? null) : rows, error: null, count, status: 200, statusText: "OK" };
           }
 
           const inputRows = this.operation === "insert" || this.operation === "upsert" ? this.payload : [];
@@ -173,21 +190,25 @@ export function createGitHubTableClient({
                 mutate: (tables) => {
                   const rows = tables[table] || [];
                   if (this.operation === "insert") {
-                    for (const row of inputRows) {
+                    for (const raw of inputRows) {
+                      const row = clone(raw);
                       const keys = this.conflictColumns;
+                      if (keys.length === 1 && keys[0] === "id" && row.id == null && globalThis.crypto?.randomUUID) row.id = globalThis.crypto.randomUUID();
+                      if (keys.length === 1 && keys[0] === "singleton" && row.singleton == null) row.singleton = true;
                       if (rows.some(existing => keys.every(key => existing[key] === row[key]))) {
                         throw new GitHubTableQueryError("Duplicate key violates unique constraint on " + table + ".", "23505", 409);
                       }
-                      rows.push({ created_at: now().toISOString(), ...clone(row) });
+                      rows.push({ created_at: now().toISOString(), ...row });
+                      resultRows.push(row);
                     }
-                    resultRows = inputRows.map(clone);
                   } else if (this.operation === "upsert") {
                     resultRows = [];
                     for (const row of inputRows) {
                       const index = rows.findIndex(existing => this.conflictColumns.every(key => existing[key] === row[key]));
                       if (index < 0) {
-                        const inserted = { created_at: now().toISOString(), ...clone(row) };
-                        rows.push(inserted); resultRows.push(inserted);
+                        const inserted = clone(row);
+                        if (this.conflictColumns.length === 1 && this.conflictColumns[0] === "id" && inserted.id == null && globalThis.crypto?.randomUUID) inserted.id = globalThis.crypto.randomUUID();
+                        rows.push({ created_at: now().toISOString(), ...inserted }); resultRows.push(rows[rows.length - 1]);
                       } else {
                         rows[index] = { ...rows[index], ...clone(row), updated_at: now().toISOString() };
                         resultRows.push(rows[index]);
@@ -197,8 +218,9 @@ export function createGitHubTableClient({
                     const matched = rows.filter(row => matches(row, this.filters));
                     resultRows = matched.map(clone);
                     if (this.operation === "update") {
-                      for (const row of rows) if (matches(row, this.filters)) Object.assign(row, clone(this.payload), { updated_at: now().toISOString() });
-                      resultRows = rows.filter(row => matches(row, this.filters)).map(clone);
+                      const matchedRows = rows.filter(row => matches(row, this.filters));
+                      for (const row of matchedRows) Object.assign(row, clone(this.payload), { updated_at: now().toISOString() });
+                      resultRows = matchedRows.map(clone);
                     } else if (this.operation === "delete") {
                       tables[table] = rows.filter(row => !matches(row, this.filters));
                       return { affected: resultRows.length };
@@ -219,7 +241,7 @@ export function createGitHubTableClient({
           const selectedRows = this.returning ? resultRows.map(row => project(row, this.columns)) : null;
           if (this.singleMode === "single" && selectedRows && selectedRows.length !== 1) throw new GitHubTableQueryError("Expected exactly one row, received " + selectedRows.length + ".", "PGRST116", 406);
           if (this.singleMode === "maybe" && selectedRows && selectedRows.length > 1) throw new GitHubTableQueryError("Expected zero or one row, received " + selectedRows.length + ".", "PGRST116", 406);
-          return { data: this.singleMode ? (selectedRows?.[0] ?? null) : selectedRows, error: null, count: resultRows.length, status: 201, statusText: "Created" };
+          return { data: this.headOnly ? null : this.singleMode ? (selectedRows?.[0] ?? null) : selectedRows, error: null, count: this.countMode ? resultRows.length : null, status: 201, statusText: "Created" };
         } catch (error) {
           return { data: null, error: { message: error.message, code: error.code || "GITHUB_TABLE_ERROR", status: error.status || 500 }, count: null, status: error.status || 500, statusText: "Error" };
         }
@@ -228,9 +250,73 @@ export function createGitHubTableClient({
     return query;
   }
 
+  async function runRpc(name, args = {}) {
+    const handler = rpcHandlers[name];
+    if (typeof handler !== "function") {
+      return { data: null, error: { message: "Unsupported RPC: " + name, code: "42883" }, status: 501 };
+    }
+    try {
+      let result;
+      const db = await store.readDatabase();
+      await store.transactDatabase({
+        expectedRevision: db.revision,
+        actorId,
+        operationId: "rpc-" + name + "-" + now().getTime() + "-" + Math.random().toString(36).slice(2, 8),
+        mutate: async tables => { result = await handler({ tables, args, now }); }
+      });
+      return { data: result, error: null, status: 200 };
+    } catch (error) {
+      return { data: null, error: { message: error.message, code: error.code || "GITHUB_RPC_ERROR" }, status: error.status || 500 };
+    }
+  }
+
+  async function transaction(callback, { operationId = null } = {}) {
+    if (typeof callback !== "function") throw new TypeError("A transaction callback is required.");
+    const baseline = await store.readDatabase();
+    let localRevision = baseline.revision;
+    let localTables = clone(baseline.tables) || {};
+    const localStore = {
+      async readDatabase() {
+        return { revision: localRevision, tables: clone(localTables), manifest: { revision: localRevision } };
+      },
+      async transactDatabase({ expectedRevision, mutate }) {
+        if (expectedRevision !== localRevision) {
+          const error = new Error("Local transaction revision changed.");
+          error.status = 409;
+          throw error;
+        }
+        const draft = clone(localTables);
+        const result = await mutate(draft);
+        localTables = draft;
+        localRevision += 1;
+        return { committed: true, revision: localRevision, result };
+      }
+    };
+    const tx = createGitHubTableClient({
+      store: localStore, actorId, primaryKeys, now, maxConflictRetries, rpcHandlers
+    });
+    const result = await callback(tx);
+    const changedNames = new Set([...Object.keys(baseline.tables), ...Object.keys(localTables)]);
+    const changed = [...changedNames].some(name => JSON.stringify(baseline.tables[name]) !== JSON.stringify(localTables[name]));
+    if (!changed) return { result, revision: baseline.revision, committed: false };
+    const committed = await store.transactDatabase({
+      expectedRevision: baseline.revision,
+      actorId,
+      operationId: operationId || ("tx-" + now().getTime() + "-" + Math.random().toString(36).slice(2, 8)),
+      mutate(tables) {
+        for (const name of Object.keys(localTables)) tables[name] = clone(localTables[name]);
+        for (const name of Object.keys(tables)) {
+          if (!(name in localTables)) throw new GitHubTableQueryError("Whole-table deletion is not supported.");
+        }
+      }
+    });
+    return { result, revision: committed.revision, commitSha: committed.commitSha, committed: true };
+  }
+
   return Object.freeze({
     from,
-    async rpc() { throw new GitHubTableQueryError("RPC compatibility is not implemented; use a GitHub-native action handler.", "42883", 501); },
+    rpc: runRpc,
+    transaction,
     async health() { const db = await store.readDatabase(); return { ok: true, revision: db.revision, tableCount: Object.keys(db.tables).length }; }
   });
 }
