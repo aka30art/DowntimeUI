@@ -45,6 +45,13 @@ function createMockGitHub() {
       const commit = commits.get(sha);
       return commit ? response(200, { sha, tree: { sha: commit.tree } }) : response(404, { message: "Not found" });
     }
+    if (method === "GET" && path.startsWith("/git/blobs/")) {
+      const sha = decodeURIComponent(path.slice("/git/blobs/".length));
+      const value = blobs.get(sha);
+      return value === undefined ? response(404, { message: "Not found" }) : response(200, {
+        sha, encoding: "base64", content: Buffer.from(value, "utf8").toString("base64")
+      });
+    }
     if (method === "GET" && path.startsWith("/contents/")) {
       const filePath = decodeURIComponent(path.slice("/contents/".length));
       const ref = parsed.searchParams.get("ref");
@@ -66,7 +73,10 @@ function createMockGitHub() {
     if (method === "POST" && path === "/git/trees") {
       const body = JSON.parse(options.body);
       const base = new Map(trees.get(body.base_tree) || []);
-      for (const entry of body.tree) base.set(entry.path, blobs.get(entry.sha));
+      for (const entry of body.tree) {
+        if (entry.sha === null) base.delete(entry.path);
+        else base.set(entry.path, blobs.get(entry.sha));
+      }
       const sha = "tree-" + (++counter);
       trees.set(sha, base);
       return response(201, { sha });
@@ -356,4 +366,42 @@ test("primary and secondary GitHub databases are partitioned independently", asy
   assert.equal(primaryDb.revision, 0);
   assert.equal(Object.keys(primaryDb.tables).length, 0);
   assert.equal(secondaryDb.tables.gatelog_customers[0].id, "secondary-only");
+});
+
+test("GitHub binary object storage uploads, downloads and deletes versioned objects", async () => {
+  const server = createMockGitHub();
+  const store = makeStore(server);
+  const original = new Uint8Array([0, 1, 2, 3, 127, 128, 254, 255]);
+  const uploaded = await store.uploadObject({
+    bucket: "downtime-pdfs",
+    path: "2026-11-27/report.bin",
+    data: original,
+    mimeType: "application/octet-stream"
+  });
+  assert.equal(uploaded.ok, true);
+  assert.equal(uploaded.size, original.byteLength);
+
+  const downloaded = await store.downloadObject({
+    bucket: "downtime-pdfs",
+    path: "2026-11-27/report.bin"
+  });
+  assert.equal(downloaded.mimeType, "application/octet-stream");
+  assert.deepEqual([...downloaded.bytes], [...original]);
+
+  await assert.rejects(
+    store.uploadObject({
+      bucket: "downtime-pdfs",
+      path: "2026-11-27/report.bin",
+      data: original,
+      mimeType: "application/octet-stream"
+    }),
+    (error) => error.status === 409
+  );
+
+  const deleted = await store.deleteObject({ bucket: "downtime-pdfs", path: "2026-11-27/report.bin" });
+  assert.equal(deleted.deleted, true);
+  await assert.rejects(
+    store.downloadObject({ bucket: "downtime-pdfs", path: "2026-11-27/report.bin" }),
+    (error) => error.status === 404
+  );
 });
