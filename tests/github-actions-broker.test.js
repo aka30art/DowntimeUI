@@ -193,6 +193,22 @@ test("broker pins idempotency to canonical USER and replays only the saved encry
   assert.equal(harness.calls.published[1].encryptedResponse, "encrypted-response-for-request-key");
 });
 
+test("broker rejects caller-supplied session or access tokens before idempotency claim", async () => {
+  for (const request of [
+    { requestId: REQUEST_ID, service: "gatelog-api", action: "history", args: { sessionToken: "forged" } },
+    { requestId: REQUEST_ID, service: "gatelog-api", action: "history", args: { accessToken: "forged" } }
+  ]) {
+    const harness = createBrokerHarness({ request });
+    await assert.rejects(
+      harness.broker.handleIssueComment(event()),
+      error => error.code === "BROKER_CALLER_IDENTITY_FORBIDDEN"
+    );
+    assert.equal(harness.records.has(REQUEST_ID), false);
+    assert.equal(harness.calls.sessions.length, 0);
+    assert.equal(harness.calls.executed.length, 0);
+  }
+});
+
 test("broker refuses execution if the current authority epoch is unavailable", async () => {
   const broker = createGitHubActionsBroker({
     expectedRepositoryId: REPOSITORY_ID,
