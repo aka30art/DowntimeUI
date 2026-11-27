@@ -621,6 +621,42 @@ export function createGitHubDataStore({
       throw new GitHubStoreError("Storage delete conflicted repeatedly. Retry the operation.", 409);
     },
 
+    async deleteObjects({ bucket: bucketInput, paths: pathsInput } = {}) {
+      const bucket = requiredString(bucketInput, "Storage bucket", /^[a-z0-9][a-z0-9_-]{0,62}$/);
+      if (!Array.isArray(pathsInput) || pathsInput.length > 1000) throw new TypeError("Storage delete requires an array of up to 1000 object paths.");
+      const paths = [...new Set(pathsInput.map(path => requiredString(path, "Storage object path")))];
+      for (const path of paths) {
+        if (path.split("/").some(segment => !segment || segment === "." || segment === ".." || !/^[A-Za-z0-9._-]+$/.test(segment))) {
+          throw new TypeError("Storage object path contains an invalid segment.");
+        }
+      }
+      if (!paths.length) return { deleted: [], missing: [] };
+      for (let attempt = 0; attempt < maxRetries; attempt += 1) {
+        const headSha = await getHead();
+        const treeSha = await getCommitTree(headSha);
+        const entries = [], deleted = [], missing = [];
+        for (const objectName of paths) {
+          const binaryPath = "storage/" + systemId.toLowerCase() + "/" + bucket + "/" + objectName;
+          const metadataPath = "storage/" + systemId.toLowerCase() + "/metadata/" + bucket + "/" + objectName + ".json";
+          const existing = await request("/contents/" + contentPath(binaryPath) + "?ref=" + encodeURIComponent(headSha), {}, { allowNotFound: true });
+          if (!existing) { missing.push(objectName); continue; }
+          entries.push(
+            { path: binaryPath, mode: "100644", type: "blob", sha: null },
+            { path: metadataPath, mode: "100644", type: "blob", sha: null }
+          );
+          deleted.push(objectName);
+        }
+        if (!entries.length) return { deleted: [], missing };
+        const committed = await commitTreeEntriesAtHead({
+          headSha, treeSha, entries,
+          message: "YARDHUB storage batch delete: " + bucket + " (" + deleted.length + " objects)"
+        });
+        if (committed.committed) return { deleted, missing, commitSha: committed.commitSha };
+        await sleep(Math.min(100 * (2 ** attempt), 1200));
+      }
+      throw new GitHubStoreError("Storage batch delete conflicted repeatedly. Retry the operation.", 409);
+    },
+
     async readEvents({ module: moduleInput, date, writerSystemId = systemId } = {}) {
       const moduleName = requiredString(moduleInput, "Module", /^[A-Z][A-Z0-9_-]{1,39}$/);
       const day = asDate(date, now);
