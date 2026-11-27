@@ -454,3 +454,22 @@ test("GitHub storage listing returns nested folders and file metadata", async ()
   assert.equal(files[0].metadata.mimetype, "image/jpeg");
   assert.equal(files[0].metadata.size, 3);
 });
+
+
+test("single-table polling reads the rows inside the versioned GitHub shard", async () => {
+  const server = createMockGitHub();
+  const store = makeStore(server);
+  const expected = [
+    { id: "customer-1", customer_name: "North Yard" },
+    { id: "customer-2", customer_name: "South Yard" }
+  ];
+  await store.transactDatabase({
+    expectedRevision: 0,
+    actorId: "root-dev",
+    operationId: "op-realtime-table-0001",
+    mutate(tables) { tables.gatelog_customers = expected; }
+  });
+  assert.deepEqual(await store.readTable("gatelog_customers"), expected);
+  assert.deepEqual(await store.readTable("gatelog_visits"), []);
+  await assert.rejects(store.readTable("../gatelog_customers"), /Database table/);
+});
