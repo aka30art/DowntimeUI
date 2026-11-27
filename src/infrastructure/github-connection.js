@@ -1,6 +1,7 @@
 import { createGitHubDataStore, GitHubStoreError } from "./github-data-store.js";
 import { createGitHubTableClient } from "./github-table-client.js";
 import { createGitHubStorageClient } from "./github-storage-client.js";
+import { ensureGitHubDatabaseReady } from "./github-database-bootstrap.js";
 
 export const DEFAULT_GITHUB_DATA_CONNECTION = Object.freeze({
   owner: "aka30art",
