@@ -44,6 +44,42 @@ const plugin = {
           throw new Error("Central Bank bootstrap source contract changed; cannot bind DEV to immutable ROOTS identity.");
         }
         contents = contents.replace(originalBootstrapPattern, githubBootstrap);
+
+        const primaryStaffOriginalsUrl = 'const githubOriginalsApi="https://api.github.com/repos/aka30art/DOWNTIME/contents/assets/staff/originals";';
+        if (!contents.includes(primaryStaffOriginalsUrl)) {
+          throw new Error("Original STAFF photo path changed; refusing an unreviewed GitHub port.");
+        }
+        contents = contents.replace(
+          primaryStaffOriginalsUrl,
+          'const githubOriginalsApi="https://github-native.invalid/private-staff-originals";'
+        );
+
+        const listStart = contents.indexOf("const listGithubStaffOriginals=async()=>{");
+        const listEndMarker = "        return originals;\\n      };";
+        const listEnd = contents.indexOf(listEndMarker, listStart);
+        if (listStart < 0 || listEnd < 0) {
+          throw new Error("STAFF original-photo listing block changed; refusing the port.");
+        }
+        contents = contents.slice(0, listStart) +
+          "const listGithubStaffOriginals=async()=>[];" +
+          contents.slice(listEnd + listEndMarker.length);
+
+        const uploadStartMarker = 'const token=Deno.env.get("GITHUB_STAFF_IMAGE_TOKEN");';
+        const uploadStart = contents.indexOf(uploadStartMarker);
+        const uploadEndMarker = 'return json({ok:true,staff:slug,path,commitSha:saved?.commit?.sha||null});';
+        const uploadEnd = contents.indexOf(uploadEndMarker, uploadStart);
+        if (uploadStart < 0 || uploadEnd < 0) {
+          throw new Error("STAFF original-photo upload block changed; refusing an unreviewed port.");
+        }
+        const githubStorageUpload = [
+          'const path="originals/"+slug+"/original.png";',
+          'const {data:saved,error:uploadError}=await db.storage.from("downtime-staff-photos").upload(path,bytes,{contentType:"image/png",upsert:true});',
+          'if(uploadError)return json({error:uploadError.message||"Private STAFF photo upload failed"},500);',
+          'await db.from("downtime_central_audit").insert({username:currentUser.username,action:"staff-original-upload",details:{staff:slug,path,bytes:bytes.length,storageObjectId:saved?.id||null}});',
+          'return json({ok:true,staff:slug,path,commitSha:saved?.id||null});'
+        ].join("\\n");
+        contents = contents.slice(0, uploadStart) + githubStorageUpload +
+          contents.slice(uploadEnd + uploadEndMarker.length);
       }
       return { contents, loader: args.path.endsWith(".tsx") ? "tsx" : "ts" };
     });
