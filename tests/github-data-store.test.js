@@ -20,14 +20,16 @@ function response(status, body) {
   };
 }
 
-function createMockGitHub() {
+function createMockGitHub({ includeAuthority = true } = {}) {
   let counter = 0;
   let head = "commit-0";
   let failNextCas = false;
   const commits = new Map([[head, { tree: "tree-0", parent: null }]]);
   const initialAuthority = Buffer.from(JSON.stringify(INITIAL_AUTHORITY) + "\n", "utf8").toString("base64");
   const blobs = new Map([["initial-blob", initialAuthority]]);
-  const trees = new Map([["tree-0", new Map([["control/authority.json", { sha: "initial-blob", content: initialAuthority }]])]]);
+  const initialFiles = new Map();
+  if (includeAuthority) initialFiles.set("control/authority.json", { sha: "initial-blob", content: initialAuthority });
+  const trees = new Map([["tree-0", initialFiles]]);
 
   const fetchImpl = async (url, options = {}) => {
     const parsed = new URL(url);
@@ -406,4 +408,16 @@ test("GitHub binary object storage uploads, downloads and deletes versioned obje
     store.downloadObject({ bucket: "downtime-pdfs", path: "2026-11-27/report.bin" }),
     (error) => error.status === 404
   );
+});
+
+test("a fresh private GitHub data repository receives the default YARDHUB authority manifest", async () => {
+  const server = createMockGitHub({ includeAuthority: false });
+  const store = makeStore(server);
+  const authority = await store.ensureAuthority();
+  assert.equal(authority.primarySystemId, "YARDHUB-PRIMARY");
+  assert.equal(authority.secondarySystemId, "DOWNTIMEUI-GITHUB");
+  assert.equal(authority.epoch, 1);
+  assert.equal(authority.status, "ACTIVE");
+  const readBack = await store.readAuthority();
+  assert.deepEqual(readBack, authority);
 });
