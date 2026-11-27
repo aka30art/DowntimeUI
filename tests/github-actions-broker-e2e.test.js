@@ -152,7 +152,6 @@ test("encrypted browser request traverses the Actions broker core and returns on
   assert.equal(calls.execute[0].service, "gatelog-api");
   assert.equal(calls.execute[0].sessionToken, "test-session-token-1234567890");
   assert.equal(calls.sessionDisposed, true);
-  assert.equal(calls.sessionDisposed, true);
   assert.equal(published.length, 1);
   assert.equal(published[0].includes("Private customer"), false);
   assert.equal(published[0].includes("private-visit-1001"), false);
