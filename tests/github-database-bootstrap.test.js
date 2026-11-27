@@ -16,6 +16,7 @@ function memoryStore(initial = {}) {
       return { committed: true, revision, result };
     },
     get tables() { return structuredClone(tables); },
+    setTable(name, value) { tables[name] = structuredClone(value); },
     get commits() { return commits; }
   };
 }
