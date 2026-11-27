@@ -111,6 +111,28 @@ Source blob SHA: `8e5c5e1e1b668b72715fa1bb38387a0537ef73ac`
 
 **Principal data dependencies:** Central Bank USER/session, ROOTS bootstrap/assignments/definitions, YARD ROLE definitions/assignments/department permissions and YARD HUB tier configuration.
 
+## 2A. Preserved browser caller map
+
+This section maps the preserved UI sources to service requests. It is a static caller scan of the pinned `yardhub/reference/` snapshot, not runtime traffic capture. A literal action call is evidence that the UI exposes or invokes that action; absence of a literal call does not prove an action is unused because a caller may construct it dynamically or invoke it from another service.
+
+| Service | Preserved browser caller(s) | Literal actions found in caller scan | Caller coverage notes |
+|---|---|---|---|
+| Central Bank | `central-bank-client.js`; `central-bank-admin.html`; shared use from `index.html` and `repair-maintenance.html` | `bootstrap`, `daily-operator-assign`, `daily-operator-list`, `daily-operator-unlock`, `get-state`, `identity-diagnostics`, `identity-reset`, `list-users`, `login`, `logout`, `save-settings`, `save-state`, `set-plant-status`, `staff-original-upload`, `staff-photo-read`, `staff-photo-remove`, `staff-photo-url`, `staff-save`, `tiers-save`, `user-delete`, `user-save`, `user-staff-activate`, `user-staff-provision` | `central-bank-admin.html` also uses the central-bank endpoint for bootstrap/login/logout. The browser scan did not find direct literal calls for `users`, `central-admin-state` or `photo-evidence-context`; trace these internal/indirect paths explicitly before claiming caller coverage. |
+| Central Config Admin | `central-bank-admin.html`; `yard-hub-structure.js`; shared config from `index.html` and `repair-maintenance.html` | `central-config-state`, `central-config-save-draft`, `central-config-publish`, `central-config-restore-draft`, `central-config-audit`, `central-config-impact`, `central-config-validate`, `yard-hub-menu` | All eight source action values have a preserved UI caller. The DEV-only rule must remain enforced in the trusted broker, not by hiding the UI link. |
+| GATELOG | `gatelog-app.js`, `gatelog-day-management.js`, `gatelog-settings.js` | `bootstrap`, `arrival`, `customer-arrival`, `day-register`, `departure`, `visit-delete`, `visit-update`, `gateman-lock`, `gateman-save`, `report`, `report-save`, `customer-archive`, `customer-save`, `customer-update`, `report-archive`, `waste-type-create`, `waste-type-update` | The scan found 17 of 19 backend action values. No direct literal call was found for `history` or `vehicle-save`; establish whether these are intentionally API-only, dynamically invoked or missing UI functionality. |
+| Photo Evidence | inline caller in `index.html` | `create-upload`, `view`, `delete` | `cleanup` is not a browser action in the caller scan; it is a protected service/maintenance operation and needs a broker-only contract test. |
+| Repairs & Maintenance | `repair-maintenance-app.js`; `repair-maintenance-launch.js`; endpoint config in `repair-maintenance.html` | `access`, `list`, `get`, `create`, `update`, `delete`, `note-add`, `upload`, `asset-list`, `asset-add`, `asset-update`, `asset-delete`, `asset-archive`, `model-list`, `model-add`, `model-delete`, `preset-list`, `preset-add`, `preset-delete`, `settings-get`, `settings-update`, `export-create`, `export-list`, `export-url`, `export-delete` | All 25 action values have literal caller coverage in the preserved R&M UI scripts. Permission-negative tests and private Storage object scope remain outstanding. |
+| Spectator Read | inline `index.html` spectator refresh flow | `spectator-read` | The caller uses Supabase `functions.invoke`; verify access-code validation, approved snapshot projection, no write path and data minimisation. |
+| YARD HUB Settings | `yard-hub-settings.js` | `my-access`, `settings-state`, `roots-state`, `roots-manage`, `yard-role-save`, `assign-user-role`, `save-tier-settings`, `save-user-tier` | The scan found eight of nine backend action values; no direct literal call was found for `remove-user-tier`. Determine whether removal is dynamically performed through another action or the backend action is orphaned. |
+
+### Caller-to-service acceptance requirements
+
+1. Capture every request action, payload schema, response schema and caller file/line (including dynamic action construction). Keep this trace stable against the pinned source manifest.
+2. For the GATELOG, YARD HUB Settings and Central Bank gaps above, make an explicit decision: preserve an API-only operation with a service-only test, identify the dynamic caller, or implement the missing UI workflow only if it exists in the source contract.
+3. For every caller action, execute the same workflow through the GitHub twin and assert the expected table mutations, audit events, authorization decision and failure response.
+4. Add negative UI tests for unauthenticated, disabled USER, wrong department, insufficient VIEW/ENTER/EDIT/MANAGE, expired session, protected ROOTS/DEV and cross-record evidence access.
+5. Browser-side button disabled/hidden states are presentation only and must never substitute for broker-side permission evaluation.
+
 ## 3. Atomic RPC catalogue
 
 The source code also depends on database-side RPCs. These functions are part of the contract, not optional convenience helpers. A replacement must preserve their atomic state transitions, uniqueness checks, immutable authority constraints, audit effects and failure semantics.
