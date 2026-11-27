@@ -1,4 +1,4 @@
-const TABLES = [
+const SOURCE_TABLES = [
   "downtime_shared_state", "downtime_reports", "downtime_attachments",
   "downtime_central_bank", "downtime_central_sessions", "downtime_central_audit",
   "downtime_central_config_state", "downtime_central_config_history",
@@ -16,6 +16,11 @@ const TABLES = [
   "downtime_roots_bootstrap", "downtime_identity_reset_runs",
   "downtime_roots_role_definitions"
 ];
+const BROKER_TABLES = [
+  "downtime_github_identities",
+  "downtime_github_broker_requests"
+];
+const TABLES = [...SOURCE_TABLES, ...BROKER_TABLES];
 
 function makeId() {
   const cryptoProvider = globalThis.crypto;
@@ -143,4 +148,8 @@ export async function ensureGitHubDatabaseReady({
   };
 }
 
-export { TABLES as GITHUB_YARDHUB_TABLES };
+export {
+  TABLES as GITHUB_YARDHUB_TABLES,
+  SOURCE_TABLES as GITHUB_YARDHUB_SOURCE_TABLES,
+  BROKER_TABLES as GITHUB_YARDHUB_BROKER_TABLES
+};
