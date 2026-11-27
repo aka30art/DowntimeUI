@@ -14,6 +14,20 @@ export function createGitHubStorageClient({ store, now = () => new Date(), ticke
     throw new TypeError("A GitHub data store with binary object methods is required.");
   }
   const tickets = new Map();
+  function createUploadTicket({ bucket, path, mimeType = "application/octet-stream", size = null } = {}) {
+    const bucketName = String(bucket || "").trim();
+    if (!/^[a-z0-9][a-z0-9_-]{0,62}$/.test(bucketName)) throw new TypeError("Invalid GitHub storage bucket.");
+    if (typeof path !== "string" || !path || path.split("/").some(segment => !segment || segment === "." || segment === ".." || !/^[A-Za-z0-9._-]+$/.test(segment))) {
+      throw new TypeError("Invalid GitHub storage object path.");
+    }
+    if (size !== null && (!Number.isInteger(size) || size < 1 || size > 10 * 1024 * 1024)) throw new TypeError("Invalid upload size.");
+    const token = makeTicketId();
+    tickets.set(token, {
+      bucket: bucketName, path, mimeType, size,
+      expiresAt: now().getTime() + ticketLifetimeMs
+    });
+    return { path, token, expiresAt: new Date(now().getTime() + ticketLifetimeMs).toISOString() };
+  }
 
   function from(bucket) {
     const bucketName = String(bucket || "").trim();
@@ -123,21 +137,7 @@ export function createGitHubStorageClient({ store, now = () => new Date(), ticke
 
   return Object.freeze({
     from,
-    createUploadTicket({ bucket, path, mimeType = "application/octet-stream", size = null } = {}) {
-      const bucketName = String(bucket || "").trim();
-      if (!/^[a-z0-9][a-z0-9_-]{0,62}$/.test(bucketName)) throw new TypeError("Invalid GitHub storage bucket.");
-      if (typeof path !== "string" || !path || path.split("/").some(segment => !segment || segment === "." || segment === ".." || !/^[A-Za-z0-9._-]+$/.test(segment))) {
-        throw new TypeError("Invalid GitHub storage object path.");
-      }
-      if (size !== null && (!Number.isInteger(size) || size < 1 || size > 10 * 1024 * 1024)) throw new TypeError("Invalid upload size.");
-      const token = makeTicketId();
-      tickets.set(token, {
-        bucket: bucketName, path, mimeType, size,
-        expiresAt: now().getTime() + ticketLifetimeMs
-      });
-      return { path, token, expiresAt: new Date(now().getTime() + ticketLifetimeMs).toISOString() };
-    },
-    clearExpiredTickets() {
+    createUploadTicket,    clearExpiredTickets() {
       const timestamp = now().getTime();
       for (const [token, ticket] of tickets) if (ticket.expiresAt <= timestamp) tickets.delete(token);
       return tickets.size;
