@@ -21,20 +21,49 @@ function response(status, body, binary = false) {
   };
 }
 
-function createMockServices({ privateRepository = true } = {}) {
+function createMockServices({ privateRepository = true, authority = null, flipAuthorityOnFirstSourceRead = false } = {}) {
   let head = "commit-0";
   let currentTree = new Map();
   let counter = 0;
   let commits = 0;
+  let authorityFlipped = false;
   const blobs = new Map();
   const trees = new Map([["tree-0", currentTree]]);
   const tableCalls = new Map();
+
+  if (authority) {
+    const bytes = Buffer.from(JSON.stringify(authority) + "\n", "utf8");
+    const sha = gitSha(bytes);
+    blobs.set(sha, bytes);
+    currentTree.set("control/authority.json", { sha, bytes });
+  }
+
+  function flipAuthorityToTwin() {
+    const nextTree = new Map(currentTree);
+    const bytes = Buffer.from(JSON.stringify({
+      status: "ACTIVE", primarySystemId: "DOWNTIMEUI-GITHUB",
+      secondarySystemId: "YARDHUB-PRIMARY", epoch: 2
+    }) + "\n", "utf8");
+    const sha = gitSha(bytes);
+    blobs.set(sha, bytes);
+    nextTree.set("control/authority.json", { sha, bytes });
+    const treeSha = "tree-authority-flip";
+    const commitSha = "commit-authority-flip";
+    trees.set(treeSha, nextTree);
+    trees.set(commitSha, { treeSha, parent: head });
+    currentTree = nextTree;
+    head = commitSha;
+  }
 
   const fetchImpl = async (url, options = {}) => {
     const parsed = new URL(url);
     const method = options.method || "GET";
     if (parsed.hostname === "ygwfipksbbprqynvbklk.supabase.co") {
       if (parsed.pathname.startsWith("/rest/v1/")) {
+        if (flipAuthorityOnFirstSourceRead && !authorityFlipped) {
+          authorityFlipped = true;
+          flipAuthorityToTwin();
+        }
         const table = parsed.pathname.split("/").pop();
         tableCalls.set(table, (tableCalls.get(table) || 0) + 1);
         if (table === "downtime_reports") return response(200, [{ id: "report-1", title: "Test report" }]);
@@ -72,6 +101,19 @@ function createMockServices({ privateRepository = true } = {}) {
           tree: [...tree.entries()].map(([filePath, entry]) => ({ path: filePath, type: "blob", sha: entry.sha }))
         });
       }
+      if (method === "GET" && path.startsWith("/contents/")) {
+        const filePath = decodeURIComponent(path.slice("/contents/".length));
+        const refSha = parsed.searchParams.get("ref");
+        const commit = refSha ? trees.get(refSha) : null;
+        const treeSha = commit?.treeSha || commit?.tree || null;
+        const tree = treeSha ? (trees.get(treeSha) || currentTree) : currentTree;
+        const entry = tree.get(filePath);
+        if (!entry) return response(404, { message: "Not found" });
+        return response(200, {
+          type: "file", encoding: "base64",
+          content: Buffer.from(entry.bytes).toString("base64")
+        });
+      }
       if (method === "POST" && path === "/git/blobs") {
         const body = JSON.parse(options.body);
         const bytes = Buffer.from(body.content, "base64");
@@ -93,14 +135,17 @@ function createMockServices({ privateRepository = true } = {}) {
       if (method === "POST" && path === "/git/commits") {
         const body = JSON.parse(options.body);
         const sha = "commit-" + (++counter);
-        trees.set(sha, { treeSha: body.tree });
+        trees.set(sha, { treeSha: body.tree, parent: body.parents?.[0] || null });
         return response(201, { sha });
       }
       if (method === "PATCH" && path === "/git/refs/heads/main") {
         const body = JSON.parse(options.body);
+        const nextCommit = trees.get(body.sha);
+        if (!nextCommit || nextCommit.parent !== head) {
+          return response(422, { message: "Reference update is not a fast-forward." });
+        }
         head = body.sha;
-        const commit = trees.get(head);
-        currentTree = new Map(trees.get(commit.treeSha));
+        currentTree = new Map(trees.get(nextCommit.treeSha));
         commits += 1;
         return response(200, { object: { sha: head } });
       }
@@ -148,6 +193,30 @@ test("unchanged YARDHUB data does not create a redundant GitHub commit", async (
   const second = await runner.run({ env });
   assert.equal(second.changed, false);
   assert.equal(mock.commits, 1);
+});
+
+test("backup stops before reading source records when GitHub already owns primary authority", async () => {
+  const mock = createMockServices({
+    authority: { status: "ACTIVE", primarySystemId: "DOWNTIMEUI-GITHUB", epoch: 2 }
+  });
+  const runner = createYardHubBackupRunner({ fetchImpl: mock.fetchImpl });
+  const result = await runner.run({ env });
+  assert.equal(result.skipped, true);
+  assert.match(result.reason, /not the active primary/);
+  assert.equal(mock.tableCalls.size, 0);
+  assert.equal(mock.commits, 0);
+});
+
+test("backup rechecks authority after source reads and stops if primary changed during export", async () => {
+  const mock = createMockServices({
+    authority: { status: "ACTIVE", primarySystemId: "YARDHUB-PRIMARY", epoch: 1 },
+    flipAuthorityOnFirstSourceRead: true
+  });
+  const runner = createYardHubBackupRunner({ fetchImpl: mock.fetchImpl });
+  const result = await runner.run({ env });
+  assert.equal(result.skipped, true);
+  assert.equal(result.primarySystemId, "DOWNTIMEUI-GITHUB");
+  assert.equal(mock.commits, 0);
 });
 
 
