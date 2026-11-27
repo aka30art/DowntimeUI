@@ -175,6 +175,7 @@ test("encrypted browser request traverses the Actions broker core and returns on
   assert.deepEqual(replay, {
     accepted: true,
     replayed: true,
+    pending: false,
     requestId: requestContext.requestId
   });
   assert.equal(calls.execute.length, 1, "replay must not repeat the business operation");
