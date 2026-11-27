@@ -96,7 +96,7 @@ GitHub Pages is static. The current repository credential cannot remain in the b
 
 **Required remediation:** run a disposable-private-repository proof with no production records. Reject the design if users must receive private data-repository Contents access, if private data appears in public logs/issues/artifacts, or if user-specific authorization cannot be enforced.
 
-**Updated candidate:** a GitHub App user access token restricted to a public request-inbox repository (Issues: write only), combined with an Actions installation token restricted to a separate private data repository. Device Flow requires App registration/configuration; the web OAuth flow requires a client secret and is not suitable for a static Pages-only client. GitHub's current documentation states that fine-grained PATs have a gap for contributing to public repos where the user is not a member and for outside/repository collaborators, so a PAT-based issue inbox is not assumed to work. GitHub App user tokens are a distinct supported token type for issue comments, but their effective permissions are the intersection of app permissions and the user's repository access. A repository-ID restriction can further limit a user token to the broker inbox only.
+**Updated candidate:** a GitHub App user access token restricted to a public request-inbox repository (Issues: write only), combined with an Actions installation token restricted to a separate private data repository. The static browser client now uses the web application flow with PKCE S256 and a token-exchange repository-ID restriction. GitHub's App client secret is public client configuration in the Pages bundle and is not treated as a secret boundary; the authenticated issue-comment event supplies the user actor. The user token is held in memory for at most 30 minutes and no refresh token is requested. GitHub's current documentation states that fine-grained PATs have a gap for contributing to public repos where the user is not a member and for outside/repository collaborators, so a PAT-based issue inbox is not assumed to work. GitHub App user tokens are a distinct supported token type for issue comments, but their effective permissions are the intersection of app permissions and the user's repository access. A repository-ID restriction can further limit a user token to the broker inbox only.
 
 **Proof still open:** no App is registered, no broker/data repositories are provisioned, and no real second-account request has been tested. Do not treat this candidate as production authentication until the token's actual repository/endpoint permissions and encrypted response path have been proven end-to-end.
 
@@ -189,3 +189,19 @@ Local tests cover the ECDH client, Device Flow polling, repository restriction, 
 **Still not implemented or proven:** the final browser sign-in flow (Device Flow is intended for headless clients; GitHub recommends the web application flow for browser apps and strongly recommends PKCE), real broker cryptographic key custody, USER/inbox mapping against the private data repository, concrete YARD ROLE authorization, Data App installation-token minting, actual `issue_comment` workflow on a dedicated broker repository's default branch, durable atomic idempotency, encrypted response publication, key/device recovery, two-device support, real GitHub permission isolation, queue/concurrency/latency tests and two-account end-to-end acceptance.
 
 The broker core is callback-driven and does not itself provide any of these missing trust boundaries. It remains a testable integration scaffold. Phase 3 and SEC-001 to SEC-009 remain open.
+
+
+## Browser authentication decision update (27 November 2026)
+
+The GitHub App browser client was changed from Device Flow to the web authorization flow with PKCE S256. This follows GitHub's current guidance for browser clients and avoids Device Flow's documented phishing risk. The public client must include the App client secret in its shipped code; GitHub explicitly treats this as a public-client case and recommends PKCE. The client secret is therefore not relied on as a security control.
+
+The current local implementation:
+- generates a random OAuth state and PKCE verifier;
+- stores only state/verifier/callback/creation time in tab session storage for the redirect round-trip;
+- checks callback URL, exact state and ten-minute validity before exchanging the code;
+- sends the client ID, public-client secret, authorization code, callback URL, PKCE verifier and broker repository ID to the token endpoint;
+- verifies the returned user with `GET /user`;
+- keeps the user token in module memory for at most 30 minutes, and does not request `offline_access` or persist refresh tokens;
+- has unit tests using mocked GitHub responses only.
+
+GitHub documents `repository_id` as a token-exchange parameter for the web authorization flow. The real GitHub App registration, returned permissions, callback configuration, two-account test and private-data-repository denial test remain outstanding. This update does not close SEC-008 or authorise production use.
