@@ -14,7 +14,7 @@ const nativeFetch = globalThis.fetch.bind(globalThis);
 globalThis.__YARDHUB_NATIVE_FETCH__ = nativeFetch;
 const earlyFetch = async (input, init) => {
   const url = typeof input === "string" ? input : input?.url || "";
-  if (/\\/functions\\/v1\\//i.test(String(url))) {
+  if (/\/functions\/v1\//i.test(String(url))) {
     await ready;
     const activeFetch = globalThis.fetch;
     if (activeFetch !== earlyFetch) return activeFetch(input, init);
