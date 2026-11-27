@@ -74,8 +74,8 @@ test("disconnect removes repository settings and the in-memory token", () => {
 test("a connected store cannot be created without a memory-only token", async () => {
   const storage = memoryStorage();
   clearGitHubConnection({ storage });
-  await assert.rejects(
-    createConnectedGitHubStore({ storage, fetchImpl: privateRepoFetch() }),
+  assert.throws(
+    () => createConnectedGitHubStore({ storage, fetchImpl: privateRepoFetch() }),
     /Enter a GitHub access token/
   );
 });
