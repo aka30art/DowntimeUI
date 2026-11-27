@@ -144,7 +144,7 @@ export function createGitHubTableClient({
         if (!supported.has(op)) throw new TypeError("Unsupported GitHub table filter: " + op);
         let parsed = value;
         if (op === "in" && typeof value === "string") {
-          const raw = value.trim().replace(/^\\(/, "").replace(/\\)$/, "");
+          const raw = value.trim().replace(/^\(/, "").replace(/\)$/, "");
           parsed = raw ? raw.split(",").map(item => item.trim().replace(/^["']|["']$/g, "")) : [];
         }
         this.filters.push({ column, operator: op, value: parsed });
@@ -152,7 +152,6 @@ export function createGitHubTableClient({
       },
       like(column, value) { this.filters.push({ column, operator: "like", value }); return this; },
       ilike(column, value) { this.filters.push({ column, operator: "ilike", value }); return this; },
-      filter(column, operator, value) { this.filters.push({ column, operator: String(operator), value }); return this; },
       match(values) {
         if (!values || typeof values !== "object" || Array.isArray(values)) throw new TypeError("Match filters must be an object.");
         for (const [column, value] of Object.entries(values)) this.filters.push({ column, operator: "eq", value });
