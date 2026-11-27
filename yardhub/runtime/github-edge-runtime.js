@@ -32,18 +32,21 @@ export async function installGitHubEdgeRuntime({
   const previousDeno = globalThis.Deno;
   const previousFetch = globalThis.fetch;
   const previousSupabase = globalThis.supabase;
+  // This is a local compatibility harness, not a trusted production broker.
+  // The adapter marker is deliberately not a credential. Secret-bearing source
+  // features remain unavailable unless explicitly supplied by an isolated test.
   const environment = {
     SUPABASE_URL: "https://github-native.invalid",
-    SUPABASE_SERVICE_ROLE_KEY: "github-native-service-adapter",
-    DOWNTIME_IDENTITY_FINGERPRINT_SECRET: "github-native-fingerprint",
-    DOWNTIME_CANONICAL_AUTH_READY: "true",
-    GITHUB_STAFF_IMAGE_TOKEN: "github-native-storage",
-    PHOTO_CLEANUP_SECRET: "github-native-cleanup",
+    SUPABASE_SERVICE_ROLE_KEY: "GITHUB_NATIVE_COMPAT_ADAPTER",
+    DOWNTIME_CANONICAL_AUTH_READY: "false",
     ...env
   };
 
   globalThis.Deno = {
-    env: { get(name) { return Object.prototype.hasOwnProperty.call(environment, name) ? String(environment[name]) : undefined; } },
+    env: { get(name) {
+      if (!Object.prototype.hasOwnProperty.call(environment, name) || environment[name] == null) return undefined;
+      return String(environment[name]);
+    } },
     serve(handler) {
       const name = globalThis.__YARDHUB_CURRENT_FUNCTION__;
       if (!name || typeof handler !== "function") throw new Error("A named GitHub-native function handler is required.");
