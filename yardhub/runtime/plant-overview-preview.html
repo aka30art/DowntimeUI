@@ -45,8 +45,8 @@ main{max-width:1500px;margin:auto;padding:24px}.top{display:flex;justify-content
  const params=new URLSearchParams(location.search),testMode=params.has('test');
  const operator=(params.get('operator')||'').trim().toUpperCase();
  let authorized=testMode&&(operator==='JAN'||operator==='MICK'),viewerTier='',centralToken=null,centralVersion=0,plantPayload=null,plantSyncBusy=false,plantConnected=false,canViewPlantOverview=true,canViewStaff=true,canViewDashboards=true,canViewAssignments=true;
- const CENTRAL_API='https://ygwfipksbbprqynvbklk.supabase.co/functions/v1/central-bank';
- const CENTRAL_API_KEY='sb_publishable_PDLmXilBlFT-aC3G14XcbA_GsZlgJGx';
+ const CENTRAL_API='https://github-native.invalid/functions/v1/central-bank';
+ const CENTRAL_API_KEY='github-native-local';
  try{const session=JSON.parse(sessionStorage.getItem('downtime.central.session.v1')||'null');centralToken=session?.token||null}catch{}
  const statusPanel = document.querySelector('.status');
  const toggle = document.getElementById('plantToggle');
@@ -242,9 +242,20 @@ function ensurePhotoLightbox(){let box=document.getElementById('staffPhotoLightb
    toggle.disabled = authorized && !plantConnected;
    note.textContent = authorized ? (plantConnected ? 'CONTROL ACCESS · '+operator+' · LIVE SYNC' : 'CONTROL ACCESS · '+operator+' · CONNECTING') : 'STATUS VIEW · PREVIEW';
  }
+ function parentGitHubFetch(url,options){
+   try{
+     const parent=window.parent;
+     if(parent&&parent!==window&&parent.__YARDHUB_GITHUB_CONNECTED__===true&&typeof parent.fetch==='function'){
+       return parent.fetch.call(parent,url,options);
+     }
+   }catch(error){
+     throw new Error('The parent YARDHUB GitHub data connection is unavailable.');
+   }
+   throw new Error('Plant Overview must be opened from a connected YARDHUB session.');
+ }
  async function centralCall(action,body={}){
    if(!centralToken)throw new Error('Central session missing. Return to the tracker and sign in again.');
-   const response=await fetch(CENTRAL_API,{method:'POST',headers:{'Content-Type':'application/json','apikey':CENTRAL_API_KEY,'x-downtime-session':centralToken},body:JSON.stringify({action,...body})});
+   const response=await parentGitHubFetch(CENTRAL_API,{method:'POST',headers:{'Content-Type':'application/json','apikey':CENTRAL_API_KEY,'x-downtime-session':centralToken},body:JSON.stringify({action,...body})});
    const data=await response.json().catch(()=>({error:'Invalid central response'}));
    if(!response.ok){const error=new Error(data.error||'Central request failed');error.status=response.status;throw error}
    return data;
