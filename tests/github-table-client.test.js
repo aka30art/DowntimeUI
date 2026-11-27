@@ -41,7 +41,7 @@ test("GitHub table client selects, filters, orders, projects and paginates rows"
   });
   const client = createGitHubTableClient({ store });
   const result = await client.from("gatelog_customers")
-    .select("id,customer_name")
+    .select("id,customer_name", { count: "exact" })
     .eq("status", "ACTIVE")
     .order("customer_name", { ascending: true })
     .limit(1);
