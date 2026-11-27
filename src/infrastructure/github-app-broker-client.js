@@ -123,7 +123,8 @@ export async function createEncryptedBrokerRequest({
       typeof payload.action !== "string" || !ACTION_PATTERN.test(payload.action) ||
       (payload.args !== undefined && (!payload.args || typeof payload.args !== "object" || Array.isArray(payload.args))) ||
       payload.sessionToken !== undefined || payload.session_token !== undefined ||
-      payload.accessToken !== undefined || payload.access_token !== undefined) {
+      payload.accessToken !== undefined || payload.access_token !== undefined ||
+      payload.authToken !== undefined || payload.auth_token !== undefined) {
     throw new TypeError("Broker request payload must contain a registered service, valid action and object args.");
   }
   const id = requiredString(requestId, "Request ID", /^[0-9a-f-]{36}$/i);
@@ -203,7 +204,8 @@ export async function decryptBrokerRequest({
       typeof request.action !== "string" || !ACTION_PATTERN.test(request.action) ||
       !request.args || typeof request.args !== "object" || Array.isArray(request.args) ||
       request.sessionToken !== undefined || request.session_token !== undefined ||
-      request.accessToken !== undefined || request.access_token !== undefined) {
+      request.accessToken !== undefined || request.access_token !== undefined ||
+      request.authToken !== undefined || request.auth_token !== undefined) {
     throw new Error("Decrypted broker request failed service/action schema validation.");
   }
   return request;
