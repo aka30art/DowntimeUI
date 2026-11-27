@@ -1,5 +1,6 @@
 import { GITHUB_YARDHUB_RPC_HANDLERS } from "../../src/infrastructure/github-rpc-handlers.js";
 import { ensureGitHubDatabaseReady } from "../../src/infrastructure/github-database-bootstrap.js";
+import { createGitHubStorageClient } from "../../src/infrastructure/github-storage-client.js";
 
 const DEFAULT_FUNCTIONS = [
   "central-bank",
@@ -25,6 +26,8 @@ export async function installGitHubEdgeRuntime({
   const databaseStatus = await ensureGitHubDatabaseReady({ store });
   globalThis.__YARDHUB_BOOTSTRAP_CODE__ = databaseStatus.bootstrapCode || null;
   const handlers = globalThis.__YARDHUB_EDGE_HANDLERS__ || (globalThis.__YARDHUB_EDGE_HANDLERS__ = {});
+  const sharedStorage = globalThis.__YARDHUB_GITHUB_STORAGE__ || createGitHubStorageClient({ store });
+  globalThis.__YARDHUB_GITHUB_STORAGE__ = sharedStorage;
   const previousDeno = globalThis.Deno;
   const previousFetch = globalThis.fetch;
   const previousSupabase = globalThis.supabase;
@@ -56,7 +59,7 @@ export async function installGitHubEdgeRuntime({
   const compatClients = new Set();
   function createCompatClient() {
     const client = createGitHubSupabaseCompat({
-      store, actorId, rpcHandlers, handlers,
+      store, storageClient: sharedStorage, actorId, rpcHandlers, handlers,
       sessionProvider: () => globalThis.DowntimeCentral?.session || null
     });
     compatClients.add(client);
