@@ -221,3 +221,26 @@ test("registered atomic RPC handlers update multiple JSON tables in one commit",
   assert.equal(db.tables.gatelog_visits.length, 1);
   assert.equal(db.tables.gatelog_audit.length, 1);
 });
+
+test("nested GATELOG relation projections resolve customer and waste labels", async () => {
+  const store = createMemoryStore({
+    gatelog_customers: [{ id: "c1", customer_name: "Example Customer" }],
+    gatelog_visits: [{ id: "v1", customer_id: "c1", vehicle_registration_snapshot: "AB12 CDE" }],
+    gatelog_visit_waste_types: [
+      { visit_id: "v1", waste_type_id: "w1" },
+      { visit_id: "v1", waste_type_id: "w2" }
+    ],
+    gatelog_waste_types: [
+      { id: "w1", label: "GENERAL" },
+      { id: "w2", label: "WOOD" }
+    ]
+  });
+  const client = createGitHubTableClient({ store });
+  const result = await client.from("gatelog_visits")
+    .select("id,vehicle_registration_snapshot,gatelog_customers(customer_name),gatelog_visit_waste_types(gatelog_waste_types(label))")
+    .eq("id", "v1")
+    .single();
+  assert.equal(result.error, null);
+  assert.equal(result.data.gatelog_customers.customer_name, "Example Customer");
+  assert.deepEqual(result.data.gatelog_visit_waste_types.map(x => x.gatelog_waste_types.label), ["GENERAL", "WOOD"]);
+});
