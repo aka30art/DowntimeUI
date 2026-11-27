@@ -163,6 +163,44 @@ export function createYardHubBackupRunner({
     return { headSha, treeSha: commit.tree.sha, entries: new Map((tree.tree || []).filter(x => x.type === "blob").map(x => [x.path, x.sha])) };
   }
 
+  async function readAuthorityAtHead({ api, repository, token, head }) {
+    if (!head.entries.has("control/authority.json")) return null;
+    const authorityFile = await request(
+      api + "/repos/" + repository + "/contents/control/authority.json?ref=" + encodeURIComponent(head.headSha),
+      {
+        headers: {
+          Accept: "application/vnd.github+json",
+          Authorization: "Bearer " + token,
+          "X-GitHub-Api-Version": "2022-11-28"
+        }
+      }
+    );
+    if (authorityFile?.encoding !== "base64" || typeof authorityFile.content !== "string") {
+      throw new Error("The GitHub authority manifest could not be read safely; backup stopped.");
+    }
+    try {
+      const authority = JSON.parse(Buffer.from(authorityFile.content, "base64").toString("utf8"));
+      if (!authority || typeof authority !== "object" || Array.isArray(authority)) {
+        throw new Error("Invalid authority object.");
+      }
+      return authority;
+    } catch {
+      throw new Error("The GitHub authority manifest is invalid; backup stopped.");
+    }
+  }
+
+  function authorityPause(authority) {
+    if (authority && (authority.status !== "ACTIVE" || authority.primarySystemId !== "YARDHUB-PRIMARY")) {
+      return {
+        skipped: true,
+        reason: "YARDHUB is not the active primary in the GitHub authority manifest.",
+        primarySystemId: authority.primarySystemId || null,
+        authorityStatus: authority.status || null
+      };
+    }
+    return null;
+  }
+
   async function createGitHubBlob({ api, repository, token, bytes }) {
     const response = await request(api + "/repos/" + repository + "/git/blobs", {
       method: "POST",
@@ -177,9 +215,13 @@ export function createYardHubBackupRunner({
     return response.sha;
   }
 
-  async function commitSnapshot({ api, repository, token, branch, files, deletions, message }) {
+  async function commitSnapshot({ api, repository, token, branch, files, deletions, message, authorityCheck = null }) {
     for (let attempt = 0; attempt < conflictRetries; attempt += 1) {
       const current = await fetchGitHubHead({ api, repository, token, branch });
+      if (authorityCheck) {
+        const paused = await authorityCheck(current);
+        if (paused) return paused;
+      }
       const desired = new Map(files.map(file => [file.path, file.bytes]));
       const entries = [];
       for (const file of files) {
@@ -259,20 +301,10 @@ export function createYardHubBackupRunner({
     if (destinationMetadata.archived === true) throw new Error("YARDHUB backup destination is archived.");
 
     const destinationHead = await fetchGitHubHead({ api, repository, token, branch });
-    if (destinationHead.entries.has("control/authority.json")) {
-      const authorityFile = await request(api + "/repos/" + repository + "/contents/control/authority.json?ref=" + encodeURIComponent(branch), {
-        headers: githubHeaders
-      });
-      const authority = JSON.parse(Buffer.from(authorityFile.content, "base64").toString("utf8"));
-      if (authority.status !== "ACTIVE" || authority.primarySystemId !== "YARDHUB-PRIMARY") {
-        return {
-          skipped: true,
-          reason: "YARDHUB is not the active primary in the GitHub authority manifest.",
-          primarySystemId: authority.primarySystemId || null,
-          authorityStatus: authority.status || null
-        };
-      }
-    }
+    const initialPause = authorityPause(await readAuthorityAtHead({
+      api, repository, token, head: destinationHead
+    }));
+    if (initialPause) return initialPause;
 
     const tableRows = await mapLimit(YARDHUB_TABLES, 4, table => exportTable({ supabaseUrl, serviceKey, table }));
     const files = [];
@@ -329,8 +361,12 @@ export function createYardHubBackupRunner({
     files.push({ path: ROOT + "/manifest.json", bytes: stableJson(manifest) });
     const result = await commitSnapshot({
       api, repository, token, branch, files, deletions: stale,
-      message: "backup: replicate YARDHUB primary snapshot " + manifest.exportedAt
+      message: "backup: replicate YARDHUB primary snapshot " + manifest.exportedAt,
+      authorityCheck: async head => authorityPause(await readAuthorityAtHead({
+        api, repository, token, head
+      }))
     });
+    if (result.skipped) return result;
     return { ...result, tableCount: YARDHUB_TABLES.length, tableCounts, storageObjectCount: storageObjects.length, storageBytes: manifest.storageBytes };
   }
 
