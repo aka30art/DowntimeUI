@@ -38,11 +38,13 @@ function makeStore() {
           users: [
             { userId: DEV_ID, username: "DEV", enabled: true, tier: "DEV" },
             { userId: USER_ID, username: "OPERATOR", enabled: true, status: "ACTIVE", staffId: STAFF_ID, tier: "USER" },
-            { userId: "00000000-0000-4000-8000-000000000099", username: "DISABLED", enabled: false, status: "ACTIVE", staffId: "00000000-0000-4000-8000-000000000098" }
+            { userId: "00000000-0000-4000-8000-000000000099", username: "DISABLED", enabled: false, status: "ACTIVE", staffId: "00000000-0000-4000-8000-000000000098" },
+            { userId: "00000000-0000-4000-8000-000000000005", username: "NEWOPERATOR", enabled: true, status: "ACTIVE", staffId: "00000000-0000-4000-8000-000000000006", tier: "USER" }
           ],
           staff: {
             profiles: {
-              OPERATOR: { staffId: STAFF_ID, linkedUserId: USER_ID, displayName: "Operator" }
+              OPERATOR: { staffId: STAFF_ID, linkedUserId: USER_ID, displayName: "Operator" },
+              NEWOPERATOR: { staffId: "00000000-0000-4000-8000-000000000006", linkedUserId: "00000000-0000-4000-8000-000000000005", displayName: "New Operator" }
             }
           }
         }
@@ -155,7 +157,7 @@ test("only immutable DEV can link or revoke GitHub identities", async () => {
   await assert.rejects(authority.linkIdentity({
     actorPrincipal: user,
     githubUserId: "444444",
-    userId: "00000000-0000-4000-8000-000000000099",
+    userId: "00000000-0000-4000-8000-000000000005",
     issueId: 1003
   }), /Only immutable DEV/);
 
