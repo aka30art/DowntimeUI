@@ -5,6 +5,10 @@ const API_BASE = "https://api.github.com";
 const DEVICE_BASE = "https://github.com";
 const MAX_ENVELOPE_BYTES = 11 * 1024;
 const ACTION_PATTERN = /^[a-z][a-z0-9-]{1,63}$/;
+const SERVICE_NAMES = new Set([
+  "central-bank", "central-config-admin", "gatelog-api", "photo-evidence",
+  "repair-maintenance-api", "spectator-read", "yard-hub-settings-api"
+]);
 
 function requiredString(value, label, pattern = null) {
   const result = String(value || "").trim();
@@ -115,13 +119,21 @@ export async function createEncryptedBrokerRequest({
     throw new Error("WebCrypto is required for encrypted GitHub broker requests.");
   }
   if (!payload || typeof payload !== "object" || Array.isArray(payload) ||
+      typeof payload.service !== "string" || !SERVICE_NAMES.has(payload.service) ||
       typeof payload.action !== "string" || !ACTION_PATTERN.test(payload.action) ||
-      (payload.args !== undefined && (!payload.args || typeof payload.args !== "object" || Array.isArray(payload.args)))) {
-    throw new TypeError("Broker request payload must contain a valid action and object args.");
+      (payload.args !== undefined && (!payload.args || typeof payload.args !== "object" || Array.isArray(payload.args))) ||
+      (payload.sessionToken !== undefined && (typeof payload.sessionToken !== "string" || payload.sessionToken.length > 1024))) {
+    throw new TypeError("Broker request payload must contain a registered service, valid action and object args.");
   }
   const id = requiredString(requestId, "Request ID", /^[0-9a-f-]{36}$/i);
   if (payload.requestId && payload.requestId !== id) throw new TypeError("Payload request ID does not match its encrypted envelope.");
-  const requestPayload = { requestId: id, action: payload.action, args: payload.args || {} };
+  const requestPayload = {
+    requestId: id,
+    service: payload.service,
+    action: payload.action,
+    args: payload.args || {},
+    ...(payload.sessionToken ? { sessionToken: payload.sessionToken } : {})
+  };
   const serverPublicKey = await importEcdhPublicKey(cryptoProvider.subtle, fromBase64Url(brokerPublicKey, 65));
   const pair = await cryptoProvider.subtle.generateKey(
     { name: "ECDH", namedCurve: "P-256" }, false, ["deriveBits"]
@@ -186,10 +198,12 @@ export async function decryptBrokerRequest({
   }, key, fromBase64Url(envelope.ciphertext, MAX_ENVELOPE_BYTES));
   const request = decodeJson(new Uint8Array(plaintext), "Decrypted broker request");
   if (!request || typeof request !== "object" || Array.isArray(request) ||
-      request.requestId !== envelope.requestId || typeof request.action !== "string" ||
-      !ACTION_PATTERN.test(request.action) ||
-      !request.args || typeof request.args !== "object" || Array.isArray(request.args)) {
-    throw new Error("Decrypted broker request failed action schema validation.");
+      request.requestId !== envelope.requestId ||
+      typeof request.service !== "string" || !SERVICE_NAMES.has(request.service) ||
+      typeof request.action !== "string" || !ACTION_PATTERN.test(request.action) ||
+      !request.args || typeof request.args !== "object" || Array.isArray(request.args) ||
+      (request.sessionToken !== undefined && (typeof request.sessionToken !== "string" || request.sessionToken.length > 1024))) {
+    throw new Error("Decrypted broker request failed service/action schema validation.");
   }
   return request;
 }
