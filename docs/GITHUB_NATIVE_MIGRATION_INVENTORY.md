@@ -108,12 +108,53 @@ These are not merely DDL table definitions. The source migration sequence encode
 5. Build a migration replay fixture in an isolated test database or deterministic SQL contract harness. Do not execute migrations against the primary.
 6. Complete full object listing and checksums for all five private buckets as a separate backup acceptance task.
 
-## 6. Phase impact
+## 6. SQL object and live-schema coverage findings
+
+A second read-only pass inspected all 45 tracked migration files and the tracked `supabase/schema.sql`. This is a source-file census only; no SQL was executed.
+
+### Tracked SQL objects
+
+The migration set defines 26 distinct SQL functions. Nineteen are the current service RPC contract listed in `GITHUB_NATIVE_SERVICE_PARITY_MATRIX.md`. The remaining seven require explicit classification:
+
+- Trigger/integrity helpers: `notify_downtime_central_state_change`, `prevent_yard_role_assignment_audit_mutation`, `prevent_downtime_roots_audit_mutation`, `prevent_yard_role_definition_audit_mutation`, `enforce_yard_role_access_level`.
+- Legacy/lifecycle routines: `downtime_roots_assign_identity` and `downtime_identity_reset_cutover`. The latter is disabled by `20261127100001_disable_legacy_identity_reset_rpc.sql`; it must not be revived as an alternative reset path. The former needs confirmation that it is no longer callable from any current service path.
+
+Five database triggers were found:
+
+| Trigger | Purpose / affected contract |
+|---|---|
+| `broadcast_downtime_central_state_update` | Broadcast central-bank state changes |
+| `yard_role_assignment_audit_immutable` | Protect YARD ROLE assignment audit history |
+| `downtime_roots_assignment_audit_immutable` | Protect ROOTS assignment audit history |
+| `yard_role_definition_audit_immutable` | Protect YARD ROLE definition audit history |
+| `yard_role_access_level_guard` | Enforce the four hierarchical YARD ROLE access levels at the database boundary |
+
+The checked-in `supabase/schema.sql` defines the `downtime_shared_state` table and three authenticated read/insert/update policies. The migration set also contains the spectator-denial policy and the central-state broadcast-read policy. The remaining operational tables are predominantly protected by RLS plus revoked direct access and server-side service-role Edge Function/RPC paths; equivalent twin protection therefore requires broker-enforced action permissions, not simply copying RLS flags.
+
+The 45 migrations contain 29 explicit `CREATE INDEX` statements. Their uniqueness, partial-index predicates, foreign-key support and sort/filter patterns must be carried into the data contract and acceptance tests.
+
+### Confirmed missing tracked table definition
+
+The previously recorded live read-only table inventory contains `downtime_reports` with **2 rows** and RLS enabled. However, a complete scan of all 45 tracked migration files and the tracked `supabase/schema.sql` found no `CREATE TABLE` definition for `public.downtime_reports`.
+
+This is stronger than the 49-versus-45 count discrepancy: the tracked source schema is demonstrably insufficient to reconstruct at least one live table. Its columns, primary/foreign keys, indexes, grants, RLS policies, triggers and report payload semantics must be recovered from an approved schema-only read/export or the missing applied migration. Do not infer its structure from the application code or create an approximate twin table.
+
+### Authorization implication
+
+The source design uses database security boundaries that are not interchangeable:
+- RLS is enabled on all 39 tables in the recorded live platform inventory.
+- Several tables revoke access from `public`, `anon` and `authenticated`, and grant access only to `service_role`.
+- SECURITY DEFINER RPCs perform atomic lifecycle and business transitions.
+- immutable audit triggers and a database access-level trigger enforce invariants below the UI.
+
+The GitHub twin must implement those invariants in its trusted broker/transaction boundary. A local table adapter or UI permission switch does not reproduce them.
+
+## 7. Phase impact
 
 - **Phase 0 remains PARTIAL.** The tracked migration file inventory and hashes are now pinned, but the 49-vs-45 discrepancy, applied version mapping, complete SQL dependency semantics and full live export are unresolved.
 - **Phase 4 remains NOT STARTED.** No action may be marked parity-complete from this inventory alone.
 - **No operational data has been copied. No YARDHUB authority has been changed. PR #3 remains open and draft.**
 
-## 7. Protection boundary
+## 8. Protection boundary
 
 All operations used to create this inventory were read-only GitHub GET operations against the pinned source tree. No commit, branch, pull request, workflow, deployment, Supabase operation, SQL execution, credential operation or data export was performed against `aka30art/DOWNTIME`. All new documentation is confined to `aka30art/DowntimeUI`.
