@@ -322,7 +322,7 @@ try{
   await rmPage.screenshot({path:"artifacts/yardhub-rm-setup-mobile.png",fullPage:true});
   await rmPage.close();
   await yardhubPage.close();
-\n  console.log("PASS: Chromium installer, daily operations, plant overview, task-lock persistence, reports, Settings edits, backup/restore, 390px mobile layout and WIPE OUT reset, YARDHUB private setup gate, standalone R&M lock and mobile layout");
+  console.log("PASS: Chromium installer, daily operations, plant overview, task-lock persistence, reports, Settings edits, backup/restore, 390px mobile layout and WIPE OUT reset, YARDHUB private setup gate, standalone R&M lock and mobile layout");
 }finally{
   await browser.close();
   await new Promise(resolve=>server.close(resolve));
