@@ -187,7 +187,7 @@ test("broker pins idempotency to canonical USER and replays only the saved encry
   const harness = createBrokerHarness();
   await harness.broker.handleIssueComment(event());
   const replay = await harness.broker.handleIssueComment(event());
-  assert.deepEqual(replay, { accepted: true, replayed: true, requestId: REQUEST_ID });
+  assert.deepEqual(replay, { accepted: true, replayed: true, pending: false, requestId: REQUEST_ID });
   assert.equal(harness.calls.executed.length, 1);
   assert.equal(harness.calls.published.length, 2);
   assert.equal(harness.calls.published[1].encryptedResponse, "encrypted-response-for-request-key");
