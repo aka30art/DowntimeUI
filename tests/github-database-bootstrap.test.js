@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { ensureGitHubDatabaseReady, GITHUB_YARDHUB_TABLES } from "../src/infrastructure/github-database-bootstrap.js";
+import { ensureGitHubDatabaseReady, GITHUB_YARDHUB_TABLES, GITHUB_YARDHUB_SOURCE_TABLES, GITHUB_YARDHUB_BROKER_TABLES } from "../src/infrastructure/github-database-bootstrap.js";
 
 function memoryStore(initial = {}) {
   let revision = 0;
