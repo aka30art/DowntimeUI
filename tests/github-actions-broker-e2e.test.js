@@ -81,14 +81,20 @@ test("encrypted browser request traverses the Actions broker core and returns on
         cryptoProvider: webcrypto
       });
     },
-    async authorize({ principal, service, action, args, sessionToken, authorityEpoch }) {
-      calls.authorize.push({ principal, service, action, args, sessionToken, authorityEpoch });
+    async authorize({ principal, service, action, args, authorityEpoch }) {
+      calls.authorize.push({ principal, service, action, args, authorityEpoch });
       return principal.userId === userId &&
         service === "gatelog-api" &&
-        sessionToken === "test-session-token" &&
         action === "gatelog-customer-arrival" &&
         args.registration === "AB12 CDE" &&
         authorityEpoch === 3;
+    },
+    async createServiceSession({ principal, service, requestId, authorityEpoch }) {
+      assert.equal(principal.userId, userId);
+      assert.equal(service, "gatelog-api");
+      assert.ok(requestId);
+      assert.equal(authorityEpoch, 3);
+      return { token: "test-session-token", async dispose() { calls.sessionDisposed = true; } };
     },
     async execute({ principal, service, action, args, sessionToken, requestId, authorityEpoch }) {
       calls.execute.push({ principal, service, action, args, sessionToken, requestId, authorityEpoch });
@@ -144,6 +150,8 @@ test("encrypted browser request traverses the Actions broker core and returns on
   assert.equal(calls.issue.length, 1);
   assert.equal(calls.authorize.length, 1);
   assert.equal(calls.execute.length, 1);
+  assert.equal(calls.execute[0].sessionToken, "test-session-token");
+  assert.equal(calls.sessionDisposed, true);
   assert.equal(published.length, 1);
   assert.equal(published[0].includes("Private customer"), false);
   assert.equal(published[0].includes("private-visit-1001"), false);
