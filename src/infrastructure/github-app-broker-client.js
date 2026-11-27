@@ -276,7 +276,8 @@ export function createGitHubAppBrokerClient({
   issueNumber,
   fetchImpl = globalThis.fetch,
   cryptoProvider = globalThis.crypto,
-  now = () => Date.now()
+  now = () => Date.now(),
+  storage = globalThis.sessionStorage
 } = {}) {
   const appClientId = requiredString(clientId, "GitHub App client ID");
   const repoId = Number(repositoryId);
@@ -287,10 +288,12 @@ export function createGitHubAppBrokerClient({
   if (!Number.isSafeInteger(issue) || issue < 1) throw new TypeError("Broker inbox issue number is invalid.");
   if (typeof fetchImpl !== "function") throw new TypeError("A fetch implementation is required.");
 
-  let device = null;
   let accessToken = null;
   let tokenExpiresAt = 0;
   let account = null;
+  const authStorage = storage || globalThis.sessionStorage;
+  const authStateKey = "yardhub.github-app.oauth-state.v1";
+  const localTokenLifetimeMs = 30 * 60 * 1000;
 
   async function request(url, options, label) {
     const response = await fetchImpl(url, options);
@@ -315,78 +318,99 @@ export function createGitHubAppBrokerClient({
     return accessToken;
   }
 
-  async function startDeviceAuthorization() {
-    const form = new URLSearchParams({ client_id: appClientId, scope: "offline_access" });
-    const result = await request(DEVICE_BASE + "/login/device/code", {
-      method: "POST",
-      headers: { Accept: "application/json", "Content-Type": "application/x-www-form-urlencoded" },
-      body: form.toString()
-    }, "GitHub App device authorisation");
-    if (!result?.device_code || !result?.user_code ||
-        result.verification_uri !== "https://github.com/login/device" ||
-        !Number.isInteger(result.expires_in) || !Number.isInteger(result.interval)) {
-      throw new Error("GitHub returned an invalid device authorisation response.");
-    }
-    device = {
-      deviceCode: result.device_code,
-      userCode: result.user_code,
-      expiresAt: now() + result.expires_in * 1000,
-      intervalMs: Math.max(5000, result.interval * 1000),
-      nextPollAt: 0
-    };
-    return {
-      userCode: device.userCode,
-      verificationUri: result.verification_uri,
-      expiresAt: new Date(device.expiresAt).toISOString(),
-      intervalMs: device.intervalMs
-    };
+  function randomVerifier() {
+    const bytes = new Uint8Array(32);
+    cryptoProvider.getRandomValues(bytes);
+    return toBase64Url(bytes);
   }
 
-  async function pollDeviceAuthorization() {
-    if (!device) throw new Error("Start GitHub App device authorisation first.");
-    if (now() >= device.expiresAt) {
-      device = null;
-      throw new Error("GitHub App device code expired. Start authorisation again.");
+  async function sha256Base64Url(value) {
+    const digest = await cryptoProvider.subtle.digest("SHA-256", utf8(value));
+    return toBase64Url(new Uint8Array(digest));
+  }
+
+  async function startWebAuthorization({ redirectUri, login = null } = {}) {
+    if (!cryptoProvider?.subtle || !cryptoProvider?.getRandomValues) {
+      throw new Error("WebCrypto is required for GitHub App PKCE authorisation.");
     }
-    if (now() < device.nextPollAt) {
-      const error = new Error("GitHub App device authorisation must be polled at the returned interval.");
-      error.code = "DEVICE_FLOW_INTERVAL";
-      error.retryAfterMs = device.nextPollAt - now();
-      throw error;
+    const callback = requiredString(redirectUri, "GitHub App callback URL");
+    const callbackUrl = new URL(callback);
+    if (callbackUrl.protocol !== "https:" && callbackUrl.hostname !== "localhost") {
+      throw new TypeError("GitHub App callback URL must use HTTPS.");
     }
-    device.nextPollAt = now() + device.intervalMs;
+    if (!authStorage || typeof authStorage.setItem !== "function") {
+      throw new Error("Session storage is required for OAuth state and PKCE verification.");
+    }
+    const state = randomVerifier();
+    const codeVerifier = randomVerifier();
+    const codeChallenge = await sha256Base64Url(codeVerifier);
+    authStorage.setItem(authStateKey, JSON.stringify({
+      state, codeVerifier, redirectUri: callbackUrl.toString(), createdAt: now()
+    }));
+    const authorizeUrl = new URL(DEVICE_BASE + "/login/oauth/authorize");
+    authorizeUrl.searchParams.set("client_id", appClientId);
+    authorizeUrl.searchParams.set("redirect_uri", callbackUrl.toString());
+    authorizeUrl.searchParams.set("state", state);
+    authorizeUrl.searchParams.set("code_challenge", codeChallenge);
+    authorizeUrl.searchParams.set("code_challenge_method", "S256");
+    authorizeUrl.searchParams.set("repository_id", String(repoId));
+    authorizeUrl.searchParams.set("allow_signup", "false");
+    if (login) authorizeUrl.searchParams.set("login", requiredString(login, "GitHub login"));
+    return Object.freeze({
+      authorizationUrl: authorizeUrl.toString(),
+      state,
+      expiresAt: new Date(now() + 10 * 60 * 1000).toISOString()
+    });
+  }
+
+  async function completeWebAuthorization({ callbackUrl, clientSecret } = {}) {
+    if (!authStorage || typeof authStorage.getItem !== "function" || typeof authStorage.removeItem !== "function") {
+      throw new Error("Session storage is required to verify the GitHub App OAuth callback.");
+    }
+    let stored;
+    try { stored = JSON.parse(authStorage.getItem(authStateKey) || "null"); }
+    catch { stored = null; }
+    const callback = new URL(requiredString(callbackUrl, "GitHub OAuth callback URL"));
+    const code = callback.searchParams.get("code");
+    const state = callback.searchParams.get("state");
+    const oauthError = callback.searchParams.get("error");
+    authStorage.removeItem(authStateKey);
+    const expectedCallback = stored?.redirectUri ? new URL(stored.redirectUri) : null;
+    if (!stored || typeof stored !== "object" || !stored.state || !stored.codeVerifier ||
+        typeof state !== "string" || state !== stored.state ||
+        now() - stored.createdAt > 10 * 60 * 1000 ||
+        !expectedCallback ||
+        callback.origin + callback.pathname !== expectedCallback.origin + expectedCallback.pathname) {
+      throw new Error("GitHub OAuth state, callback or PKCE session validation failed.");
+    }
+    if (oauthError) throw new Error("GitHub authorisation was not completed: " + oauthError);
+    if (typeof code !== "string" || !code) throw new Error("GitHub OAuth callback did not contain an authorization code.");
+
+    const secret = requiredString(clientSecret, "GitHub App public-client secret");
     const form = new URLSearchParams({
       client_id: appClientId,
-      device_code: device.deviceCode,
-      grant_type: "urn:ietf:params:oauth:grant-type:device_code",
+      client_secret: secret,
+      code,
+      redirect_uri: stored.redirectUri,
+      code_verifier: stored.codeVerifier,
       repository_id: String(repoId)
     });
-    const response = await fetchImpl(DEVICE_BASE + "/login/oauth/access_token", {
+    const result = await request(DEVICE_BASE + "/login/oauth/access_token", {
       method: "POST",
       headers: { Accept: "application/json", "Content-Type": "application/x-www-form-urlencoded" },
       body: form.toString()
-    });
-    let result = null;
-    try { result = await response.json(); } catch { result = null; }
-    if (result?.error === "authorization_pending") return { pending: true, intervalMs: device.intervalMs };
-    if (result?.error === "slow_down") {
-      device.intervalMs += 5000;
-      device.nextPollAt = now() + device.intervalMs;
-      return { pending: true, intervalMs: device.intervalMs, slowedDown: true };
+    }, "GitHub App PKCE token exchange");
+    if (!result?.access_token || String(result.token_type).toLowerCase() !== "bearer") {
+      throw new Error("GitHub returned an invalid user access token.");
     }
-    if (result?.error) {
-      const reason = result.error;
-      device = null;
-      throw new Error("GitHub App authorisation failed: " + reason);
-    }
-    if (!response.ok || !result?.access_token || String(result.token_type).toLowerCase() !== "bearer" ||
-        !Number.isInteger(result.expires_in) || result.expires_in < 60) {
-      device = null;
-      throw new Error("GitHub returned an invalid or non-expiring user access token.");
-    }
+    // This is a public client: the GitHub App client secret is not a security
+    // boundary in a static Pages bundle. PKCE, restricted App permissions and
+    // the event-derived broker principal are the actual protection.
+    const expiresIn = Number.isInteger(result.expires_in) && result.expires_in >= 60
+      ? result.expires_in * 1000
+      : localTokenLifetimeMs;
     accessToken = result.access_token;
-    tokenExpiresAt = now() + result.expires_in * 1000;
-    device = null;
+    tokenExpiresAt = now() + Math.min(expiresIn, localTokenLifetimeMs);
     const profile = await request(API_BASE + "/user", {
       headers: { Accept: "application/vnd.github+json", Authorization: "Bearer " + accessToken, "X-GitHub-Api-Version": "2026-03-10" }
     }, "GitHub user verification");
@@ -396,7 +420,7 @@ export function createGitHubAppBrokerClient({
       throw new Error("GitHub user identity could not be verified.");
     }
     account = { id: profile.id, login: profile.login };
-    return { pending: false, account, expiresAt: new Date(tokenExpiresAt).toISOString() };
+    return { account, expiresAt: new Date(tokenExpiresAt).toISOString() };
   }
 
   async function submitEncryptedRequest({ payload, brokerPublicKey } = {}) {
@@ -445,12 +469,11 @@ export function createGitHubAppBrokerClient({
     accessToken = null;
     tokenExpiresAt = 0;
     account = null;
-    device = null;
   }
 
   return Object.freeze({
-    startDeviceAuthorization,
-    pollDeviceAuthorization,
+    startWebAuthorization,
+    completeWebAuthorization,
     submitEncryptedRequest,
     pollEncryptedResponse,
     disconnect,
