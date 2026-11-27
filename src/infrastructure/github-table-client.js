@@ -170,7 +170,7 @@ export function createGitHubTableClient({
                 expectedRevision: db.revision,
                 actorId,
                 operationId: "db-" + now().getTime() + "-" + Math.random().toString(36).slice(2, 10),
-                mutate(tables) {
+                mutate: (tables) => {
                   const rows = tables[table] || [];
                   if (this.operation === "insert") {
                     for (const row of inputRows) {
@@ -205,7 +205,7 @@ export function createGitHubTableClient({
                   }
                   tables[table] = rows;
                   return { affected: resultRows.length };
-                }.bind(this)
+                }
               });
               finalError = null;
               break;
