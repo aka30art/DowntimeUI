@@ -94,19 +94,16 @@ async function createPrivateRepository(form) {
   try {
     const created = await createPrivateGitHubDataRepository({
       owner, repo, token,
-      storage: globalThis.localStorage,
       fetchImpl: globalThis.fetch
     });
     tokenInput.value = "";
     const branchInput = form.querySelector("[name=branch]");
     if (branchInput) branchInput.value = created.defaultBranch;
-    status("Created private repository · " + created.fullName + " · starting initialisation…");
-    await activateRepository({
-      owner: created.owner, repo: created.repo,
-      button, tokenInput
-    });
+    button.hidden = true;
+    status("Created private repository · " + created.fullName +
+      ". Now enter a separate fine-grained token limited to this repository (Contents read/write, Metadata read), then choose CONNECT & INITIALISE.");
+    tokenInput.focus();
   } catch (error) {
-    clearGitHubConnection();
     status(error?.message || "Private repository creation failed. Check the token permissions.", true);
     button.disabled = false;
     tokenInput.focus();
