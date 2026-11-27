@@ -59,8 +59,10 @@ function createMockGitHub() {
       const tree = commit && trees.get(commit.tree);
       const content = tree?.get(filePath);
       if (content === undefined) return response(404, { message: "Not found" });
+      const blobSha = [...blobs.entries()].find(([, value]) => value === content)?.[0] || "initial-blob";
       return response(200, {
         type: "file", encoding: "base64",
+        sha: blobSha,
         content
       });
     }
