@@ -4,6 +4,8 @@ const DEFAULT_PRIMARY_KEYS = Object.freeze({
   downtime_attachments: ["id"],
   downtime_central_bank: ["id"],
   downtime_central_sessions: ["token_hash"],
+  downtime_github_identities: ["github_user_id"],
+  downtime_github_broker_requests: ["request_id"],
   downtime_central_audit: ["id"],
   downtime_central_config_state: ["id"],
   downtime_central_config_history: ["version"],
