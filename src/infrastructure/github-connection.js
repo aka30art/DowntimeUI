@@ -110,7 +110,7 @@ export async function createPrivateGitHubDataRepository({
     throw new GitHubStoreError("GitHub returned unreadable token-owner metadata.", identityResponse.status || 0);
   }
   if (!identityResponse.ok || String(identity?.login || "").toLowerCase() !== owner.toLowerCase()) {
-    throw new GitHubStoreError("The GitHub token must belong to the configured owner account (" + owner + "). No repository was created.", identityResponse.status || 403);
+    throw new GitHubStoreError("The GitHub token must belong to the configured owner account (" + owner + "). No repository was created.", 403);
   }
 
   let response;
