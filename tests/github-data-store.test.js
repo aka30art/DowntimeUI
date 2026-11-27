@@ -43,6 +43,18 @@ function createMockGitHub({ includeAuthority = true } = {}) {
     if (method === "GET" && path === "/git/ref/heads/data/yardhub") {
       return response(200, { ref: "refs/heads/data/yardhub", object: { sha: head } });
     }
+    if (method === "GET" && path.startsWith("/git/trees/")) {
+      const sha = decodeURIComponent(path.slice("/git/trees/".length));
+      const tree = trees.get(sha);
+      if (!tree) return response(404, { message: "Not found" });
+      return response(200, {
+        sha, truncated: false,
+        tree: [...tree.entries()].map(([filePath, file]) => ({
+          path: filePath, type: "blob", sha: file.sha,
+          size: Buffer.from(file.content, "base64").length
+        }))
+      });
+    }
     if (method === "GET" && path.startsWith("/git/commits/")) {
       const sha = decodeURIComponent(path.slice("/git/commits/".length));
       const commit = commits.get(sha);
@@ -420,4 +432,25 @@ test("a fresh private GitHub data repository receives the default YARDHUB author
   assert.equal(authority.status, "ACTIVE");
   const readBack = await store.readAuthority();
   assert.deepEqual(readBack, authority);
+});
+
+test("GitHub storage listing returns nested folders and file metadata", async () => {
+  const server = createMockGitHub();
+  const store = makeStore(server);
+  await store.uploadObject({
+    bucket: "downtime-staff-photos", path: "staff-1/front.jpg",
+    data: new Uint8Array([1, 2, 3]), mimeType: "image/jpeg"
+  });
+  await store.uploadObject({
+    bucket: "downtime-staff-photos", path: "staff-2/front.jpg",
+    data: new Uint8Array([4, 5]), mimeType: "image/jpeg"
+  });
+  const folders = await store.listObjects({ bucket: "downtime-staff-photos", prefix: "" });
+  assert.deepEqual(folders.map(x => x.name).sort(), ["staff-1", "staff-2"]);
+  assert.equal(folders.every(x => x.id === null), true);
+  const files = await store.listObjects({ bucket: "downtime-staff-photos", prefix: "staff-1" });
+  assert.equal(files.length, 1);
+  assert.equal(files[0].name, "front.jpg");
+  assert.equal(files[0].metadata.mimetype, "image/jpeg");
+  assert.equal(files[0].metadata.size, 3);
 });
