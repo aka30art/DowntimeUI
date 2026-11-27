@@ -77,6 +77,24 @@ The current Edge Functions call SQL RPCs for operations that must retain atomic 
 
 These need deterministic equivalents in the GitHub-native write engine. They must not be replaced with a sequence of independent commits that could leave partial records.
 
+## 2A. Latest source-main STAFF layout delta
+
+The pinned reference tree `ba99913d1eaff7d99785088fd0931b3815defd4c` remains immutable. A read-only comparison against the current source `main` found two commits beyond that reference:
+
+- `0cbda60f90ee45f8df866e7b36f532498a78ea49` — "Match STAFF workspace to YARD HUB layout (#210)". Updates the STAFF view to the shared YARD HUB settings header, compact header return control, USERS-style directory rows and responsive action toolbar; preserves STAFF profile, role, photo, station and permission behavior.
+- `939195a1fac26a9a632ab3938f17922985d8cd9d` — "Match STAFF action wrapping to shared YARD HUB toolbar". Changes the STAFF action group to the same responsive flex-wrapping toolbar and adds a contract assertion.
+
+The observed source-main delta is limited to `index.html` and related test contracts; no Edge Function or SQL migration file changed in those two commits.
+
+**Port applied in DOWNTIMEUI only:** `yardhub/runtime/index.html` now contains the latest STAFF CSS, markup, row renderer and dedicated `staffBackToYardHub` event binding. The runtime's GitHub bootstrap/connection and other runtime-specific code were preserved. The immutable `yardhub/reference/index.html` remains at its original pinned blob SHA.
+
+A new `tests/yardhub-runtime-staff-layout.test.js` contract checks:
+- STAFF header and dedicated YARD HUB return route;
+- responsive flex toolbar and shared USER row classes;
+- the immutable source-reference snapshot remains unchanged.
+
+The test is included in both `npm test` and `npm run check`. It is a static layout contract, not a full interactive/multi-user browser acceptance test.
+
 ## 3. GitHub-native port strategy
 
 The preferred direction is a DOWNTIMEUI-owned data transaction adapter:
