@@ -28,7 +28,15 @@ function createGitHubAppJwt({ appId, privateKey, now = () => new Date() }) {
 async function createDataRepositoryInstallationToken({
   appId, appPrivateKey, installationId, repositoryId, fetchImpl = globalThis.fetch, now = () => new Date()
 }) {
-  const jwt = createGitHubAppJwt({ appId, privateKey: createPrivateKey(appPrivateKey), now });
+  const repositoryNumericId = Number(repositoryId);
+  if (!Number.isSafeInteger(repositoryNumericId) || repositoryNumericId <= 0) {
+    throw new TypeError("YARDHUB_DATA_REPOSITORY_ID must be a positive numeric repository ID.");
+  }
+  const jwt = createGitHubAppJwt({
+    appId,
+    privateKey: createPrivateKey(String(appPrivateKey).replace(/\\n/g, "\n")),
+    now
+  });
   const response = await fetchImpl(
     "https://api.github.com/app/installations/" + encodeURIComponent(installationId) + "/access_tokens",
     {
@@ -40,7 +48,7 @@ async function createDataRepositoryInstallationToken({
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        repository_ids: [Number(repositoryId)],
+        repository_ids: [repositoryNumericId],
         permissions: { contents: "write", metadata: "read" }
       })
     }
