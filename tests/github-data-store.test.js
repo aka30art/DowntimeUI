@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import crypto from "node:crypto";
 import { createGitHubDataStore, GitHubStoreError } from "../src/infrastructure/github-data-store.js";
 import { GITHUB_YARDHUB_TABLES } from "../src/infrastructure/github-database-bootstrap.js";
 
@@ -21,7 +22,7 @@ function response(status, body) {
   };
 }
 
-function createMockGitHub({ includeAuthority = true, includePrimaryBackup = false } = {}) {
+function createMockGitHub({ includeAuthority = true, includePrimaryBackup = false, tamperPrimaryBackupChecksum = false } = {}) {
   let counter = 0;
   let head = "commit-0";
   let failNextCas = false;
@@ -62,6 +63,9 @@ function createMockGitHub({ includeAuthority = true, includePrimaryBackup = fals
       bucket: "downtime-evidence", path: "week-1/photo.png",
       mimeType: "image/png", size: 4, updatedAt: "2026-11-27T10:00:00.000Z"
     }) + "\\n");
+    if (tamperPrimaryBackupChecksum) {
+      checksums["replication/yardhub-primary/tables/downtime_shared_state.json"] = "incorrect-checksum";
+    }
     addInitialFile("replication/yardhub-primary/manifest.json", JSON.stringify({
       schemaVersion: 1, source: "YARDHUB-SUPABASE",
       sourceProjectRef: "source-project", exportedAt: "2026-11-27T10:00:00.000Z",
@@ -561,22 +565,14 @@ test("YARDHUB primary restore refuses to overwrite an existing database", async 
 });
 
 test("YARDHUB primary restore rejects a backup with a checksum mismatch", async () => {
-  const server = createMockGitHub({ includePrimaryBackup: true });
+  const server = createMockGitHub({ includePrimaryBackup: true, tamperPrimaryBackupChecksum: true });
   const store = makeStore(server);
-  // The current source snapshot is immutable without a commit, so use a tampered manifest fixture
-  // to prove validation rejects a mismatched table checksum before any target commit occurs.
-  const tampered = await server.fetchImpl("https://api.github.com/repos/aka30art/DowntimeUI/git/ref/heads/data/yardhub", {
-    headers: { Authorization: "Bearer test-token" }
-  });
-  assert.equal(tampered.ok, true);
   const backup = await store.inspectYardHubPrimaryBackup();
   assert.ok(backup);
   const before = server.getHead();
   await assert.rejects(
     store.restoreYardHubPrimaryBackup({ expectedRevision: 0 }),
     /checksum/
-  ).catch(error => {
-    if (!/checksum/.test(error.message)) throw error;
-  });
+  );
   assert.equal(server.getHead(), before);
 });
