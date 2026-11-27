@@ -7,3 +7,8 @@ It is isolated inside `aka30art/DowntimeUI`. It is not linked to the DOWNTIMEUI 
 **Do not run or deploy this worktree yet:** the initial copy still contains Supabase endpoints. The task here is to replace those integrations with the GitHub-native data adapter, then port/verify module by module before any route is enabled.
 
 The untouched source baseline is retained in `yardhub/reference/`.
+
+
+## Runtime activation gate
+
+`index.html` in this working tree is intentionally a safe activation interstitial. It does not load the original application or call Supabase. The original full UI is preserved in `yardhub/reference/index.html`. Replace this interstitial only after the GitHub-native action adapters, module storage and parity tests are complete.
