@@ -26,11 +26,12 @@ test("first GitHub installation seeds all operational tables and immutable DEV b
   const result = await ensureGitHubDatabaseReady({ store, now: () => new Date("2026-11-27T12:00:00.000Z") });
   assert.equal(result.ready, true);
   assert.equal(result.initialized, true);
-  assert.equal(result.tableCount, 41);
+  assert.equal(result.tableCount, 42);
   assert.equal(GITHUB_YARDHUB_SOURCE_TABLES.length, 39);
-  assert.equal(GITHUB_YARDHUB_BROKER_TABLES.length, 2);
+  assert.equal(GITHUB_YARDHUB_BROKER_TABLES.length, 3);
   assert.deepEqual(store.tables.downtime_github_identities, []);
   assert.deepEqual(store.tables.downtime_github_broker_requests, []);
+  assert.deepEqual(store.tables.downtime_github_broker_identity_audit, []);
   assert.deepEqual(Object.keys(store.tables).sort(), [...GITHUB_YARDHUB_TABLES].sort());
   assert.equal(store.tables.downtime_central_bank[0].version, 0);
   assert.deepEqual(store.tables.downtime_central_bank[0].payload.users, []);
