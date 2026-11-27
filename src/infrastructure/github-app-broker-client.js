@@ -3,7 +3,8 @@ const RESPONSE_MARKER = "YARDHUB_RESPONSE_V1:";
 const PROTOCOL = "YARDHUB_GITHUB_BROKER";
 const API_BASE = "https://api.github.com";
 const DEVICE_BASE = "https://github.com";
-const MAX_ENVELOPE_BYTES = 128 * 1024;
+const MAX_ENVELOPE_BYTES = 10 * 1024;
+const ACTION_PATTERN = /^[a-z][a-z0-9-]{1,63}$/;
 
 function requiredString(value, label, pattern = null) {
   const result = String(value || "").trim();
@@ -100,10 +101,14 @@ export async function createEncryptedBrokerRequest({
   if (!cryptoProvider?.subtle || !cryptoProvider?.getRandomValues) {
     throw new Error("WebCrypto is required for encrypted GitHub broker requests.");
   }
-  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
-    throw new TypeError("Broker request payload must be a JSON object.");
+  if (!payload || typeof payload !== "object" || Array.isArray(payload) ||
+      typeof payload.action !== "string" || !ACTION_PATTERN.test(payload.action) ||
+      (payload.args !== undefined && (!payload.args || typeof payload.args !== "object" || Array.isArray(payload.args)))) {
+    throw new TypeError("Broker request payload must contain a valid action and object args.");
   }
   const id = requiredString(requestId, "Request ID", /^[0-9a-f-]{36}$/i);
+  if (payload.requestId && payload.requestId !== id) throw new TypeError("Payload request ID does not match its encrypted envelope.");
+  const requestPayload = { requestId: id, action: payload.action, args: payload.args || {} };
   const serverPublicKey = await importEcdhPublicKey(cryptoProvider.subtle, fromBase64Url(brokerPublicKey));
   const pair = await cryptoProvider.subtle.generateKey(
     { name: "ECDH", namedCurve: "P-256" }, false, ["deriveBits"]
@@ -126,7 +131,7 @@ export async function createEncryptedBrokerRequest({
     iv: nonce,
     additionalData: utf8(PROTOCOL + ":REQUEST:" + id),
     tagLength: 128
-  }, key, utf8(JSON.stringify(payload)));
+  }, key, utf8(JSON.stringify(requestPayload)));
   const envelope = {
     protocol: PROTOCOL, version: 1, requestId: id,
     createdAt: createdAt.toISOString(), expiresAt: expiresAt.toISOString(),
@@ -166,7 +171,14 @@ export async function decryptBrokerRequest({
     additionalData: utf8(PROTOCOL + ":REQUEST:" + envelope.requestId),
     tagLength: 128
   }, key, fromBase64Url(envelope.ciphertext));
-  return decodeJson(new Uint8Array(plaintext), "Decrypted broker request");
+  const request = decodeJson(new Uint8Array(plaintext), "Decrypted broker request");
+  if (!request || typeof request !== "object" || Array.isArray(request) ||
+      request.requestId !== envelope.requestId || typeof request.action !== "string" ||
+      !ACTION_PATTERN.test(request.action) ||
+      !request.args || typeof request.args !== "object" || Array.isArray(request.args)) {
+    throw new Error("Decrypted broker request failed action schema validation.");
+  }
+  return request;
 }
 
 export async function encryptBrokerResponse({
