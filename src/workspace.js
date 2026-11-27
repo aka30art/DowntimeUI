@@ -77,7 +77,10 @@ export function mountWorkspace(root,config,{onEditConfiguration=()=>{},onExportC
   const disposeBinding=()=>{
     bindingController.abort();
     if(refreshInterval!==null){globalThis.clearInterval?.(refreshInterval);refreshInterval=null;}
-    if(githubSyncTimer!==null){globalThis.clearTimeout?.(githubSyncTimer);githubSyncTimer=null;}
+    if(githubSyncTimer!==null){
+      globalThis.clearTimeout?.(githubSyncTimer);githubSyncTimer=null;
+      if(githubSyncQueued&&githubStore)void flushGitHubSnapshot();
+    }
   };
   WORKSPACE_BINDINGS.set(root,disposeBinding);
   const loaded=readOperations(storage,config.installationId);
@@ -188,8 +191,10 @@ export function mountWorkspace(root,config,{onEditConfiguration=()=>{},onExportC
       githubAuthority=await githubStore.readAuthority();
       const snapshot=await githubStore.readSnapshot({module:"YARDHUB_WORKSPACE",snapshotId:config.installationId});
       githubSnapshotVersion=snapshot?.version??null;
+      lastGitHubSyncAt=snapshot?.updatedAt||null;
       status="GitHub connected · "+saved.owner+"/"+saved.repo+" · primary: "+githubAuthority.primarySystemId+(snapshot?" · snapshot v"+snapshot.version:" · no remote snapshot yet");
       render();
+      if(!snapshot){githubSyncQueued=true;void flushGitHubSnapshot();}
     }catch(error){
       githubStore=null;githubAuthority=null;githubSnapshotVersion=null;
       status="GitHub connection failed: "+(error?.message||"Check the repository and token.");
@@ -648,6 +653,28 @@ export function mountWorkspace(root,config,{onEditConfiguration=()=>{},onExportC
   },{signal:bindingController.signal});
   selectedWeek=weekStartFor(selectedDate);
   ensureWeek();
+  const savedGitHubConnection=loadGitHubConnection({storage:githubSettingsStorage,sessionStorage:githubSessionStorage});
+  if(savedGitHubConnection.connected){
+    try{
+      githubStore=createConnectedGitHubStore({storage:githubSettingsStorage,sessionStorage:githubSessionStorage,fetchImpl:options.fetchImpl||globalThis.fetch});
+      status="Reconnecting to GitHub data store…";
+      void (async()=>{
+        try{
+          githubAuthority=await githubStore.readAuthority();
+          const snapshot=await githubStore.readSnapshot({module:"YARDHUB_WORKSPACE",snapshotId:config.installationId});
+          githubSnapshotVersion=snapshot?.version??null;
+          lastGitHubSyncAt=snapshot?.updatedAt||null;
+          status="GitHub connected · primary: "+githubAuthority.primarySystemId+(snapshot?" · snapshot v"+snapshot.version:" · no remote snapshot yet");
+          if(!snapshot){githubSyncQueued=true;void flushGitHubSnapshot();}
+          render();
+        }catch(error){
+          githubStore=null;githubAuthority=null;githubSnapshotVersion=null;
+          status="GitHub reconnection failed: "+(error?.message||"Reconnect in Settings.");
+          render();
+        }
+      })();
+    }catch(error){githubStore=null;status="GitHub reconnection failed: "+(error?.message||"Reconnect in Settings.");}
+  }
   root.classList?.add("workspace-root");
   const legacy=document.querySelector(".shell");if(legacy)legacy.hidden=true;
   const notice=document.querySelector(".previewNotice");if(notice)notice.hidden=true;
