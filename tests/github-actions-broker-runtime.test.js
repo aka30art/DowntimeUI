@@ -19,12 +19,19 @@ function makeRuntimeOptions(overrides = {}) {
         downtime_github_broker_requests: [],
         downtime_github_identities: [],
         downtime_central_bank: [],
-        downtime_central_sessions: []
+        downtime_central_sessions: [],
+        downtime_roots_bootstrap: [],
+        downtime_roots_assignments: [],
+        yard_role_assignments: [],
+        yard_roles: [],
+        yard_role_department_permissions: []
       } };
     },
+    async readSnapshot() { return null; },
+    async writeSnapshot() { return { ok: true, version: 1 }; },
     async readTable() { return []; },
     async readAuthority() {
-      return { status: "ACTIVE", primarySystemId: "DOWNTIMEUI-GITHUB", epoch: 1 };
+      return { status: "ACTIVE", primarySystemId: "YARDHUB-PRIMARY", epoch: 1 };
     },
     async transactDatabase() {
       return { committed: true, revision: 1 };
