@@ -1,4 +1,6 @@
 import crypto from "node:crypto";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 export const YARDHUB_TABLES = [
   "downtime_shared_state", "downtime_reports", "downtime_attachments",
@@ -134,7 +136,8 @@ export function createYardHubBackupRunner({
             path,
             bytes,
             mimeType: item.metadata?.mimetype || item.metadata?.mimeType || "application/octet-stream",
-            size: bytes.byteLength
+            size: bytes.byteLength,
+            updatedAt: item.updated_at || item.updatedAt || null
           });
         }
         if (response.length < pageSize) break;
@@ -254,7 +257,7 @@ export function createYardHubBackupRunner({
         const metadataPath = ROOT + "/storage-metadata/" + bucket + "/" + object.path + ".json";
         const metadata = stableJson({
           bucket, path: object.path, mimeType: object.mimeType,
-          size: object.size, exportedAt: now().toISOString()
+          size: object.size, updatedAt: object.updatedAt
         });
         files.push({ path, bytes: object.bytes });
         files.push({ path: metadataPath, bytes: metadata });
@@ -295,7 +298,7 @@ export function createYardHubBackupRunner({
   return Object.freeze({ run });
 }
 
-if (import.meta.url === "file://" + process.argv[1]) {
+if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])) {
   createYardHubBackupRunner().run().then(result => {
     process.stdout.write(JSON.stringify(result, null, 2) + "\n");
   }).catch(error => {
