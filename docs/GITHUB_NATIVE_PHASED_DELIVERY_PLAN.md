@@ -98,12 +98,26 @@ For each module, test fresh installation, normal operation, permission-denied pa
 - Confirm every release gate has named evidence and no unresolved critical/high security issue.
 - Only then may PR #3 be considered merge-ready. Merge and deployment remain separate explicit release actions.
 
+## Phase 3 broker feasibility notes
+
+A GitHub Actions issue-comment broker remains a candidate, not an approved production design.
+
+- GitHub documents that an `issue_comment` workflow runs from the default branch and only triggers if that workflow file exists on that default branch. A PR branch alone cannot complete this proof without putting the workflow on the broker repository's default branch.
+- The authoritative actor must be taken from GitHub's authenticated event context (for example, the event sender/account ID), never from the parsed request body. The actor must then resolve to an enabled canonical USER before the broker reads or mutates operational state.
+- Comment text and other event-controlled fields are untrusted input. Parse them as data, validate strict schemas and never interpolate them into shell/script source.
+- A separate broker repository can contain workflow code and public encryption material only. It must not contain operational data. The data repository remains separate and private, with its token available only to the broker workflow.
+- Because repository comments are visible to repository collaborators, request/response payloads must be encrypted end-to-end for the broker and intended user. Issue bodies, comments, logs, artifacts and caches must not contain plaintext operational data.
+- Workflow concurrency can limit a workflow/job to one active run, but GitHub's default pending-run behaviour can replace earlier pending runs. The newer queue option permits up to 100 pending runs; this still needs latency/throughput tests and does not replace the data store's compare-and-swap, idempotency or replay protection.
+- Do not use `workflow_dispatch` as an operator interface if it requires granting users write access to the broker repository. Verify the actual permission model in the disposable test repository.
+- This proof is blocked until a disposable private broker repository, separate private data repository and protected test secrets/keys can be provisioned. None of these are currently available through the connected GitHub actions.
+
 ## Current verified baseline (27 November 2026)
 
 - PR #3 is open, draft and unmerged.
-- The last observed head while this plan was updated is `57f6c2d1a1b577871bc0dc154143e64eb04efe77` (security audit documentation added; PR checks for that exact documentation commit were not yet reported).
-- CI run `46081306857` on commit `7c313a6a1c98070f97b0d5b524ff7bad8452a0fb` completed successfully: `npm run check`, Chromium installation and Playwright browser QA all passed.
-- CI run `46081441856` for commit `235ca7f379523e9d3a980f059e57ef6aaf8b365e` was in progress at the last check; it includes the latest backup-runner authority guard.
+- Current verified implementation head: `39f46c0c47d8407c9b2091f0583c759ef113bbd5`.
+- CI run `46081812603` (run #466) on that exact head completed successfully: `npm run check`, Chromium installation, Playwright browser QA and screenshot artifact upload all passed.
+- Earlier intermediate runs failed while the backup bridge and restore test fixtures were being corrected. Their failing fixtures have been corrected; run #466 validates the current backup authority guard and the deterministic restore/checksum fixtures.
+- Browser QA confirms the existing installer, daily operations, plant overview, task-lock persistence, reports, settings edits, backup/restore, 390px mobile layout, WIPE OUT reset, YARDHUB private setup gate, standalone R&M lock and mobile layout. It does not validate secure multi-user YARDHUB operations or full Edge action parity.
 - The repository `aka30art/DowntimeUI` is public and is source code only. It is not an operational data destination. The `data/yardhub` branch is not approved for operational records.
 - The direct-browser GitHub token prototype is not approved for staff/multi-user production.
 - The seven-service runtime is an experimental compatibility harness; the preserved YARDHUB UI remains behind its activation gate.
