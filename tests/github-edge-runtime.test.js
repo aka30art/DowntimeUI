@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { installGitHubEdgeRuntime } from "../yardhub/runtime/github-edge-runtime.js";
+import { installGitHubEdgeRuntime, executeGitHubEdgeAction } from "../yardhub/runtime/github-edge-runtime.js";
 
 function createMemoryStore() {
   let revision = 0;
@@ -396,5 +396,67 @@ test("R&M machinery register and GATELOG customer visit complete authenticated C
     globalThis.fetch = originalFetch;
     if (previousSession === undefined) delete globalThis.DowntimeCentral;
     else globalThis.DowntimeCentral = previousSession;
+  }
+});
+
+
+test("broker executes multiple YARDHUB table mutations in one atomic Git database commit", async () => {
+  const store = createMemoryStore();
+  const runtime = await installGitHubEdgeRuntime({ store, functionNames: [] });
+  const before = (await store.readDatabase()).revision;
+  const handlers = {
+    "test-service": async () => {
+      const db = globalThis.__YARDHUB_GITHUB_COMPAT__.createClient();
+      const customer = await db.from("gatelog_customers")
+        .insert({ id: "broker-customer-1", customer_name: "Atomic Broker Customer" })
+        .select("*").single();
+      assert.equal(customer.error, null);
+      const visit = await db.from("gatelog_visits")
+        .insert({ id: "broker-visit-1", customer_id: "broker-customer-1", status: "ON_SITE" })
+        .select("*").single();
+      assert.equal(visit.error, null);
+      return new Response(JSON.stringify({ ok: true }), { status: 200 });
+    }
+  };
+  try {
+    const result = await executeGitHubEdgeAction({
+      store, handlers, service: "test-service", action: "test-create",
+      args: {}, requestId: "10fd938a-2107-4b8a-ade1-ba77bc542182"
+    });
+    assert.equal(result.status, 200);
+    assert.equal(result.body.ok, true);
+    assert.equal(result.revision, before + 1);
+    const db = await store.readDatabase();
+    assert.equal(db.tables.gatelog_customers.length, 1);
+    assert.equal(db.tables.gatelog_visits.length, 1);
+  } finally {
+    await runtime.dispose();
+  }
+});
+
+test("broker rolls back all staged table mutations when a YARDHUB action fails", async () => {
+  const store = createMemoryStore();
+  const runtime = await installGitHubEdgeRuntime({ store, functionNames: [] });
+  const before = (await store.readDatabase()).revision;
+  const handlers = {
+    "test-service": async () => {
+      const db = globalThis.__YARDHUB_GITHUB_COMPAT__.createClient();
+      const result = await db.from("gatelog_customers")
+        .insert({ id: "broker-customer-fail", customer_name: "Must Roll Back" })
+        .select("*").single();
+      assert.equal(result.error, null);
+      return new Response(JSON.stringify({ error: "deliberate rejection" }), { status: 403 });
+    }
+  };
+  try {
+    await assert.rejects(executeGitHubEdgeAction({
+      store, handlers, service: "test-service", action: "test-denied",
+      args: {}, requestId: "20fd938a-2107-4b8a-ade1-ba77bc542182"
+    }), /deliberate rejection/);
+    const db = await store.readDatabase();
+    assert.equal(db.revision, before);
+    assert.equal(db.tables.gatelog_customers, undefined);
+  } finally {
+    await runtime.dispose();
   }
 });
