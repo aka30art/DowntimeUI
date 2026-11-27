@@ -124,7 +124,8 @@ export async function createEncryptedBrokerRequest({
       (payload.args !== undefined && (!payload.args || typeof payload.args !== "object" || Array.isArray(payload.args))) ||
       payload.sessionToken !== undefined || payload.session_token !== undefined ||
       payload.accessToken !== undefined || payload.access_token !== undefined ||
-      payload.authToken !== undefined || payload.auth_token !== undefined) {
+      payload.authToken !== undefined || payload.auth_token !== undefined ||
+      payload.authorization !== undefined || payload.headers !== undefined) {
     throw new TypeError("Broker request payload must contain a registered service, valid action and object args.");
   }
   const id = requiredString(requestId, "Request ID", /^[0-9a-f-]{36}$/i);
