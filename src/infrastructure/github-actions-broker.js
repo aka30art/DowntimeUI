@@ -187,9 +187,10 @@ export function createGitHubActionsBroker({
           requestId: parsed.envelope.requestId,
           authorityEpoch
         });
-        const sessionToken = typeof serviceSession === "string" ? serviceSession : serviceSession?.token;
-        if (typeof sessionToken !== "string" || sessionToken.length < 24 || sessionToken.length > 4096) {
-          throw brokerError("The trusted service session could not be issued.", 503, "BROKER_SESSION_UNAVAILABLE");
+        const sessionToken = serviceSession && typeof serviceSession === "object" ? serviceSession.token : null;
+        if (typeof sessionToken !== "string" || sessionToken.length < 24 || sessionToken.length > 4096 ||
+            typeof serviceSession.dispose !== "function") {
+          throw brokerError("The trusted service session must provide an opaque token and revocation function.", 503, "BROKER_SESSION_UNAVAILABLE");
         }
 
         const result = await execute({
