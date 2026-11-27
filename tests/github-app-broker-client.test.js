@@ -67,6 +67,32 @@ test("broker request and response are end-to-end encrypted with ephemeral P-256 
   await assert.rejects(decryptBrokerResponse(context, tampered, webcrypto));
 });
 
+
+test("broker client rejects caller-supplied session and access credentials before encryption", async () => {
+  const broker = await brokerKeyPair();
+  const brokerPublicKey = base64Url(await webcrypto.subtle.exportKey("raw", broker.publicKey));
+  for (const credential of [
+    { sessionToken: "forged-session" },
+    { session_token: "forged-session" },
+    { accessToken: "forged-access" },
+    { authorization: "Bearer forged" }
+  ]) {
+    await assert.rejects(
+      createEncryptedBrokerRequest({
+        payload: {
+          service: "gatelog-api",
+          action: "gatelog-customer-arrival",
+          args: {},
+          ...credential
+        },
+        brokerPublicKey,
+        cryptoProvider: webcrypto
+      }),
+      /registered service, valid action and object args/
+    );
+  }
+});
+
 test("broker comment envelopes round-trip above 1 KB and reject oversized encoded input before decoding", async () => {
   const broker = await brokerKeyPair();
   const brokerPublicKey = base64Url(await webcrypto.subtle.exportKey("raw", broker.publicKey));
