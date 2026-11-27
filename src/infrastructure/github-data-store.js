@@ -256,6 +256,53 @@ export function createGitHubDataStore({
       throw new GitHubStoreError("Event write conflicted repeatedly. Refresh and retry; no event was overwritten.", 409);
     },
 
+    async writeSnapshot({ module: moduleInput, snapshotId: snapshotInput, actorId, payload, expectedVersion = null } = {}) {
+      const moduleName = requiredString(moduleInput, "Snapshot module", /^[A-Z][A-Z0-9_-]{1,39}$/);
+      const snapshotId = requiredString(snapshotInput, "Snapshot ID", /^[A-Za-z0-9._:-]{1,120}$/);
+      requiredString(actorId, "Snapshot actor");
+      asJsonObject(payload, "Snapshot payload");
+      if (expectedVersion !== null && (!Number.isInteger(expectedVersion) || expectedVersion < 1)) {
+        throw new TypeError("expectedVersion must be null or a positive integer.");
+      }
+      const path = "snapshots/" + systemId.toLowerCase() + "/" + moduleName.toLowerCase() + "/" + encodeURIComponent(snapshotId) + ".json";
+
+      for (let attempt = 0; attempt < maxRetries; attempt += 1) {
+        const headSha = await getHead();
+        const treeSha = await getCommitTree(headSha);
+        const authority = validateAuthority(await readJsonAt(AUTHORITY_PATH, headSha));
+        const current = await readJsonAt(path, headSha);
+        const currentVersion = current?.version ?? null;
+        if (currentVersion !== expectedVersion) {
+          throw new GitHubStoreError("Snapshot version changed. Refresh the snapshot before saving.", 409, {
+            expectedVersion, currentVersion
+          });
+        }
+        const next = {
+          schemaVersion: 1, module: moduleName, snapshotId, writerSystemId: systemId,
+          authorityEpoch: authority.epoch,
+          writeMode: authority.primarySystemId === systemId ? "PRIMARY" : "SECONDARY_LOCAL",
+          version: (currentVersion || 0) + 1,
+          actorId, updatedAt: now().toISOString(), payload
+        };
+        const result = await commitJsonAtHead({
+          headSha, treeSha, path, value: next,
+          message: "YARDHUB snapshot: " + moduleName + " " + snapshotId + " v" + next.version
+        });
+        if (result.committed) return { ok: true, snapshot: next, path, commitSha: result.commitSha };
+        await sleep(Math.min(100 * (2 ** attempt), 1200));
+      }
+      throw new GitHubStoreError("Snapshot save conflicted repeatedly. Refresh before retrying.", 409);
+    },
+
+    async readSnapshot({ module: moduleInput, snapshotId: snapshotInput, writerSystemId = systemId } = {}) {
+      const moduleName = requiredString(moduleInput, "Snapshot module", /^[A-Z][A-Z0-9_-]{1,39}$/);
+      const snapshotId = requiredString(snapshotInput, "Snapshot ID", /^[A-Za-z0-9._:-]{1,120}$/);
+      if (!ALLOWED_SYSTEMS.has(writerSystemId)) throw new TypeError("Unsupported writer system identity.");
+      const path = "snapshots/" + writerSystemId.toLowerCase() + "/" + moduleName.toLowerCase() + "/" + encodeURIComponent(snapshotId) + ".json";
+      const headSha = await getHead();
+      return readJsonAt(path, headSha);
+    },
+
     async readEvents({ module: moduleInput, date, writerSystemId = systemId } = {}) {
       const moduleName = requiredString(moduleInput, "Module", /^[A-Z][A-Z0-9_-]{1,39}$/);
       const day = asDate(date, now);
