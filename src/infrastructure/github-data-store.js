@@ -1,4 +1,4 @@
-import { GITHUB_YARDHUB_TABLES, GITHUB_YARDHUB_SOURCE_TABLES } from "./github-database-bootstrap.js";
+import { GITHUB_YARDHUB_TABLES, GITHUB_YARDHUB_SOURCE_TABLES, GITHUB_YARDHUB_BROKER_TABLES } from "./github-database-bootstrap.js";
 const DEFAULT_API = "https://api.github.com";
 const DEFAULT_MAX_RETRIES = 5;
 const DEFAULT_MAX_SHARD_BYTES = 512 * 1024;
@@ -496,6 +496,19 @@ export function createGitHubDataStore({
           if (byteLength(encoded) > maxShardBytes) {
             throw new GitHubStoreError("YARDHUB table " + table + " exceeds the configured atomic table shard limit. No restore was committed.", 413);
           }
+          const blob = await request("/git/blobs", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ content: encoded, encoding: "utf-8" })
+          });
+          additions.push({ path: databaseTablePath(table), mode: "100644", type: "blob", sha: blob.sha });
+          tableMetadata[table] = { version: 1, updatedAt: exportedAt };
+        }
+
+        // Broker identity and request-ledger tables are GitHub-only extensions.
+        // Initialize them empty on restore; never import them from the source.
+        for (const table of GITHUB_YARDHUB_BROKER_TABLES) {
+          const encoded = encodeJson({ schemaVersion: 1, systemId, table, rows: [] });
           const blob = await request("/git/blobs", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
