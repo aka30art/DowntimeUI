@@ -61,7 +61,8 @@ async function createDataRepositoryInstallationToken({
 }
 
 function importBrokerPrivateKey(pem, cryptoProvider) {
-  const base64 = String(pem).replace(/-----BEGIN PRIVATE KEY-----|-----END PRIVATE KEY-----|\s/g, "");
+  const normalized = String(pem).replace(/\\n/g, "\n");
+  const base64 = normalized.replace(/-----BEGIN PRIVATE KEY-----|-----END PRIVATE KEY-----|\s/g, "");
   return cryptoProvider.subtle.importKey(
     "pkcs8",
     Buffer.from(base64, "base64"),
