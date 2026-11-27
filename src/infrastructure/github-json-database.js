@@ -102,6 +102,12 @@ class GitHubQueryBuilder {
   ilike(column, value) { this.filters.push({ column, operator: "ilike", value }); return this; }
   like(column, value) { this.filters.push({ column, operator: "like", value }); return this; }
   contains(column, value) { this.filters.push({ column, operator: "contains", value }); return this; }
+  filter(column, operator, value) { this.filters.push({ column, operator: String(operator), value }); return this; }
+  match(values) {
+    if (!values || typeof values !== "object" || Array.isArray(values)) throw new TypeError("Match filters must be an object.");
+    for (const [column, value] of Object.entries(values)) this.filters.push({ column, operator: "eq", value });
+    return this;
+  }
   not(column, operator, value) { this.filters.push({ column, operator: operator === "is" ? "neq" : "not", value }); return this; }
   order(column, options = {}) { this.orders.push({ column, ascending: options.ascending !== false }); return this; }
   limit(value) { this.maxRows = Math.max(0, Number(value) || 0); return this; }
