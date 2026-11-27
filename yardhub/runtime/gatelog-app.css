@@ -1,0 +1,274 @@
+/* GATELOG — YARD HUB shared visual system */
+.gatelog-screen{color:var(--text);padding:clamp(12px,2vw,22px);max-width:1480px;margin:0 auto}
+.gatelog-head{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:18px;padding:0 0 16px;border-bottom:1px solid #2a4155}
+.gatelog-head h1{font-size:clamp(25px,3.5vw,36px);margin:0;font-weight:950;letter-spacing:-.6px}
+.gatelog-eyebrow{color:#ffd21a;font-size:10px;font-weight:950;letter-spacing:2px}
+.gatelog-back{margin-right:auto}
+.gatelog-head-copy{min-width:0}
+.gatelog-muted{font-size:11px;color:#91a4b5}
+.gatelog-toolbar{display:flex;align-items:stretch;gap:10px;margin:14px 0 18px}
+.gatelog-kpis{display:grid;grid-template-columns:repeat(2,minmax(145px,1fr));gap:10px;flex:0 1 440px;min-width:0}
+.gatelog-kpi{background:linear-gradient(145deg,#192d3b,#0d1b26);border:1px solid #344d60;border-radius:12px;padding:12px 16px;min-width:0;box-shadow:0 5px 16px #0002}
+.gatelog-kpi strong{display:block;font-size:26px;color:#ffd21a;font-weight:950;line-height:1.1}
+.gatelog-kpi span{display:block;margin-top:5px;font-size:10px;color:#9eafbe;font-weight:850;letter-spacing:.65px}
+.gatelog-toolbar-spacer{flex:1 1 auto;min-width:18px}
+.gatelog-toolbar-actions{display:flex;align-items:stretch;gap:9px}
+.gatelog-action{min-width:132px;padding:12px 17px;border:1px solid #63768a;border-radius:10px;background:linear-gradient(145deg,#10273d,#0a1d30);color:#f4f7fa;font-size:11px;font-weight:950;letter-spacing:.6px}
+.gatelog-action:hover{border-color:#ffd21a;background:#142b40}
+.gatelog-action-primary{background:#ffd21a;border-color:#ffd21a;color:#102033}
+.gatelog-action-primary:hover{background:#ffe05a;color:#102033}
+.gatelog-register{overflow:hidden;border:1px solid #344d60;border-radius:13px;background:linear-gradient(145deg,#142735,#0d1b26);box-shadow:0 12px 28px #0003}
+.gatelog-register-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;border-bottom:1px solid #344d60}
+.gatelog-register-heading h2,.gatelog-panel h2{font-size:13px;margin:0;font-weight:950;letter-spacing:1px}
+.gatelog-register-heading h2:before,.gatelog-panel h2:before{content:"";display:inline-block;width:6px;height:16px;background:#ffd21a;transform:skew(-25deg);margin-right:10px;vertical-align:-3px}
+.gatelog-table-wrap{overflow-x:auto}
+.gatelog-table{width:100%;border-collapse:collapse;min-width:680px}
+.gatelog-table th{background:#203747;color:#dbe5eb;font-size:10px;text-transform:uppercase;text-align:left;padding:12px 13px;letter-spacing:.65px}
+.gatelog-table td{padding:12px 13px;border-bottom:1px solid #263e4c;font-size:12px;vertical-align:middle}
+.gatelog-table tbody tr:last-child td{border-bottom:0}
+.gatelog-table tbody tr:hover td{background:#ffffff08}
+.gatelog-table .gatelog-company{font-weight:850;color:#f5f7fa}
+.gatelog-table .gatelog-reg{font-weight:900;letter-spacing:.7px;white-space:nowrap}
+.gatelog-table .gatelog-waste-cell{color:#c4d0d9}
+.gatelog-table .gatelog-time{white-space:nowrap;font-variant-numeric:tabular-nums}
+.gatelog-status{display:inline-flex;align-items:center;gap:6px;color:#ffdf42;font-size:10px;font-weight:950;letter-spacing:.65px;white-space:nowrap}
+.gatelog-status:before{content:"";width:7px;height:7px;border-radius:50%;background:#ffd21a;box-shadow:0 0 9px #ffd21a88}
+.gatelog-table .gatelog-depart{padding:7px 10px;font-size:10px}
+.gatelog-empty{padding:22px;text-align:center;color:#91a4b5;border:1px dashed #41576a;border-radius:9px}
+.gatelog-lower-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:14px;align-items:start}
+.gatelog-panel{background:linear-gradient(145deg,#142735,#0d1b26);border:1px solid #344d60;border-radius:13px;padding:15px;min-width:0;box-shadow:0 8px 22px #0002}
+.gatelog-panel h2{margin:0 0 12px}
+.gatelog-field{display:grid;gap:5px;margin:9px 0}
+.gatelog-field label{font-size:10px;color:#9eafbe;font-weight:850;letter-spacing:.45px}
+.gatelog-field input,.gatelog-field select,.gatelog-field textarea,.gatelog-search{width:100%;min-height:42px;background:#091721;color:var(--text);border:1px solid #334b5c;border-radius:8px;padding:9px 10px}
+.gatelog-waste{display:flex;flex-wrap:wrap;gap:7px}
+.gatelog-chip{display:flex;gap:6px;align-items:center;padding:7px 9px;border:1px solid #344d60;border-radius:8px;font-size:11px;background:#091721}
+.gatelog-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.gatelog-primary{border-color:#ffd21a;background:#ffd21a;color:#102033}
+.gatelog-list{display:grid;gap:8px;margin-top:12px}
+.gatelog-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;padding:11px;border:1px solid #344d60;border-radius:9px;background:#0a1b28}
+.gatelog-row strong{display:block}
+.gatelog-row small{display:block;color:#9eafbe;font-size:11px;margin-top:3px}
+.gatelog-message{padding:9px 11px;border-radius:8px;background:#102c3a;color:#b8d9e8;margin:8px 0}
+.gatelog-message.error{background:#351c20;color:#ffb7ad}
+@media(max-width:760px){.gatelog-toolbar{flex-wrap:wrap}.gatelog-kpis{flex:1 1 100%}.gatelog-toolbar-spacer{display:none}.gatelog-toolbar-actions{width:100%}.gatelog-action{flex:1}.gatelog-lower-grid{grid-template-columns:1fr}}
+@media(max-width:520px){.gatelog-screen{padding:10px}.gatelog-kpi{padding:11px}.gatelog-kpi strong{font-size:23px}.gatelog-kpi span{font-size:9px}.gatelog-toolbar-actions{gap:7px}.gatelog-action{min-width:0;padding:12px 8px;font-size:10px}.gatelog-register-heading{padding:12px}.gatelog-table{min-width:640px}.gatelog-table th,.gatelog-table td{padding:10px 9px}.gatelog-panel{padding:12px}}
+
+.gatelog-statistics{margin-top:14px;padding:15px;border:1px solid #344d60;border-radius:13px;background:linear-gradient(145deg,#142735,#0d1b26);box-shadow:0 8px 22px #0002}
+.gatelog-statistics-heading{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px}
+.gatelog-statistics-heading h2{font-size:13px;margin:0;font-weight:950;letter-spacing:1px}
+.gatelog-statistics-heading h2:before{content:"";display:inline-block;width:6px;height:16px;background:#ffd21a;transform:skew(-25deg);margin-right:10px;vertical-align:-3px}
+.gatelog-statistics-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.gatelog-stat{min-width:0;padding:14px;border:1px solid #344d60;border-radius:10px;background:#0a1b28}
+.gatelog-stat span{display:block;color:#9eafbe;font-size:10px;font-weight:850;letter-spacing:.55px}
+.gatelog-stat strong{display:block;margin-top:8px;color:#ffd21a;font-size:clamp(18px,2.3vw,25px);font-weight:950;overflow-wrap:anywhere}
+.gatelog-stat small{display:block;margin-top:5px;color:#91a4b5;font-size:10px}
+.gatelog-modal[hidden]{display:none}
+.gatelog-modal{position:fixed;inset:0;z-index:10050;display:grid;place-items:center;padding:18px}
+.gatelog-modal-backdrop{position:absolute;inset:0;background:#020a10d9;backdrop-filter:blur(5px)}
+.gatelog-modal-window{position:relative;z-index:1;width:min(720px,100%);max-height:min(88vh,900px);overflow:auto;border:1px solid #496176;border-radius:16px;background:linear-gradient(145deg,#142b3b,#091722);box-shadow:0 24px 90px #0009;padding:clamp(16px,3vw,24px)}
+.gatelog-modal-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-bottom:15px;border-bottom:1px solid #344d60;margin-bottom:16px}
+.gatelog-modal-head h2{font-size:20px;margin:3px 0 0;font-weight:950;letter-spacing:.5px}
+.gatelog-modal-close{width:38px;height:38px;border:1px solid #526a7c;border-radius:9px;background:#0a1b28;color:#fff;font-size:25px;line-height:1}
+.gatelog-modal-intro{color:#b8c6d0;font-size:13px;margin:0 0 14px}
+.gatelog-choice-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.gatelog-choice{display:grid;gap:10px;text-align:left;min-height:132px;padding:18px;border:1px solid #526a7c;border-radius:12px;background:#0a1b28;color:#f4f7fa}
+.gatelog-choice:hover{border-color:#ffd21a}
+.gatelog-choice strong{font-size:13px;color:#ffd21a;letter-spacing:.5px}
+.gatelog-choice span{font-size:12px;line-height:1.5;color:#aebdca}
+.gatelog-modal-toolbar{display:flex;gap:8px;margin-bottom:12px}
+.gatelog-modal-toolbar .gatelog-search{flex:1;min-width:0}
+.gatelog-secondary{padding:10px 14px;border:1px solid #526a7c;border-radius:8px;background:#102638;color:#e8edf1;font-size:11px;font-weight:850}
+.gatelog-catalogue-list{display:grid;gap:8px}
+.gatelog-customer-card{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:12px;padding:12px;border:1px solid #344d60;border-radius:10px;background:#0a1b28}
+.gatelog-customer-card-main{min-width:0}
+.gatelog-customer-card strong,.gatelog-customer-card span,.gatelog-customer-card small{display:block;overflow-wrap:anywhere}
+.gatelog-customer-card strong{font-size:13px;color:#f4f7fa}
+.gatelog-customer-card span{margin-top:4px;font-size:11px;color:#c1cdd6}
+.gatelog-customer-card small{margin-top:5px;font-size:10px;color:#91a4b5}
+.gatelog-customer-card button{white-space:nowrap}
+.gatelog-visit-form{display:grid;gap:12px}
+.gatelog-visit-form .gatelog-field{margin:0}
+.gatelog-visit-form input[readonly]{opacity:.78}
+.gatelog-waste-fieldset{border:1px solid #344d60;border-radius:10px;padding:12px;min-width:0}
+.gatelog-waste-fieldset legend{padding:0 5px;color:#9eafbe;font-size:10px;font-weight:850;letter-spacing:.45px}
+.gatelog-custom-waste{margin:12px 0 0}
+.gatelog-custom-waste span{font-size:10px;color:#9eafbe;font-weight:850}
+.gatelog-form-actions{display:flex;justify-content:space-between;gap:9px;flex-wrap:wrap}
+.gatelog-form-note{margin:0;color:#91a4b5;font-size:10px}
+.gatelog-form-error{padding:9px 11px;border-radius:8px;background:#351c20;color:#ffb7ad;font-size:12px}
+body.gatelog-modal-open{overflow:hidden}
+@media(max-width:760px){.gatelog-statistics-grid{grid-template-columns:1fr}.gatelog-stat{padding:11px}.gatelog-stat strong{margin-top:4px}.gatelog-choice-grid{grid-template-columns:1fr}.gatelog-choice{min-height:95px}}
+@media(max-width:520px){.gatelog-statistics{padding:12px}.gatelog-statistics-heading{align-items:flex-start;flex-direction:column}.gatelog-modal{padding:8px}.gatelog-modal-window{max-height:94vh;border-radius:12px;padding:14px}.gatelog-customer-card{grid-template-columns:1fr}.gatelog-customer-card button{width:100%}.gatelog-modal-toolbar{flex-wrap:wrap}.gatelog-modal-toolbar .gatelog-search{flex-basis:100%}}
+
+
+/* GATELOG — R&M HERO HEADER ALIGNMENT */
+.gatelog-hero{position:relative;isolation:isolate;overflow:hidden;min-height:205px;margin:0 0 17px;padding:20px 28px 23px;border:1px solid #263f54;border-radius:18px;background:linear-gradient(100deg,#041524 0 48%,#10283b 100%);color:#f3f6fa}
+.gatelog-hero-grid{position:absolute;z-index:-1;inset:0 0 0 auto;width:51%;background:repeating-linear-gradient(0deg,transparent 0 23px,#b6c2d015 24px 25px),repeating-linear-gradient(90deg,transparent 0 39px,#b6c2d015 40px 41px)}
+.gatelog-hero-stripe{position:absolute;z-index:-1;right:28%;top:-95px;width:175px;height:420px;transform:rotate(36deg);background:#ffd21a;opacity:.96}
+.gatelog-hero-top{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;position:relative;z-index:2}
+.gatelog-brand-name{font-size:21px;font-weight:950;letter-spacing:-.5px;color:#f3f6fa}
+.gatelog-brand-name sup{font-size:8px}
+.gatelog-brand-rule{height:5px;width:54px;background:#ffd21a;margin-top:5px}
+.gatelog-hero-actions{display:flex;align-items:flex-start;gap:8px;position:relative;z-index:2}
+.gatelog-session-label{font-size:10px;color:#d6e0e8;font-weight:850;letter-spacing:.7px;text-align:right;max-width:230px;overflow-wrap:anywhere;padding-top:5px}
+.gatelog-session-label strong{display:block;color:#ffd21a;font-size:15px;margin-top:4px}
+.gatelog-hero-icon{height:56px;width:56px;min-width:56px;border:2px solid #40596d;border-radius:13px;background:#0a2032;color:#ffd21a;display:grid;place-items:center;padding:0}
+.gatelog-hero-icon:hover{background:#182f44;border-color:#ffd21a}
+.gatelog-hero-icon svg{width:27px;height:27px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.gatelog-hero-title{position:relative;z-index:1;margin-top:45px}
+.gatelog-hero-title h1{display:flex;align-items:baseline;gap:0;margin:0;font-size:clamp(58px,8vw,100px);line-height:.93;font-weight:1000;font-style:italic;letter-spacing:-5px}
+.gatelog-title-slash,.gatelog-title-main{color:#ffd21a}
+.gatelog-title-light{color:#f3f6fa}
+.gatelog-hero-title p{margin:8px 0 0 6px;font-size:clamp(11px,1.4vw,16px);font-weight:850;letter-spacing:clamp(1.4px,.45vw,3.2px);color:#f3f6fa}
+@media(max-width:600px){
+ .gatelog-hero{min-height:205px;padding:17px 16px 20px;border-radius:16px}
+ .gatelog-hero-top{gap:8px}
+ .gatelog-brand-name{font-size:18px}
+ .gatelog-hero-actions{gap:6px}
+ .gatelog-session-label{max-width:116px;font-size:8px;letter-spacing:.45px}
+ .gatelog-session-label strong{font-size:13px}
+ .gatelog-hero-icon{width:48px;height:48px;min-width:48px;border-radius:11px}
+ .gatelog-hero-icon svg{width:23px;height:23px}
+ .gatelog-hero-title{margin-top:48px}
+ .gatelog-hero-title h1{font-size:clamp(48px,13vw,70px);letter-spacing:-3.5px}
+ .gatelog-hero-title p{font-size:clamp(9px,2.4vw,12px);letter-spacing:1.5px;line-height:1.4}
+}
+@media(max-width:380px){
+ .gatelog-hero{padding-left:12px;padding-right:12px}
+ .gatelog-session-label{max-width:88px;font-size:7px}
+ .gatelog-hero-icon{width:43px;height:43px;min-width:43px}
+ .gatelog-hero-title{margin-top:48px}
+}
+
+
+/* GATELOG — Day-to-Day and period statistics panels */
+.gatelog-collapsible{margin:0 0 14px;border:1px solid #344d60;border-radius:13px;overflow:hidden;background:linear-gradient(145deg,#142735,#0d1b26);box-shadow:0 8px 22px #0002}
+.gatelog-collapsible>summary{list-style:none;display:flex;align-items:center;gap:11px;min-height:58px;padding:13px 16px;cursor:pointer;color:#f3f6fa;font-size:13px;font-weight:950;letter-spacing:1px;user-select:none}
+.gatelog-collapsible>summary::-webkit-details-marker{display:none}
+.gatelog-collapsible>summary:focus-visible{outline:2px solid #ffd21a;outline-offset:-3px}
+.gatelog-panel-slash{display:block;flex:0 0 6px;height:22px;background:#ffd21a;transform:skew(-25deg)}
+.gatelog-panel-chevron{margin-left:auto;width:10px;height:10px;border-right:2px solid #ffd21a;border-bottom:2px solid #ffd21a;transform:rotate(45deg);transition:transform .18s ease;margin-top:-5px}
+.gatelog-collapsible[open] .gatelog-panel-chevron{transform:rotate(225deg);margin-top:5px}
+.gatelog-collapsible-body{padding:0 15px 15px;border-top:1px solid #344d60}
+.gatelog-day-list-heading,.gatelog-day-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;align-items:center}
+.gatelog-day-list-heading{padding:12px 10px 8px;color:#9eafbe;font-size:9px;font-weight:900;letter-spacing:.8px}
+.gatelog-day-row{padding:11px 10px;border-top:1px solid #263e4c;font-size:12px;color:#cbd6de}
+.gatelog-day-row strong{color:#ffd21a;font-weight:900}
+.gatelog-new-visit-row{display:flex;justify-content:flex-end;margin:0 0 14px}
+.gatelog-new-visit-row .gatelog-action{min-width:180px}
+.gatelog-period-tabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;padding:13px 0}
+.gatelog-period-tab{min-width:0;min-height:38px;padding:8px 5px;border:1px solid #40586a;border-radius:8px;background:#091b28;color:#b9c7d0;font-size:9px;font-weight:950;letter-spacing:.45px}
+.gatelog-period-tab.is-active{border-color:#ffd21a;background:#ffd21a;color:#102033}
+.gatelog-statistics-panel{margin-top:14px}
+@media(max-width:520px){.gatelog-collapsible>summary{min-height:54px;padding:12px}.gatelog-collapsible-body{padding:0 11px 12px}.gatelog-period-tabs{gap:5px}.gatelog-period-tab{font-size:8px;letter-spacing:.2px}.gatelog-new-visit-row .gatelog-action{width:100%}.gatelog-day-row{font-size:11px}}
+
+/* GATELOG Day-to-Day: date-specific visit register, Gateman assignment and PDF export */
+.gatelog-day-picker{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;margin:2px 0 14px}
+.gatelog-day-card{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;min-width:0;min-height:94px;padding:10px 5px;border:1px solid #3b566a;border-radius:12px;background:linear-gradient(145deg,#172c3b,#0b1b27);color:#eaf0f5;text-align:center;cursor:pointer;touch-action:manipulation}
+.gatelog-day-card strong{font-size:13px;font-weight:950;letter-spacing:.8px}
+.gatelog-day-card span{font-size:10px;color:#b8c6d1;font-variant-numeric:tabular-nums}
+.gatelog-day-card small{font-size:9px;color:#aabac7;font-weight:850;letter-spacing:.35px}
+.gatelog-day-card.is-selected{background:linear-gradient(145deg,#ffdb24,#ffbd00);border-color:#ffe45a;color:#111d28;box-shadow:0 0 0 1px #ffd21a55,0 7px 18px #ffbf0026}
+.gatelog-day-card.is-selected span,.gatelog-day-card.is-selected small{color:#25313a}
+.gatelog-day-card:focus-visible,.gatelog-icon-action:focus-visible{outline:3px solid #58a9ff;outline-offset:3px}
+.gatelog-day-management{display:flex;align-items:center;gap:12px;padding:12px 0 2px;border-top:1px solid #2a4354}
+.gatelog-gateman-summary{display:flex;flex-direction:column;gap:4px;min-width:0;flex:1}
+.gatelog-gateman-summary span{font-size:10px;font-weight:900;letter-spacing:1px;color:#9eafbe}
+.gatelog-gateman-summary strong{font-size:16px;font-weight:950;color:#f5f7fa;overflow-wrap:anywhere}
+.gatelog-gateman-summary em{font-style:normal;font-size:9px;font-weight:900;letter-spacing:.8px;color:#ffd21a}
+.gatelog-day-tools{display:flex;gap:8px;flex:0 0 auto}
+.gatelog-icon-action{display:grid;place-items:center;width:52px;height:48px;border:1px solid #4b667a;border-radius:12px;background:linear-gradient(145deg,#1a3345,#0b1d2a);color:#ffd21a;cursor:pointer}
+.gatelog-icon-action svg{width:23px;height:23px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.gatelog-icon-action:disabled{opacity:.35;cursor:not-allowed}
+.gatelog-new-visit-row{justify-content:flex-end;flex-wrap:wrap}
+.gatelog-new-visit-row #gatelogReports{min-width:180px}
+.gatelog-period-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+.gatelog-period-tab{padding:9px 16px;border:1px solid #405b70;border-radius:8px;background:#102434;color:#d8e2e9;font-size:10px;font-weight:950;letter-spacing:.7px}
+.gatelog-period-tab.is-active{background:#ffd21a;border-color:#ffd21a;color:#102033}
+.gatelog-statistics-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.gatelog-statistics-grid .gatelog-stat{min-width:0;padding:15px;border:1px solid #354f63;border-radius:11px;background:linear-gradient(145deg,#192e3e,#0c1c28)}
+.gatelog-statistics-grid .gatelog-stat span{display:block;color:#a8b8c6;font-size:10px;font-weight:900;letter-spacing:.6px}
+.gatelog-statistics-grid .gatelog-stat strong{display:block;margin-top:8px;color:#f6f8fa;font-size:clamp(20px,3vw,27px);font-weight:950;overflow-wrap:anywhere}
+.gatelog-field select{width:100%;min-height:44px;background:#091721;color:var(--text);border:1px solid #334b5c;border-radius:8px;padding:9px 10px}
+@media(max-width:700px){.gatelog-day-picker{grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}.gatelog-day-card{min-height:82px}.gatelog-day-management{align-items:center}.gatelog-gateman-summary strong{font-size:14px}.gatelog-icon-action{width:46px;height:44px}}
+@media(max-width:390px){.gatelog-day-picker{gap:5px}.gatelog-day-card{padding:8px 2px}.gatelog-day-card strong{font-size:11px}.gatelog-day-card span{font-size:9px}.gatelog-day-card small{font-size:8px}.gatelog-statistics-grid{grid-template-columns:1fr}.gatelog-new-visit-row #gatelogReports{width:100%}}
+
+
+/* GATELOG individual visit register: action-first layout without horizontal scrolling */
+.gatelog-table-wrap{overflow:visible}
+.gatelog-table{min-width:0}
+.gatelog-register-heading{align-items:flex-start;flex-wrap:wrap}
+.gatelog-register-heading h2{min-width:0;overflow-wrap:anywhere}
+.gatelog-register-heading .gatelog-muted{white-space:normal;overflow-wrap:anywhere;text-align:left}
+.gatelog-visit-list{display:grid;gap:10px;padding:12px}
+.gatelog-visit-card{min-width:0;display:grid;gap:11px;padding:13px;border:1px solid #354f63;border-radius:11px;background:linear-gradient(145deg,#192f40,#0b1c29)}
+.gatelog-visit-card-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;min-width:0}
+.gatelog-visit-customer{display:grid;gap:5px;min-width:0}
+.gatelog-visit-customer strong{font-size:14px;font-weight:950;color:#f5f7fa;overflow-wrap:anywhere}
+.gatelog-visit-customer span{font-size:11px;font-weight:900;letter-spacing:.7px;color:#ffd21a;overflow-wrap:anywhere}
+.gatelog-visit-status{flex:0 0 auto;padding:5px 8px;border:1px solid #536b7d;border-radius:6px;color:#c5d0d9;font-size:9px;font-weight:950;letter-spacing:.6px}
+.gatelog-visit-status.is-onsite{border-color:#ffd21a;color:#ffd21a}
+.gatelog-visit-times{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.gatelog-visit-times span{display:grid;gap:4px;min-width:0;color:#e1e8ed;font-size:11px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.gatelog-visit-times b,.gatelog-visit-waste b{color:#98aebf;font-size:9px;font-weight:950;letter-spacing:.7px}
+.gatelog-visit-waste{display:grid;gap:5px;min-width:0}
+.gatelog-visit-waste span{color:#d9e2e9;font-size:11px;line-height:1.45;overflow-wrap:anywhere}
+.gatelog-visit-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;min-width:0;padding-top:10px;border-top:1px solid #30495c}
+.gatelog-visit-actions button{display:flex;align-items:center;justify-content:center;min-width:0;min-height:42px;padding:8px 5px;border:1px solid #4a657a;border-radius:8px;background:#122b3c;color:#f2f6f8;font-size:10px;font-weight:950;letter-spacing:.3px;cursor:pointer;touch-action:manipulation}
+.gatelog-visit-actions .gatelog-depart{background:#ffd21a;border-color:#ffd21a;color:#122033}
+.gatelog-visit-actions .gatelog-visit-edit{color:#ffd21a}
+.gatelog-visit-actions .gatelog-visit-delete{border-color:#754c51;color:#ffb4b4}
+.gatelog-visit-actions button:disabled{opacity:.45;cursor:wait}
+.gatelog-visit-action-spacer{min-width:0}
+.gatelog-visit-form .gatelog-field input[type="datetime-local"]{width:100%;min-height:44px;background:#091721;color:var(--text);border:1px solid #334b5c;border-radius:8px;padding:9px 10px}
+@media(max-width:390px){.gatelog-visit-list{padding:9px;gap:8px}.gatelog-visit-card{padding:11px;gap:9px}.gatelog-visit-customer strong{font-size:13px}.gatelog-visit-actions{gap:5px}.gatelog-visit-actions button{font-size:9px;padding:7px 3px}.gatelog-visit-times{gap:6px}}
+
+
+/* GATELOG dedicated settings and report archive pages */
+.gatelog-admin-icon{font-size:23px;font-weight:900}
+.gatelog-admin-tabs{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 14px}
+.gatelog-admin-tabs button{flex:1;min-width:150px;min-height:44px}
+.gatelog-admin-tabs button.active{background:#ffd21a;color:#102033;border-color:#ffd21a}
+.gatelog-admin-toolbar{display:flex;gap:9px;align-items:center;margin:0 0 12px}
+.gatelog-admin-toolbar .gatelog-search{flex:1;min-width:0}
+.gatelog-admin-row-actions{display:flex;gap:6px;flex-wrap:wrap}
+.gatelog-admin-row-actions button{min-height:40px}
+@media(max-width:520px){.gatelog-admin-toolbar{flex-direction:column;align-items:stretch}.gatelog-admin-toolbar button{width:100%}.gatelog-admin-row-actions button{flex:1}}
+
+
+/* GATELOG — single DOWNTIME-style main navigation dropdown */
+.gatelog-hero{overflow:visible}
+.gatelog-hero-grid,.gatelog-hero-stripe{clip-path:inset(0 round 18px)}
+.gatelog-main-menu{position:relative;z-index:12;flex:0 0 auto}
+.gatelog-main-menu>summary{list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:4px}
+.gatelog-main-menu>summary::-webkit-details-marker{display:none}
+.gatelog-main-menu>summary:focus-visible{outline:3px solid #ffd21a;outline-offset:3px}
+.gatelog-main-menu[open]>summary{border-color:#ffd21a;background:#182f44;color:#ffd21a}
+.gatelog-main-menu-panel{position:absolute;top:calc(100% + 8px);right:0;z-index:30;width:min(270px,calc(100vw - 54px));display:grid;gap:7px;padding:10px;border:1px solid #40596d;border-radius:13px;background:linear-gradient(180deg,#1c3345,#0a1a28);box-shadow:0 14px 34px #0009}
+.gatelog-main-menu-panel button{display:flex;align-items:center;width:100%;min-height:48px;padding:11px 13px;border:1px solid #40596d;border-radius:9px;background:linear-gradient(180deg,#263e50,#152735);color:#f3f6fa;text-align:left;font-size:12px;font-weight:900;letter-spacing:.55px}
+.gatelog-main-menu-panel button:hover,.gatelog-main-menu-panel button:focus-visible{border-color:#ffd21a;color:#ffd21a;background:#1a3447;outline:none}
+.gatelog-main-menu-panel button[hidden]{display:none!important}
+@media(max-width:600px){
+ .gatelog-hero-grid,.gatelog-hero-stripe{clip-path:inset(0 round 16px)}
+ .gatelog-main-menu-panel{width:min(260px,calc(100vw - 44px));padding:9px}
+ .gatelog-main-menu-panel button{min-height:46px;font-size:11px}
+}
+
+
+/* Unified customer catalogue — visit selection and management in one place */
+.gatelog-catalogue-admin-toolbar{display:flex;justify-content:flex-end;margin:0 0 10px}
+.gatelog-catalogue-card-actions{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.gatelog-catalogue-card-actions button{min-height:38px;padding:8px 11px;border:1px solid #40596d;border-radius:8px;background:linear-gradient(180deg,#263e50,#152735);color:#f3f6fa;font-size:10px;font-weight:900;letter-spacing:.4px}
+.gatelog-catalogue-card-actions button[data-use-customer]{border-color:#d9ad19;background:#ffd21a;color:#142334}
+.gatelog-catalogue-card-actions button.danger{border-color:#874b43;color:#ff9d8f}
+.gatelog-catalogue-card-actions button:hover,.gatelog-catalogue-card-actions button:focus-visible{border-color:#ffd21a;outline:none}
+@media(max-width:520px){
+ .gatelog-catalogue-card-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));width:100%}
+ .gatelog-catalogue-card-actions button{width:100%}
+ .gatelog-catalogue-card-actions button[data-use-customer]{grid-column:1/-1}
+}
+
+
+/* Legacy Gateman assignments are retained and clearly distinguished from active STAFF assignments. */
+.gatelog-legacy-assignment{display:block;margin:8px 0;padding:8px 10px;border:1px solid rgba(255,210,26,.45);border-radius:8px;background:rgba(255,210,26,.08);color:#f4d36a;font-size:11px;font-style:normal;font-weight:800;line-height:1.4;letter-spacing:.2px}

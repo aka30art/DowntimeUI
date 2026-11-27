@@ -1,0 +1,97 @@
+/* YARD HUB UNIFIED VISUAL DNA v1.0 — presentation only.
+   Strict namespaces: #yardHub, .gatelog-screen, .rm-module-root.
+   DOWNTIME Tracking App selectors are intentionally excluded.
+*/
+#yardHub,.gatelog-screen,.rm-module-root{--hub-line:#334b5d;--hub-text:#f3f6f8;--hub-muted:#9aafbd;--hub-yellow:#ffc400;--hub-r-sm:9px;--hub-r-md:12px;--hub-r-lg:14px;--hub-shadow:0 10px 26px #0003}
+
+/* YARD HUB launcher, including live and coming-later department tiles. */
+#yardHub .yard-hero{border-color:var(--hub-line);border-radius:var(--hub-r-lg);background:linear-gradient(110deg,#071828 0%,#0d1b26 100%)}
+#yardHub .yard-hero:after{top:-20%;right:28%;width:10px;height:140%;transform:rotate(36deg);background:var(--hub-yellow);opacity:.9;box-shadow:0 0 0 10px #ffc40016}
+#yardHub .yard-session{border-color:var(--hub-line);border-radius:var(--hub-r-md);background:#091923d9}
+#yardHub .yard-session-copy span{color:var(--hub-muted)}
+#yardHub .yard-session-copy strong{color:var(--hub-yellow)}
+#yardHub .yard-logout{min-height:40px;border:1px solid var(--hub-line);border-radius:var(--hub-r-sm);background:linear-gradient(145deg,#1b2d3b,#0d1b26);color:var(--hub-yellow)}
+#yardHub .yard-tile{border:1px solid var(--hub-line);border-radius:var(--hub-r-lg);background:linear-gradient(145deg,#192d3b,#0d1b26);box-shadow:var(--hub-shadow)}
+#yardHub .yard-tile:after{opacity:.1}
+#yardHub .yard-tile-active:hover,#yardHub .yard-tile-active:focus-visible{border-color:#648398}
+#yardHub .yard-tile-copy small{color:var(--hub-muted)}
+#yardHub .yard-tile-status{color:var(--hub-yellow)}
+#yardHub .yard-tile-locked .yard-tile-status{color:var(--hub-muted)}
+#yardHub .yard-hub-footer{border-color:#2d4658;color:var(--hub-muted)}
+
+/* YARD HUB settings use the shared panel, control and button grammar. */
+#yardHub .yard-hub-settings-screen{color:var(--hub-text)}
+#yardHub .yard-hub-settings-card,#yardHub .yard-hub-tier-card{border-color:var(--hub-line);border-radius:var(--hub-r-lg);background:linear-gradient(145deg,#192d3b,#0d1b26);box-shadow:0 5px 14px #0002}
+#yardHub .yard-hub-settings-card:after{opacity:.1}
+#yardHub .yard-hub-settings-card strong{color:var(--hub-text)}
+#yardHub .yard-hub-settings-card small,#yardHub .yard-hub-settings-heading p,#yardHub .yard-hub-view-toolbar p{color:var(--hub-muted)}
+#yardHub .yard-hub-primary,#yardHub .yard-hub-secondary,#yardHub .yard-hub-small-button{min-height:40px;border-radius:var(--hub-r-sm);font-weight:950;letter-spacing:.5px}
+#yardHub .yard-hub-primary{border-color:var(--hub-yellow);background:var(--hub-yellow);color:#101820}
+#yardHub .yard-hub-secondary,#yardHub .yard-hub-small-button{border-color:var(--hub-line);background:linear-gradient(145deg,#1b2d3b,#0d1b26);color:var(--hub-text)}
+#yardHub .yard-hub-user-row,#yardHub .yard-hub-user-columns,#yardHub .yard-hub-permission-row{border-color:#2d4658}
+#yardHub .yard-hub-user-form{border-color:var(--hub-line);border-radius:var(--hub-r-lg);background:linear-gradient(145deg,#142735,#0d1b26)}
+#yardHub .yard-hub-user-form input:not([type="checkbox"]),#yardHub .yard-hub-user-form select{border-color:var(--hub-line);border-radius:var(--hub-r-sm);background:#091721}
+
+/* Canonical department header: R&M and GATELOG share exact header geometry. */
+.rm-module-root .hero,.gatelog-screen .gatelog-hero{min-height:158px;margin-bottom:14px;padding:18px 24px;border:1px solid var(--hub-line);border-radius:var(--hub-r-lg);background:linear-gradient(110deg,#071828 0%,#0d1b26 100%);color:var(--hub-text);box-shadow:none}
+.rm-module-root .hero:after{top:-20%;right:28%;width:10px;height:140%;transform:rotate(36deg);background:var(--hub-yellow);opacity:.9}
+.gatelog-screen .gatelog-hero-grid{inset:0 0 0 auto;width:51%;background:repeating-linear-gradient(0deg,transparent 0 23px,#b6c2d015 24px 25px),repeating-linear-gradient(90deg,transparent 0 39px,#b6c2d015 40px 41px)}
+.gatelog-screen .gatelog-hero-stripe{top:-20%;right:28%;width:10px;height:140%;transform:rotate(36deg);background:var(--hub-yellow);opacity:.9;box-shadow:0 0 0 10px #ffc40016}
+.rm-module-root .downtime-mark,.gatelog-screen .gatelog-brand-name{color:var(--hub-text);font-size:21px;font-weight:950;letter-spacing:-.5px}
+.rm-module-root .mark-rule,.gatelog-screen .gatelog-brand-rule{width:54px;height:5px;margin-top:5px;background:var(--hub-yellow)}
+.rm-module-root .hero-word{margin-top:8px;font-size:clamp(46px,6vw,72px);line-height:.93;letter-spacing:-3px}
+.rm-module-root .hero-tag{margin:8px 0 0 6px;font-size:clamp(10px,1.2vw,14px);letter-spacing:2.4px}
+.rm-module-root .icon-button,.gatelog-screen .gatelog-hero-icon{display:grid;width:46px;height:46px;min-width:46px;padding:0;place-items:center;border:1px solid var(--hub-line);border-radius:var(--hub-r-sm);background:linear-gradient(145deg,#1b2d3b,#0d1b26);color:var(--hub-yellow)}
+.rm-module-root .icon-button{font-size:22px}
+.gatelog-screen .gatelog-hero-icon svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.rm-module-root .session-label,.gatelog-screen .gatelog-session-label{color:#d6e0e8;font-size:10px;font-weight:850;letter-spacing:.7px}
+.rm-module-root .session-label strong,.gatelog-screen .gatelog-session-label strong{color:var(--hub-yellow);font-size:13px}
+
+/* GATELOG panels, registers, forms, cards and modals use the same surfaces. */
+.gatelog-screen{width:100%;max-width:1700px;margin:0 auto;padding:24px;color:var(--hub-text)}
+.gatelog-screen .gatelog-kpi,.gatelog-screen .gatelog-register,.gatelog-screen .gatelog-panel,.gatelog-screen .gatelog-statistics{border-color:var(--hub-line);border-radius:var(--hub-r-lg);background:linear-gradient(145deg,#142735,#0d1b26);box-shadow:var(--hub-shadow)}
+.gatelog-screen .gatelog-kpi{border-radius:var(--hub-r-md);background:linear-gradient(145deg,#192d3b,#0d1b26)}
+.gatelog-screen .gatelog-kpi strong,.gatelog-screen .gatelog-stat strong{color:var(--hub-yellow)}
+.gatelog-screen .gatelog-register-heading,.gatelog-screen .gatelog-statistics-heading{border-color:#2d4658}
+.gatelog-screen .gatelog-register-heading h2:before,.gatelog-screen .gatelog-panel h2:before,.gatelog-screen .gatelog-statistics-heading h2:before{background:var(--hub-yellow)}
+.gatelog-screen .gatelog-action{min-height:44px;border:1px solid var(--hub-line);border-radius:var(--hub-r-sm);background:linear-gradient(145deg,#1b3040,#0d1b26);color:var(--hub-text)}
+.gatelog-screen .gatelog-action-primary{border-color:var(--hub-yellow);background:var(--hub-yellow);color:#101820}
+.gatelog-screen .gatelog-field input,.gatelog-screen .gatelog-field select,.gatelog-screen .gatelog-field textarea,.gatelog-screen .gatelog-search{border-color:var(--hub-line);border-radius:var(--hub-r-sm);background:#091721;color:var(--hub-text)}
+.gatelog-screen .gatelog-row,.gatelog-screen .gatelog-stat,.gatelog-screen .gatelog-customer-card,.gatelog-screen .gatelog-choice{border-color:var(--hub-line);border-radius:var(--hub-r-md);background:linear-gradient(145deg,#192d3b,#0d1b26)}
+.gatelog-screen .gatelog-empty{border-color:#41576a;border-radius:var(--hub-r-sm)}
+.gatelog-screen .gatelog-modal-window{border-color:#3c5669;border-radius:var(--hub-r-lg);background:linear-gradient(145deg,#1b3040,#101e2a)}
+.gatelog-screen .gatelog-modal-head{border-color:#2d4658}
+.gatelog-screen .gatelog-modal-close,.gatelog-screen .gatelog-secondary{border-color:var(--hub-line);border-radius:var(--hub-r-sm);background:linear-gradient(145deg,#1b2d3b,#0d1b26);color:var(--hub-text)}
+.gatelog-screen .gatelog-choice strong,.gatelog-screen .gatelog-eyebrow{color:var(--hub-yellow)}
+.gatelog-screen .gatelog-muted,.gatelog-screen .gatelog-field label,.gatelog-screen .gatelog-stat span{color:var(--hub-muted)}
+
+@media(max-width:760px){#yardHub .yard-grid{gap:12px}#yardHub .yard-tile{border-radius:var(--hub-r-md)}#yardHub .yard-hub-settings-card{border-radius:var(--hub-r-md)}}
+@media(max-width:620px){
+ #yardHub .yard-hero:after{top:-20%;right:16%;width:8px;height:140%}
+ .rm-module-root .hero,.gatelog-screen .gatelog-hero{min-height:138px;margin-bottom:10px;padding:13px 14px;border-radius:var(--hub-r-md)}
+ .rm-module-root .hero:after,.gatelog-screen .gatelog-hero-stripe{top:-20%;right:16%;width:8px;height:140%}
+ .rm-module-root .downtime-mark,.gatelog-screen .gatelog-brand-name{font-size:16px}
+ .rm-module-root .hero-word{margin-top:8px;font-size:46px;letter-spacing:-2px}
+ .rm-module-root .hero-tag{margin-top:6px;font-size:9px;letter-spacing:1.6px}
+ .rm-module-root .icon-button,.gatelog-screen .gatelog-hero-icon{width:40px;height:40px;min-width:40px;border-radius:var(--hub-r-sm)}
+ .rm-module-root .icon-button{font-size:19px}
+ .gatelog-screen .gatelog-hero-icon svg{width:22px;height:22px}
+ .rm-module-root .session-label,.gatelog-screen .gatelog-session-label{font-size:8px;letter-spacing:.45px;max-width:120px}
+ .rm-module-root .session-label strong,.gatelog-screen .gatelog-session-label strong{font-size:11px}
+ .gatelog-screen{padding:9px 10px 22px}
+ .gatelog-screen .gatelog-hero-top{gap:7px}.gatelog-screen .gatelog-hero-actions{gap:6px}.gatelog-screen .gatelog-hero-title{margin-top:8px}
+ .gatelog-screen .gatelog-hero-title h1{margin:0;font-size:46px;line-height:.93;letter-spacing:-2px}
+ .gatelog-screen .gatelog-hero-title p{max-width:100%;margin:6px 0 0 4px;font-size:9px;line-height:1.35;letter-spacing:1.6px;overflow-wrap:anywhere}
+ .gatelog-screen .gatelog-session-label{max-width:116px}
+ .gatelog-screen .gatelog-statistics{border-radius:var(--hub-r-md)}
+}
+@media(max-width:380px){
+ .gatelog-screen .gatelog-hero{padding-left:11px;padding-right:11px}
+ .gatelog-screen .gatelog-brand-name{font-size:15px}
+ .gatelog-screen .gatelog-session-label{max-width:72px;font-size:7px}
+ .gatelog-screen .gatelog-hero-actions{gap:4px}
+ .gatelog-screen .gatelog-hero-icon{width:36px;height:36px;min-width:36px}
+ .gatelog-screen .gatelog-hero-title h1{font-size:42px;letter-spacing:-2px}
+ .gatelog-screen .gatelog-hero-title p{font-size:8px;letter-spacing:.7px}
+}
+@media(prefers-reduced-motion:reduce){#yardHub .yard-tile,#yardHub .yard-hub-settings-card{transition:none!important}}
