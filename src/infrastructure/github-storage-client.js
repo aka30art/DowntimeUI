@@ -94,6 +94,13 @@ export function createGitHubStorageClient({ store, now = () => new Date(), ticke
       async remove(paths) {
         try {
           const list = Array.isArray(paths) ? paths : [paths];
+          if (typeof store.deleteObjects === "function") {
+            const result = await store.deleteObjects({ bucket: bucketName, paths: list });
+            return {
+              data: list.map(path => ({ bucket: bucketName, path, deleted: result.deleted.includes(path) })),
+              error: null
+            };
+          }
           const results = [];
           for (const path of list) results.push(await store.deleteObject({ bucket: bucketName, path }));
           return { data: results, error: null };
