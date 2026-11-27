@@ -37,7 +37,9 @@ const plugin = {
   }
 };
 
-await mkdir(resolve(root, "yardhub/runtime/functions"), { recursive: true });\n\nfor (const [name, entryPoint] of functions) {
+await mkdir(resolve(root, "yardhub/runtime/functions"), { recursive: true });
+
+for (const [name, entryPoint] of functions) {
   await build({
     absWorkingDir: root,
     entryPoints: [entryPoint],
