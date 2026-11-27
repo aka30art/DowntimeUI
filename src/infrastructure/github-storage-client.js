@@ -51,7 +51,7 @@ export function createGitHubStorageClient({ store, now = () => new Date(), ticke
         try {
           const ticket = createUploadTicket({
             bucket: bucketName, path,
-            mimeType: options.contentType || "application/octet-stream",
+            mimeType: options.contentType || null,
             size: Number.isInteger(options.size) ? options.size : null
           });
           return { data: { path: ticket.path, token: ticket.token, signedUrl: ticket.token }, error: null };
