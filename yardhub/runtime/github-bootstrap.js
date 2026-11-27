@@ -46,6 +46,8 @@ async function activateRepository({ owner, repo, button, tokenInput }) {
     globalThis.__YARDHUB_GITHUB_RUNTIME__ = runtime;
     globalThis.__YARDHUB_GITHUB_DATABASE__ = database;
     globalThis.__YARDHUB_GITHUB_CONNECTED__ = true;
+    const bootstrapInput = document.getElementById("setupCode");
+    if (bootstrapInput) bootstrapInput.value = database.bootstrapCode || "";
     status("Private repository ready · " + owner + "/" + repo +
       " · " + database.tableCount + " tables · primary: " + verifiedAuthority.primarySystemId);
     lockApplication(false);
