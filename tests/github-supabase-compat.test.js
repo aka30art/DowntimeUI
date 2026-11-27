@@ -66,3 +66,14 @@ test("disposing the GitHub compatibility client closes every polling channel", a
   assert.equal(await client.dispose(), true);
   assert.equal(await channel.unsubscribe(), "ok");
 });
+
+
+test("GitHub compatibility layer never fabricates an anonymous production session", async () => {
+  const client = createGitHubSupabaseCompat({ store: mockStore(), sessionProvider: () => null });
+  const result = await client.auth.signInAnonymously();
+  assert.equal(result.data.session, null);
+  assert.equal(result.data.user, null);
+  assert.equal(result.error.status, 401);
+  assert.match(result.error.message, /Anonymous authentication is disabled/);
+  await client.dispose();
+});
