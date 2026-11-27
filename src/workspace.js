@@ -192,7 +192,7 @@ export function mountWorkspace(root,config,{onEditConfiguration=()=>{},onExportC
         branch:root.querySelector("[data-github-branch]")?.value||"",
         token:root.querySelector("[data-github-token]")?.value||""
       },{storage:githubSettingsStorage,sessionStorage:githubSessionStorage});
-      githubStore=createConnectedGitHubStore({storage:githubSettingsStorage,sessionStorage:githubSessionStorage,fetchImpl:options.fetchImpl||globalThis.fetch});
+      githubStore=await createConnectedGitHubStore({storage:githubSettingsStorage,fetchImpl:options.fetchImpl||globalThis.fetch});
       githubAuthority=await githubStore.readAuthority();
       const snapshot=await githubStore.readSnapshot({module:"YARDHUB_WORKSPACE",snapshotId:config.installationId});
       githubSnapshotVersion=snapshot?.version??null;
@@ -259,7 +259,7 @@ export function mountWorkspace(root,config,{onEditConfiguration=()=>{},onExportC
     const connected=Boolean(githubStore);
     const authorityLabel=githubAuthority?("Primary: "+githubAuthority.primarySystemId+" · epoch "+githubAuthority.epoch):"Not connected";
     const syncLabel=lastGitHubSyncAt?("Last snapshot: "+lastGitHubSyncAt):"No snapshot written in this session";
-    return '<div class="workspace-panel"><div class="workspace-panel-head"><div><h2>GitHub shared data</h2><p>Connect this workspace to the independent GitHub data branch. Local saves are retained and queued for a versioned shared snapshot.</p></div><span class="workspace-count">'+(connected?"CONNECTED":"NOT CONNECTED")+'</span></div>'+
+    return '<div class="workspace-panel"><div class="workspace-panel-head"><div><h2>Private GitHub data connection</h2><p>Connect only a dedicated private repository reserved for this installation. Public code repositories and the protected DOWNTIME repository are blocked.</p></div><span class="workspace-count">'+(connected?"CONNECTED":"NOT CONNECTED")+'</span></div>'+
       '<div class="workspace-form-grid">'+
       '<label><span>GitHub owner</span><input data-github-owner value="'+esc(connection.owner)+'" autocomplete="off"></label>'+
       '<label><span>Repository</span><input data-github-repo value="'+esc(connection.repo)+'" autocomplete="off"></label>'+
@@ -267,7 +267,7 @@ export function mountWorkspace(root,config,{onEditConfiguration=()=>{},onExportC
       '<label class="workspace-full"><span>GitHub access token · current browser session</span><input data-github-token type="password" autocomplete="off" placeholder="'+(connection.connected?"Enter token to reconnect":"Fine-grained repository token")+'"></label></div>'+
       '<div class="workspace-button-row"><button type="button" data-action="github-connect">Connect and verify</button><button type="button" data-action="github-disconnect">Disconnect</button><button type="button" data-action="github-sync" '+(!connected?"disabled":"") +'>Sync workspace now</button><button type="button" data-action="github-restore" '+(!connected?"disabled":"") +'>Restore latest snapshot</button></div>'+
       '<p class="workspace-muted">'+esc(authorityLabel)+' · '+esc(syncLabel)+'</p>'+
-      '<p class="workspace-muted">This connection uses the GitHub Contents/Git Data APIs. GitHub credentials are held in session storage; repository settings are kept locally. The current branch is a prototype data store, not yet the production backup destination.</p></div>';
+      '<p class="workspace-muted">Security gate: the configured repository must be private and separate from application source. Tokens are memory-only and cleared on disconnect or page reload. Direct browser access still exposes the connected repository’s records to that trusted operator; this is not yet a multi-user server-side broker. Do not connect staff accounts or production records until the server-side authorization gateway and private repository are configured.</p></div>';
   }
   function nav(){
     return [["daily","Daily sheet"],["plant","Plant overview"],["tasks","Daily tasks"],["weekly","Weekly summary"],["reports","Reports"],["people","People & settings"]].map(([id,name])=>'<button type="button" class="workspace-nav '+(view===id?"active":"")+'" data-view="'+id+'">'+name+'</button>').join("");
@@ -671,7 +671,7 @@ export function mountWorkspace(root,config,{onEditConfiguration=()=>{},onExportC
   const savedGitHubConnection=loadGitHubConnection({storage:githubSettingsStorage,sessionStorage:githubSessionStorage});
   if(savedGitHubConnection.connected){
     try{
-      githubStore=createConnectedGitHubStore({storage:githubSettingsStorage,sessionStorage:githubSessionStorage,fetchImpl:options.fetchImpl||globalThis.fetch});
+      githubStore=await createConnectedGitHubStore({storage:githubSettingsStorage,fetchImpl:options.fetchImpl||globalThis.fetch});
       status="Reconnecting to GitHub data store…";
       void (async()=>{
         try{
