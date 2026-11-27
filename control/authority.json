@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "systemId": "YARDHUB-ECOSYSTEM",
+  "primarySystemId": "YARDHUB-PRIMARY",
+  "secondarySystemId": "DOWNTIMEUI-GITHUB",
+  "epoch": 1,
+  "status": "ACTIVE",
+  "replication": {
+    "direction": "YARDHUB-PRIMARY_TO_DOWNTIMEUI-GITHUB",
+    "status": "NOT_CONFIGURED",
+    "lastSuccessfulCheckpoint": null
+  },
+  "updatedAt": "2026-11-27T00:00:00.000Z"
+}
