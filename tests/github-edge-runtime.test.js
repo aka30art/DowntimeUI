@@ -302,3 +302,94 @@ test("Central Config admin reads the published YARDHUB launcher and photo-eviden
     else globalThis.DowntimeCentral = previousSession;
   }
 });
+
+
+test("R&M machinery register and GATELOG customer visit complete authenticated CRUD flows", async () => {
+  const store = createMemoryStore();
+  const originalFetch = globalThis.fetch;
+  const previousSession = globalThis.DowntimeCentral;
+  const previousBootstrapCode = globalThis.__YARDHUB_BOOTSTRAP_CODE__;
+  const runtime = await installGitHubEdgeRuntime({ store });
+  const request = async (name, body, token = null) => {
+    const headers = {
+      origin: "https://aka30art.github.io",
+      "content-type": "application/json"
+    };
+    if (token) headers["x-downtime-session"] = token;
+    return globalThis.fetch("https://github-native.invalid/functions/v1/" + name, {
+      method: "POST", headers, body: JSON.stringify(body)
+    });
+  };
+
+  try {
+    const bootstrapResponse = await request("central-bank", {
+      action: "bootstrap", bootstrapCode: runtime.bootstrapCode, username: "DEV", pin: "4826"
+    });
+    assert.equal(bootstrapResponse.status, 200);
+    const loginResponse = await request("central-bank", { action: "login", username: "DEV", pin: "4826" });
+    assert.equal(loginResponse.status, 200);
+    const login = await loginResponse.json();
+
+    const machineType = "KIVERCO_PICKING_LINE";
+    const addedMachineResponse = await request("repair-maintenance-api", {
+      action: "asset-add", machineType, makeModel: "Kiverco Test Line 01", assetCode: "QA-RM-001"
+    }, login.token);
+    assert.equal(addedMachineResponse.status, 201);
+    const addedMachine = (await addedMachineResponse.json()).asset;
+    assert.equal(addedMachine.make_model, "Kiverco Test Line 01");
+    assert.equal(addedMachine.asset_code, "QA-RM-001");
+
+    const machineListResponse = await request("repair-maintenance-api", {
+      action: "asset-list", machineType
+    }, login.token);
+    assert.equal(machineListResponse.status, 200);
+    const machineList = await machineListResponse.json();
+    assert.ok(machineList.assets.some(asset => asset.id === addedMachine.id));
+    assert.equal(machineList.unassignedCount, 0);
+
+    const customerResponse = await request("gatelog-api", {
+      action: "customer-save", customerName: "QA Test Haulage"
+    }, login.token);
+    assert.equal(customerResponse.status, 200);
+    const customer = (await customerResponse.json()).customer;
+    assert.ok(customer.id);
+
+    const wasteResponse = await request("gatelog-api", {
+      action: "waste-type-create", label: "QA Mixed Waste"
+    }, login.token);
+    assert.equal(wasteResponse.status, 200);
+    assert.equal((await wasteResponse.json()).wasteType.label, "QA Mixed Waste");
+
+    const vehicleResponse = await request("gatelog-api", {
+      action: "vehicle-save", customerId: customer.id, registration: "QA26 YRD"
+    }, login.token);
+    assert.equal(vehicleResponse.status, 200);
+    assert.equal((await vehicleResponse.json()).vehicle.registration, "QA26 YRD");
+
+    const arrivalResponse = await request("gatelog-api", {
+      action: "arrival", customerId: customer.id,
+      registration: "QA26 YRD", wasteTypes: ["QA Mixed Waste"]
+    }, login.token);
+    assert.equal(arrivalResponse.status, 200);
+    const visit = (await arrivalResponse.json()).visit;
+    assert.ok(visit.id);
+    assert.equal(visit.status, "ON_SITE");
+
+    const departureResponse = await request("gatelog-api", {
+      action: "departure", visitId: visit.id
+    }, login.token);
+    assert.equal(departureResponse.status, 200);
+    const departure = (await departureResponse.json()).visit;
+    assert.equal(departure.id, visit.id);
+    assert.equal(departure.status, "DEPARTED");
+    assert.ok(departure.time_out);
+  } finally {
+    await runtime.dispose();
+    assert.equal(globalThis.__YARDHUB_BOOTSTRAP_CODE__, null);
+    if (previousBootstrapCode === undefined) delete globalThis.__YARDHUB_BOOTSTRAP_CODE__;
+    else globalThis.__YARDHUB_BOOTSTRAP_CODE__ = previousBootstrapCode;
+    globalThis.fetch = originalFetch;
+    if (previousSession === undefined) delete globalThis.DowntimeCentral;
+    else globalThis.DowntimeCentral = previousSession;
+  }
+});
