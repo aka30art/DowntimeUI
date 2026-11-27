@@ -9,7 +9,7 @@ Deliver in independently testable phases. Each phase must have implementation, a
 
 ## Current phase board
 
-- **Phase 0 — PARTIAL, source census advanced:** the seven Edge service entrypoints, 96 action/read surfaces, 19 current service RPCs, all 39 live-inventory tables and five Storage buckets are catalogued. All 45 tracked migration files are SHA-pinned. The SQL scan identified 26 distinct functions, five triggers, RLS/policy/grant semantics and one missing tracked definition for live table `downtime_reports`. The 49 applied versus 45 tracked migration versions and complete export/relationship census remain unresolved.
+- **Phase 0 — PARTIAL, source census advanced:** the seven Edge service entrypoints, 96 action/read surfaces, 19 current service RPCs, all 39 live-inventory tables and five Storage buckets are catalogued. The preserved UI caller map is recorded, including unresolved direct-call gaps for GATELOG (`history`, `vehicle-save`), YARD HUB Settings (`remove-user-tier`), Photo Evidence (`cleanup`) and indirect Central Bank actions. All 45 tracked migration files are SHA-pinned. The SQL scan identified 26 distinct functions, five triggers, policy/grant/RLS semantics and one missing tracked DDL definition for live table `downtime_reports`. The 49-applied/45-tracked migration set and full schema/export/relationship census remain unresolved.
 - **Phase 1 — PARTIAL:** GitHub Git Data persistence, atomic multi-table commits, backup/restore, checksum validation, compare-and-swap retry and authority preflight/recheck exist with mock-backed tests. Real private-repository contention, rate limits, protected-branch behaviour, complete binary restore and crash recovery are unproven.
 - **Phase 2 — BLOCKED:** the source code repository is public; no dedicated private YARDHUB data repository or protected broker credentials are available. Browser-held Contents access is not a staff security boundary.
 - **Phase 3 — NOT STARTED:** a GitHub Actions issue-comment broker remains a candidate only. No trusted private request broker has been provisioned or tested end-to-end.
@@ -116,16 +116,17 @@ A GitHub Actions issue-comment broker remains a candidate, not an approved produ
 
 ## Current verified baseline (27 November 2026)
 
-- PR #3 is open, draft and unmerged. Current observed documentation head: `20234bb505a2576da7d0115234ba5e75a6bb02a2`.
-- CI run #471 (`46082186779`) on implementation commit `6d5240c58fcd0a30b93e707edc0aa2ee44a9848b` passed build/checks, Chromium installation, Playwright browser QA and screenshot artifact upload.
-- Runtime UI port: `yardhub/runtime/index.html` now includes the two latest source-main STAFF layout changes from source commits `0cbda60f90ee45f8df866e7b36f532498a78ea49` and `939195a1fac26a9a632ab3938f17922985d8cd9d`. STAFF uses the same YARD HUB page heading, directory row layout and responsive toolbar as USERS/ACCESS AND RIGHTS, with a dedicated header return button. `yardhub/reference/` remains unchanged and pinned to tree `ba99913d1eaff7d99785088fd0931b3815defd4c`.
-- A runtime STAFF static-contract test was added to `npm test` and `npm run check`. Workflow #479 (`46082765580`) on commit `521a283534011aef346611facda2fbc39cf17534` had passed `npm run check`; Chromium installation/browser QA was still running at the last check. The subsequent documentation head has not yet received its own CI result.
+- PR #3 is open, draft and unmerged. Latest verified PR head at this plan update: `a0f438ad48e21d17117261f471d46b1151625a4c`; any later commits require their own CI result.
+- CI #486 (`46083145309`) passed on exact head `a0f438ad48e21d17117261f471d46b1151625a4c`: `npm run check`, Chromium installation, Playwright browser QA and screenshot artifact upload all passed. This run includes the source-parity test wired into both `npm test` and `npm run check`.
+- Earlier complete CI passes: #479 (`46082765580`) on `521a283534011aef346611facda2fbc39cf17534`; #481 (`46083001679`) on `20234bb505a2576da7d0115234ba5e75a6bb02a2`; #482 (`46083018447`) on `1b1520f4df4e2438d97872e8078c611786a728d9`; #485 (`46083134784`) on `2f23ba7ce32052209657049116c3e5f9a05f5233`. Earlier #476 (`46082619410`) on `a652e7828cc943ab01826ba429e6ff6614fcea9b` also passed.
+- Runtime UI port: `yardhub/runtime/index.html` includes the two source-main STAFF layout changes from source commits `0cbda60f90ee45f8df866e7b36f532498a78ea49` and `939195a1fac26a9a632ab3938f17922985d8cd9d`. STAFF uses the YARD HUB administration heading, directory row layout and responsive toolbar as USERS/ACCESS AND RIGHTS, with a dedicated header return button. `yardhub/reference/` remains pinned to tree `ba99913d1eaff7d99785088fd0931b3815defd4c` and has not been altered.
+- Runtime STAFF static-contract and source table/storage/RPC catalogue assertions are included in `npm test` and `npm run check`. The latter test checks catalogue names and counts only, not RPC semantics or authorization.
 - The latest source main has two commits beyond the pinned reference; the observed delta is limited to the STAFF UI/layout and its related test contracts. No source repository commit or workflow was changed by this work.
-- The migration inventory now records a missing tracked `downtime_reports` table definition, plus the 49-applied/45-tracked migration discrepancy. No attempt has been made to guess its schema.
-- The repository `aka30art/DowntimeUI` is public and is source code only. It is not an operational data destination. The `data/yardhub` branch is not approved for operational records.
+- The migration inventory records a missing tracked `downtime_reports` table definition and the 49-applied/45-tracked migration discrepancy. No attempt has been made to guess the missing schema.
+- `aka30art/DowntimeUI` is public and is source code only, not an operational data destination. The `data/yardhub` branch is not approved for operational records.
 - The direct-browser GitHub token prototype is not approved for staff/multi-user production. The seven-service runtime remains an experimental compatibility harness.
 - No live primary data has been migrated; no primary switch has occurred; YARDHUB remains primary.
-- Critical/high security findings remain open in `docs/GITHUB_NATIVE_SECURITY_AUDIT.md`. Build and browser success do not close them.
+- Critical/high findings remain open in `docs/GITHUB_NATIVE_SECURITY_AUDIT.md`. Build and browser success do not close them.
 
 ## Non-negotiable protection boundary
 
