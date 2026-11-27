@@ -47,7 +47,10 @@ async function activateRepository({ owner, repo, button, tokenInput }) {
     });
     const authority = await store.ensureAuthority();
     const database = await ensureGitHubDatabaseReady({ store });
-    runtime = await installGitHubEdgeRuntime({ store, actorId: "YARDHUB-GITHUB-RUNTIME" });
+    runtime = await installGitHubEdgeRuntime({
+      store, actorId: "YARDHUB-GITHUB-RUNTIME",
+      fetchImpl: globalThis.__YARDHUB_NATIVE_FETCH__ || globalThis.fetch
+    });
     const verifiedAuthority = await store.readAuthority();
     if (verifiedAuthority.primarySystemId !== "YARDHUB-PRIMARY" ||
         verifiedAuthority.status !== "ACTIVE" ||
