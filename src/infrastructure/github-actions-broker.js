@@ -121,25 +121,8 @@ export function createGitHubActionsBroker({
         throw brokerError("The broker issue is not assigned to this canonical USER.", 403, "BROKER_ISSUE_OWNERSHIP_DENIED");
       }
 
-      const claim = await idempotencyStore.claim({
-        requestId: parsed.envelope.requestId,
-        actorUserId: principal.userId,
-        commentId: parsed.commentId
-      });
-      if (!claim?.acquired) {
-        if (claim?.actorUserId && claim.actorUserId !== principal.userId) {
-          throw brokerError("The request identifier is already bound to another USER.", 409, "BROKER_REPLAY_CONFLICT");
-        }
-        if (claim?.encryptedResponse) {
-          await publishEncryptedResponse({
-            issueNumber: parsed.issueNumber,
-            actorUserId: principal.userId,
-            encryptedResponse: claim.encryptedResponse
-          });
-        }
-        return { accepted: true, replayed: true, requestId: parsed.envelope.requestId };
-      }
-
+      let claimedRequestId = null;
+      let completed = false;
       try {
         const request = await decryptRequest({
           envelope: parsed.envelope,
@@ -147,33 +130,52 @@ export function createGitHubActionsBroker({
         });
         if (!request || typeof request !== "object" || Array.isArray(request) ||
             request.requestId !== parsed.envelope.requestId ||
-            typeof request.service !== "string" || !SERVICE_NAMES.has(request.service) ||
             typeof request.action !== "string" || !ACTION_PATTERN.test(request.action) ||
-            (request.args != null && (typeof request.args !== "object" || Array.isArray(request.args))) ||
-            (request.sessionToken != null && (typeof request.sessionToken !== "string" || request.sessionToken.length > 1024))) {
+            !request.args || typeof request.args !== "object" || Array.isArray(request.args)) {
           throw brokerError("The decrypted request failed schema validation.");
         }
         assertNoCallerIdentity(request);
+
         const authorityEpoch = await getAuthorityEpoch();
         if (!Number.isSafeInteger(authorityEpoch) || authorityEpoch < 1) {
           throw brokerError("The authority epoch is unavailable; request denied.", 503, "BROKER_AUTHORITY_UNAVAILABLE");
         }
         const decision = await authorize({
           principal,
-          service: request.service,
           action: request.action,
-          args: request.args ?? {},
-          sessionToken: request.sessionToken || null,
+          args: request.args,
           authorityEpoch
         });
         if (decision !== true) throw brokerError("The USER is not authorised for this action.", 403, "BROKER_PERMISSION_DENIED");
 
+        // Only a decrypted, currently authorised operation may reserve its idempotency key.
+        const claim = await idempotencyStore.claim({
+          requestId: parsed.envelope.requestId,
+          actorUserId: principal.userId,
+          commentId: parsed.commentId,
+          action: request.action,
+          args: request.args,
+          authorityEpoch
+        });
+        if (!claim?.acquired) {
+          if (claim?.actorUserId && claim.actorUserId !== principal.userId) {
+            throw brokerError("The request identifier is already bound to another USER.", 409, "BROKER_REPLAY_CONFLICT");
+          }
+          if (claim?.encryptedResponse) {
+            await publishEncryptedResponse({
+              issueNumber: parsed.issueNumber,
+              actorUserId: principal.userId,
+              encryptedResponse: claim.encryptedResponse
+            });
+          }
+          return { accepted: true, replayed: true, requestId: parsed.envelope.requestId };
+        }
+        claimedRequestId = parsed.envelope.requestId;
+
         const result = await execute({
           principal,
-          service: request.service,
           action: request.action,
-          args: request.args ?? {},
-          sessionToken: request.sessionToken || null,
+          args: request.args,
           requestId: parsed.envelope.requestId,
           authorityEpoch
         });
@@ -186,6 +188,7 @@ export function createGitHubActionsBroker({
           actorUserId: principal.userId,
           encryptedResponse
         });
+        completed = true;
         await publishEncryptedResponse({
           issueNumber: parsed.issueNumber,
           actorUserId: principal.userId,
@@ -193,11 +196,13 @@ export function createGitHubActionsBroker({
         });
         return { accepted: true, replayed: false, requestId: parsed.envelope.requestId };
       } catch (error) {
-        await idempotencyStore.fail?.({
-          requestId: parsed.envelope.requestId,
-          actorUserId: principal.userId,
-          code: error?.code || "BROKER_EXECUTION_FAILED"
-        });
+        if (claimedRequestId && !completed) {
+          await idempotencyStore.fail?.({
+            requestId: claimedRequestId,
+            actorUserId: principal.userId,
+            code: error?.code || "BROKER_EXECUTION_FAILED"
+          });
+        }
         throw error;
       }
     }
