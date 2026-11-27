@@ -165,3 +165,100 @@ test("YARD HUB tier settings save checks versions and writes access audit", asyn
   assert.equal(snapshot.tables.yard_hub_access_audit.length, 1);
   assert.equal(snapshot.tables.yard_hub_tier_config[0].version, 2);
 });
+
+test("ROOTS lifecycle enforces assignment versions and appends immutable audit entries", async () => {
+  const store = memoryStore();
+  const db = createGitHubTableClient({ store, rpcHandlers: GITHUB_YARDHUB_RPC_HANDLERS, now: fixedNow });
+  const first = await db.rpc("downtime_roots_manage_identity", {
+    p_user_id: "user-1", p_staff_id: "staff-1", p_roots_class: "DEV1", p_action: "ASSIGN",
+    p_expected_version: null, p_actor_user_id: "root-dev", p_actor_username: "DEV", p_actor_display_name: "Developer"
+  });
+  assert.equal(first.error, null);
+  assert.equal(first.data.roots_class, "DEV1");
+  assert.equal(first.data.version, 1);
+
+  const reclassified = await db.rpc("downtime_roots_manage_identity", {
+    p_user_id: "user-1", p_staff_id: "staff-1", p_roots_class: "ADMIN", p_action: "RECLASSIFY",
+    p_expected_version: 1, p_actor_user_id: "root-dev", p_actor_username: "DEV", p_actor_display_name: "Developer"
+  });
+  assert.equal(reclassified.error, null);
+  assert.equal(reclassified.data.roots_class, "ADMIN");
+  assert.equal(reclassified.data.version, 2);
+
+  const stale = await db.rpc("downtime_roots_manage_identity", {
+    p_user_id: "user-1", p_staff_id: "staff-1", p_roots_class: "ADMIN", p_action: "REVOKE",
+    p_expected_version: 1, p_actor_user_id: "root-dev", p_actor_username: "DEV", p_actor_display_name: "Developer"
+  });
+  assert.equal(stale.error.status, 409);
+  const revoked = await db.rpc("downtime_roots_manage_identity", {
+    p_user_id: "user-1", p_staff_id: "staff-1", p_roots_class: "ADMIN", p_action: "REVOKE",
+    p_expected_version: 2, p_actor_user_id: "root-dev", p_actor_username: "DEV", p_actor_display_name: "Developer"
+  });
+  assert.equal(revoked.error, null);
+  assert.equal(revoked.data.status, "REVOKED");
+  assert.equal((await store.readDatabase()).tables.downtime_roots_assignment_audit.length, 3);
+});
+
+const defaultPermissions = [
+  { department: "SCPL", can_view: true, can_enter: true, can_edit: true, can_manage: true },
+  { department: "R&M", can_view: true, can_enter: true, can_edit: true, can_manage: false },
+  { department: "Management", can_view: true, can_enter: false, can_edit: false, can_manage: false },
+  { department: "SCFL", can_view: false, can_enter: false, can_edit: false, can_manage: false },
+  { department: "Traffic", can_view: true, can_enter: true, can_edit: false, can_manage: false }
+];
+
+test("YARD ROLE definitions require all five departments and enforce optimistic versions", async () => {
+  const store = memoryStore();
+  const db = createGitHubTableClient({ store, rpcHandlers: GITHUB_YARDHUB_RPC_HANDLERS, now: fixedNow });
+  const saved = await db.rpc("yard_role_save_definition", {
+    p_role_id: "role-1", p_expected_version: 0, p_name: "OPERATIONS",
+    p_description: "Operations role", p_status: "ACTIVE", p_permissions: defaultPermissions,
+    p_actor_user_id: "dev-1", p_actor_username: "DEV", p_actor_display_name: "Developer"
+  });
+  assert.equal(saved.error, null);
+  assert.equal(saved.data.version, 1);
+  assert.equal(saved.data.permissions.length, 5);
+
+  const invalid = await db.rpc("yard_role_save_definition", {
+    p_role_id: "role-1", p_expected_version: 1, p_name: "OPERATIONS",
+    p_description: "Bad permissions", p_status: "ACTIVE", p_permissions: defaultPermissions.slice(0, 4),
+    p_actor_user_id: "dev-1", p_actor_username: "DEV", p_actor_display_name: "Developer"
+  });
+  assert.ok(invalid.error);
+  const stale = await db.rpc("yard_role_save_definition", {
+    p_role_id: "role-1", p_expected_version: 0, p_name: "OPERATIONS",
+    p_description: "Stale", p_status: "ACTIVE", p_permissions: defaultPermissions,
+    p_actor_user_id: "dev-1", p_actor_username: "DEV", p_actor_display_name: "Developer"
+  });
+  assert.equal(stale.error.status, 409);
+});
+
+test("YARD ROLE assignment and reassignment retain user/staff linkage and audit history", async () => {
+  const store = memoryStore({
+    yard_roles: [
+      { id: "role-1", name: "OPERATIONS", status: "ACTIVE", version: 1 },
+      { id: "role-2", name: "MANAGER", status: "ACTIVE", version: 1 }
+    ],
+    yard_role_department_permissions: [
+      ...defaultPermissions.map(x => ({ yard_role_id: "role-1", ...x })),
+      ...defaultPermissions.map(x => ({ yard_role_id: "role-2", ...x }))
+    ]
+  });
+  const db = createGitHubTableClient({ store, rpcHandlers: GITHUB_YARDHUB_RPC_HANDLERS, now: fixedNow });
+  const assigned = await db.rpc("yard_role_assign_user", {
+    p_user_id: "user-1", p_staff_id: "staff-1", p_yard_role_id: "role-1",
+    p_actor_user_id: "dev-1", p_actor_username: "DEV", p_actor_display_name: "Developer"
+  });
+  assert.equal(assigned.error, null);
+  assert.equal(assigned.data.yard_role_id, "role-1");
+  const reassigned = await db.rpc("yard_role_reassign_user", {
+    p_user_id: "user-1", p_staff_id: "staff-1", p_yard_role_id: "role-2",
+    p_expected_version: 1, p_actor_user_id: "dev-1", p_actor_username: "DEV", p_actor_display_name: "Developer"
+  });
+  assert.equal(reassigned.error, null);
+  assert.equal(reassigned.data.yard_role_id, "role-2");
+  assert.equal(reassigned.data.version, 2);
+  const dbState = await store.readDatabase();
+  assert.equal(dbState.tables.yard_role_assignments[0].staff_id, "staff-1");
+  assert.deepEqual(dbState.tables.yard_role_assignment_audit.map(x => x.action), ["USER_YARD_ROLE_ASSIGNED", "USER_YARD_ROLE_REASSIGNED"]);
+});
