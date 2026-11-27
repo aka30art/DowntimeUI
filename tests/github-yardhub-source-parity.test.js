@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { GITHUB_YARDHUB_TABLES } from "../src/infrastructure/github-database-bootstrap.js";
+import { GITHUB_YARDHUB_TABLES, GITHUB_YARDHUB_SOURCE_TABLES, GITHUB_YARDHUB_BROKER_TABLES } from "../src/infrastructure/github-database-bootstrap.js";
 import { YARDHUB_TABLES, YARDHUB_STORAGE_BUCKETS } from "../scripts/yardhub-backup-to-github.mjs";
 import { GITHUB_YARDHUB_RPC_HANDLERS } from "../src/infrastructure/github-rpc-handlers.js";
 
@@ -53,11 +53,14 @@ const expectedRpcHandlers = [
   "downtime_identity_reset_preserve_dev"
 ].sort();
 
-test("GitHub database and primary backup cover the complete 39-table live inventory", () => {
+test("GitHub database preserves the 39-table source inventory and isolates two broker tables", () => {
+  const expectedBrokerTables = ["downtime_github_broker_requests", "downtime_github_identities"].sort();
   assert.equal(new Set(GITHUB_YARDHUB_TABLES).size, GITHUB_YARDHUB_TABLES.length, "database table names must not be duplicated");
   assert.equal(new Set(YARDHUB_TABLES).size, YARDHUB_TABLES.length, "backup table names must not be duplicated");
-  assert.deepEqual([...GITHUB_YARDHUB_TABLES].sort(), expectedTables);
-  assert.deepEqual([...YARDHUB_TABLES].sort(), expectedTables);
+  assert.deepEqual([...GITHUB_YARDHUB_SOURCE_TABLES].sort(), expectedTables);
+  assert.deepEqual([...YARDHUB_TABLES].sort(), expectedTables, "primary backup must contain only source YARDHUB tables");
+  assert.deepEqual([...GITHUB_YARDHUB_BROKER_TABLES].sort(), expectedBrokerTables);
+  assert.deepEqual([...GITHUB_YARDHUB_TABLES].sort(), [...expectedTables, ...expectedBrokerTables].sort());
 });
 
 test("primary backup covers all five private YARDHUB storage buckets", () => {
@@ -71,4 +74,4 @@ test("GitHub runtime implements every RPC name called by the seven source servic
   assert.deepEqual(names, expectedRpcHandlers);
 });
 
-console.log("PASS: YARDHUB source parity — 39 tables, five Storage buckets and 19 RPC handlers are mapped without omissions");
+console.log("PASS: YARDHUB source parity — 39 source tables, two isolated broker tables, five Storage buckets and 19 RPC handlers are mapped");
