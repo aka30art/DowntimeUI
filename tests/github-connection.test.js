@@ -156,10 +156,15 @@ test("first-run setup rejects a repository that GitHub reports as public or mism
   await assert.rejects(
     createPrivateGitHubDataRepository({
       owner: "example", repo: "yardhub-data", token: "create-repo-token", storage,
-      fetchImpl: async () => ({
-        ok: true, status: 201,
-        async json() { return { private: false, full_name: "example/yardhub-data", default_branch: "main" }; }
-      })
+      fetchImpl: async (url) => {
+        if (url === "https://api.github.com/user") {
+          return { ok: true, status: 200, async json() { return { login: "example" }; } };
+        }
+        return {
+          ok: true, status: 201,
+          async json() { return { private: false, full_name: "example/yardhub-data", default_branch: "main" }; }
+        };
+      }
     }),
     (error) => error.status === 403 && /exact requested private repository/.test(error.message)
   );
