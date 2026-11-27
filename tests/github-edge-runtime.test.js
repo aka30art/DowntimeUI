@@ -4,10 +4,13 @@ import { installGitHubEdgeRuntime } from "../yardhub/runtime/github-edge-runtime
 
 function createMemoryStore() {
   let revision = 0;
+  const objects = new Map();
   let tables = {
     downtime_central_bank: [{ id: 1, version: 1, payload: { users: [], staff: {}, appData: {} } }],
     downtime_central_sessions: [],
-    downtime_central_audit: []
+    downtime_central_audit: [],
+    downtime_central_config_state: [{ id: 1, draft_version: 1, published_version: 1, next_version: 2, draft_payload: {}, published_payload: {} }],
+    downtime_central_config_history: []
   };
   return {
     async readDatabase() {
@@ -25,14 +28,30 @@ function createMemoryStore() {
       revision += 1;
       return { committed: true, revision, result, commitSha: "runtime-test-" + revision };
     },
-    async uploadObject({ path, bytes, mimeType }) {
-      return { path, size: bytes?.length || 0, mimeType };
+    async uploadObject({ bucket, path, data, mimeType }) {
+      const key = bucket + "/" + path;
+      const bytes = data instanceof Uint8Array ? new Uint8Array(data) : new Uint8Array(data || []);
+      objects.set(key, { bytes, mimeType: mimeType || "application/octet-stream" });
+      return { path, size: bytes.byteLength, mimeType };
     },
-    async downloadObject() { return null; },
-    async deleteObject() { return true; },
+    async downloadObject({ bucket, path }) {
+      const item = objects.get(bucket + "/" + path);
+      if (!item) { const error = new Error("Object not found"); error.status = 404; throw error; }
+      return { bytes: new Uint8Array(item.bytes), mimeType: item.mimeType };
+    },
+    async deleteObject({ bucket, path }) {
+      const deleted = objects.delete(bucket + "/" + path);
+      return { deleted, bucket, path };
+    },
     async createSignedObjectUrl() { return "https://github-native.invalid/test-object"; },
-    async readObjectMetadata() { return null; },
-    async readObjectBytes() { return null; }
+    async readObjectMetadata({ bucket, path }) {
+      const item = objects.get(bucket + "/" + path);
+      return item ? { size: item.bytes.byteLength, mimeType: item.mimeType } : null;
+    },
+    async readObjectBytes({ bucket, path }) {
+      const item = objects.get(bucket + "/" + path);
+      return item ? new Uint8Array(item.bytes) : null;
+    }
   };
 }
 
@@ -192,5 +211,94 @@ test("Edge Function and browser clients share one-time GitHub storage upload tic
   } finally {
     await runtime.dispose();
     globalThis.fetch = previousFetch;
+  }
+});
+
+
+test("Central Config admin reads the published YARDHUB launcher and photo-evidence uploads use private Storage tickets", async () => {
+  const store = createMemoryStore();
+  const originalFetch = globalThis.fetch;
+  const previousSession = globalThis.DowntimeCentral;
+  const runtime = await installGitHubEdgeRuntime({ store });
+  const request = async (name, body, token = null) => {
+    const headers = {
+      origin: "https://aka30art.github.io",
+      "content-type": "application/json"
+    };
+    if (token) headers["x-downtime-session"] = token;
+    return globalThis.fetch("https://github-native.invalid/functions/v1/" + name, {
+      method: "POST", headers, body: JSON.stringify(body)
+    });
+  };
+
+  try {
+    const bootstrapResponse = await request("central-bank", {
+      action: "bootstrap", bootstrapCode: runtime.bootstrapCode, username: "DEV", pin: "4826"
+    });
+    assert.equal(bootstrapResponse.status, 200);
+    const loginResponse = await request("central-bank", { action: "login", username: "DEV", pin: "4826" });
+    assert.equal(loginResponse.status, 200);
+    const login = await loginResponse.json();
+
+    const menuResponse = await request("central-config-admin", { action: "yard-hub-menu" }, login.token);
+    assert.equal(menuResponse.status, 200);
+    const menu = await menuResponse.json();
+    assert.ok(menu.yardHubMenu.departments.some(item => item.id === "downtime"));
+    assert.ok(menu.repairMaintenanceCategories.categories.some(item => item.key === "OTHER_EQUIPMENT"));
+
+    const entryKey = "00000000-0000-4000-8000-000000000001";
+    const recordId = "00000000-0000-4000-8000-000000000002";
+    const uploadResponse = await request("photo-evidence", {
+      action: "create-upload", entryKey, recordId, mimeType: "image/jpeg", size: 3
+    }, login.token);
+    assert.equal(uploadResponse.status, 200);
+    const upload = await uploadResponse.json();
+    assert.ok(upload.attachmentId);
+    assert.ok(upload.token);
+    assert.match(upload.path, new RegExp("^" + entryKey + "/"));
+
+    const browserClient = globalThis.supabase.createClient();
+    const uploaded = await browserClient.storage.from("downtime-evidence").uploadToSignedUrl(
+      upload.path, upload.token,
+      new Blob([new Uint8Array([255, 216, 255])], { type: "image/jpeg" }),
+      { contentType: "image/jpeg" }
+    );
+    assert.equal(uploaded.error, null);
+    assert.equal(uploaded.data.path, upload.path);
+
+    const current = await store.readDatabase();
+    await store.transactDatabase({
+      expectedRevision: current.revision,
+      actorId: "runtime-test",
+      mutate(tables) {
+        const bank = tables.downtime_central_bank.find(row => Number(row.id) === 1);
+        bank.payload.appData ||= {};
+        bank.payload.appData.weeks ||= {};
+        bank.payload.appData.weeks["2026-11-23"] = {
+          days: [{
+            date: "2026-11-23",
+            entries: [{ recordId, attachmentId: upload.attachmentId }]
+          }]
+        };
+      }
+    });
+    const viewResponse = await request("photo-evidence", {
+      action: "view", attachmentId: upload.attachmentId
+    }, login.token);
+    assert.equal(viewResponse.status, 200);
+    const view = await viewResponse.json();
+    assert.ok(view.url);
+    assert.equal(view.expiresIn, 60);
+
+    const deleteResponse = await request("photo-evidence", {
+      action: "delete", attachmentId: upload.attachmentId
+    }, login.token);
+    assert.equal(deleteResponse.status, 200);
+    assert.equal((await deleteResponse.json()).ok, true);
+  } finally {
+    await runtime.dispose();
+    globalThis.fetch = originalFetch;
+    if (previousSession === undefined) delete globalThis.DowntimeCentral;
+    else globalThis.DowntimeCentral = previousSession;
   }
 });
