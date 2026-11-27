@@ -95,6 +95,7 @@ export async function ensureGitHubDatabaseReady({
     Number.isFinite(existingExpiry) && existingExpiry > now().getTime() &&
     await hashBootstrapCode(existingCode) === bootstrapRow.bootstrap_code_hash;
   const bootstrapCode = !hasDevUser ? (reuseCode ? existingCode : generateBootstrapCode()) : null;
+  if (hasDevUser) globalThis.__YARDHUB_BOOTSTRAP_CODE__ = null;
   const bootstrapCodeHash = bootstrapCode ? await hashBootstrapCode(bootstrapCode) : null;
   const bootstrapCodeExpiresAt = bootstrapCode ? new Date(now().getTime() + 15 * 60 * 1000).toISOString() : null;
   const needsBootstrapCodeUpdate = Boolean(bootstrapCode && !reuseCode);
