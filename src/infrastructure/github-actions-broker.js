@@ -118,14 +118,15 @@ export function createGitHubActionsBroker({
       // No identity value inside the encrypted request can override it.
       const principal = await resolvePrincipal(parsed.actor.githubUserId);
       if (!principal || String(principal.githubUserId) !== parsed.actor.githubUserId ||
-          !principal.userId || !principal.staffId ||
+          !principal.userId || (!principal.staffId && principal.rootsClass !== "DEV") ||
           principal.enabled !== true || principal.status !== "ACTIVE") {
         throw brokerError("The GitHub actor is not mapped to an active canonical USER/STAFF identity.", 403, "BROKER_USER_DENIED");
       }
       const issueAllowed = await authorizeInboxIssue({
         principal,
         issueId: parsed.issueId,
-        issueNumber: parsed.issueNumber
+        issueNumber: parsed.issueNumber,
+        repositoryId: parsed.repositoryId
       });
       if (issueAllowed !== true) {
         throw brokerError("The broker issue is not assigned to this canonical USER.", 403, "BROKER_ISSUE_OWNERSHIP_DENIED");
