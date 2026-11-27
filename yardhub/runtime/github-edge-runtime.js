@@ -1,4 +1,5 @@
 import { GITHUB_YARDHUB_RPC_HANDLERS } from "../../src/infrastructure/github-rpc-handlers.js";
+import { ensureGitHubDatabaseReady } from "../../src/infrastructure/github-database-bootstrap.js";
 
 const DEFAULT_FUNCTIONS = [
   "central-bank",
@@ -20,6 +21,7 @@ export async function installGitHubEdgeRuntime({
   fetchImpl = globalThis.fetch
 } = {}) {
   if (!store) throw new TypeError("A GitHub data store is required.");
+  await ensureGitHubDatabaseReady({ store });
   const handlers = globalThis.__YARDHUB_EDGE_HANDLERS__ || (globalThis.__YARDHUB_EDGE_HANDLERS__ = {});
   const previousDeno = globalThis.Deno;
   const previousFetch = globalThis.fetch;
