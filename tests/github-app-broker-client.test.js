@@ -49,7 +49,7 @@ test("broker request and response are end-to-end encrypted with ephemeral P-256 
   const parsedRequest = parseBrokerRequestComment(context.commentBody);
   assert.deepEqual(await decryptBrokerRequest({
     envelope: parsedRequest, brokerPrivateKey: broker.privateKey, cryptoProvider: webcrypto, now
-  }), payload);
+  }), { ...payload, requestId: context.requestId });
 
   const result = { ok: true, visitId: "visit-test-123", message: "Saved" };
   const responseEnvelope = await encryptBrokerResponse({
