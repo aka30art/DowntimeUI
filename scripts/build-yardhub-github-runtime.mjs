@@ -55,14 +55,13 @@ const plugin = {
         );
 
         const listStart = contents.indexOf("const listGithubStaffOriginals=async()=>{");
-        const listEndMarker = "        return originals;\\n      };";
-        const listEnd = contents.indexOf(listEndMarker, listStart);
+        const listEnd = contents.indexOf("const githubOriginals=await listGithubStaffOriginals();", listStart);
         if (listStart < 0 || listEnd < 0) {
           throw new Error("STAFF original-photo listing block changed; refusing the port.");
         }
         contents = contents.slice(0, listStart) +
-          "const listGithubStaffOriginals=async()=>[];" +
-          contents.slice(listEnd + listEndMarker.length);
+          "const listGithubStaffOriginals=async()=>[];\n     " +
+          contents.slice(listEnd);
 
         const uploadStartMarker = 'const token=Deno.env.get("GITHUB_STAFF_IMAGE_TOKEN");';
         const uploadStart = contents.indexOf(uploadStartMarker);
@@ -77,7 +76,7 @@ const plugin = {
           'if(uploadError)return json({error:uploadError.message||"Private STAFF photo upload failed"},500);',
           'await db.from("downtime_central_audit").insert({username:currentUser.username,action:"staff-original-upload",details:{staff:slug,path,bytes:bytes.length,storageObjectId:saved?.id||null}});',
           'return json({ok:true,staff:slug,path,commitSha:saved?.id||null});'
-        ].join("\\n");
+        ].join("\n");
         contents = contents.slice(0, uploadStart) + githubStorageUpload +
           contents.slice(uploadEnd + uploadEndMarker.length);
       }
