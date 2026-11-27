@@ -143,7 +143,11 @@ The source port audit records 39 public operational tables, five private storage
 
 ## Validation note
 
-The CI run associated with commit `7c313a6a1c98070f97b0d5b524ff7bad8452a0fb` completed successfully, including `npm run check` and Chromium/Playwright browser QA. The observed PR head subsequently advanced to `235ca7f379523e9d3a980f059e57ef6aaf8b365e`; its separate run `46081441856` was in progress at the time of this audit. The successful earlier run validates only the exact commit tested and the tests present there; it does not close any security or production acceptance finding above.
+- CI run `46081306857` on commit `7c313a6a1c98070f97b0d5b524ff7bad8452a0fb` passed build/checks, Chromium installation and Playwright browser QA.
+- Intermediate run `46081441856` on `235ca7f` failed because the backup bridge test mock did not handle the now-approved YARDHUB source hostname. Run `46081590756` on `fcef0b8` then exposed invalid escaped newline literals in a generated backup manifest fixture.
+- Both fixture defects were corrected. The backup bridge also gained an authority recheck against the latest Git commit before each write attempt, plus tests for a pre-existing twin-primary manifest and a primary switch occurring during export.
+- CI run `46081812603` (run #466) on commit `39f46c0c47d8407c9b2091f0583c759ef113bbd5` completed successfully: `npm run check`, Chromium installation, Playwright browser QA and screenshot artifact upload all passed.
+- These checks are code/regression evidence only. They do not prove a private GitHub data repository, secure multi-user broker, server-side YARD ROLE/RLS parity, exhaustive endpoint/action parity, real private-repository recovery or production readiness. All SEC-001 to SEC-009 findings remain open until independently remediated and tested.
 
 ## Protection boundary
 
