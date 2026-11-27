@@ -45,24 +45,48 @@ const plugin = {
         }
         contents = contents.replace(originalBootstrapPattern, githubBootstrap);
 
-        const primaryStaffOriginalsUrl = 'const githubOriginalsApi="https://api.github.com/repos/aka30art/DOWNTIME/contents/assets/staff/originals";';
-        if (!contents.includes(primaryStaffOriginalsUrl)) {
-          throw new Error("Original STAFF photo path changed; refusing an unreviewed GitHub port.");
-        }
-        contents = contents.replace(
-          primaryStaffOriginalsUrl,
-          'const githubOriginalsApi="https://github-native.invalid/private-staff-originals";'
-        );
-
-        const listStart = contents.indexOf("const listGithubStaffOriginals=async()=>{");
-        const listEnd = contents.indexOf("const githubOriginals=await listGithubStaffOriginals();", listStart);
-        if (listStart < 0 || listEnd < 0) {
+        const staffListStartMarker = 'const githubToken=String(Deno.env.get("GITHUB_STAFF_IMAGE_TOKEN")||"");';
+        const staffListStart = contents.indexOf(staffListStartMarker);
+        const staffListEndMarker = "const githubOriginals=await listGithubStaffOriginals();";
+        const staffListEnd = contents.indexOf(staffListEndMarker, staffListStart);
+        if (staffListStart < 0 || staffListEnd < 0) {
           throw new Error("STAFF original-photo listing block changed; refusing the port.");
         }
-        contents = contents.slice(0, listStart) +
-          "const listGithubStaffOriginals=async()=>[];\n     " +
-          contents.slice(listEnd);
+        const privateStaffListing = [
+          'const listGithubStaffOriginals=async()=>{',
+          ' const {data:folders,error}=await db.storage.from("downtime-staff-photos").list("originals",{limit:1000});',
+          ' if(error)throw new Error(error.message||"Private STAFF photo folder listing failed");',
+          ' const originals=[];',
+          ' for(const folder of folders||[]){',
+          '  const slug=String(folder?.name||"");',
+          '  if(folder?.id!==null||!/^[a-z0-9]{1,30}$/.test(slug))continue;',
+          '  const {data:files,error:fileError}=await db.storage.from("downtime-staff-photos").list("originals/"+slug,{limit:1000});',
+          '  if(fileError)throw new Error(fileError.message||"Private STAFF photo listing failed");',
+          '  if((files||[]).some(file=>file?.name==="original.png"&&file?.id))originals.push({slug,path:"originals/"+slug+"/original.png"});',
+          ' }',
+          ' return originals;',
+          '};',
+          'const githubOriginals=await listGithubStaffOriginals();'
+        ].join("\n");
+        contents = contents.slice(0, staffListStart) + privateStaffListing +
+          contents.slice(staffListEnd + staffListEndMarker.length);
 
+        const deleteOriginalStart = contents.indexOf("for(const original of githubOriginals){", staffListStart);
+        const deleteOriginalEndMarker = "for(let offset=0;offset<staffPhotoPaths.length;offset+=100){";
+        const deleteOriginalEnd = contents.indexOf(deleteOriginalEndMarker, deleteOriginalStart);
+        if (deleteOriginalStart < 0 || deleteOriginalEnd < 0) {
+          throw new Error("STAFF original-photo deletion block changed; refusing the port.");
+        }
+        const privateStaffDeletion = [
+          'for(const original of githubOriginals){',
+          ' const {error:deleteError}=await db.storage.from("downtime-staff-photos").remove([original.path]);',
+          ' if(deleteError)throw new Error(deleteError.message||"Private STAFF original photo deletion failed");',
+          ' staffOriginalsDeleted++;',
+          '}',
+          ''
+        ].join("\n");
+        contents = contents.slice(0, deleteOriginalStart) + privateStaffDeletion +
+          contents.slice(deleteOriginalEnd);
         const uploadStartMarker = 'const token=Deno.env.get("GITHUB_STAFF_IMAGE_TOKEN");';
         const uploadStart = contents.indexOf(uploadStartMarker);
         const uploadEndMarker = 'return json({ok:true,staff:slug,path,commitSha:saved?.commit?.sha||null});';
