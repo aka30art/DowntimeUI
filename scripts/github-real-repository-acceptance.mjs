@@ -38,7 +38,17 @@ const headers = {
 };
 const metadataResponse = await fetch("https://api.github.com/repos/" + encodeURIComponent(owner) + "/" + encodeURIComponent(repo), { headers });
 const metadata = await metadataResponse.json();
-assert.equal(metadataResponse.ok, true, "GitHub token must read the configured data repository");
+if (!metadataResponse.ok) {
+  console.error("Private YARDHUB repository metadata check failed:", JSON.stringify({
+    status: metadataResponse.status,
+    message: metadata.message || "No GitHub error message",
+    acceptedPermissions: metadataResponse.headers.get("x-accepted-github-permissions") || null,
+    rateLimitRemaining: metadataResponse.headers.get("x-ratelimit-remaining"),
+    rateLimitReset: metadataResponse.headers.get("x-ratelimit-reset"),
+    documentationUrl: metadata.documentation_url || null
+  }));
+}
+assert.equal(metadataResponse.ok, true, "GitHub token must read the configured data repository (inspect metadata diagnostic above)");
 assert.equal(metadata.private, true, "YARDHUB operational data repository must be private");
 assert.equal(metadata.archived, false, "YARDHUB data repository must not be archived");
 assert.equal(metadata.permissions?.push, true, "GitHub token must have write access to the private YARDHUB data repository");
