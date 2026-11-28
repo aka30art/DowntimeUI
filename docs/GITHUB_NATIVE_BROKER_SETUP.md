@@ -27,7 +27,7 @@ Do not use `aka30art/DOWNTIME` or `aka30art/DOP-website` for any of these roles.
 | `YARDHUB_DATA_OWNER` | Owner of the private data repository |
 | `YARDHUB_DATA_REPOSITORY` | Private data repository name |
 | `YARDHUB_DATA_REPOSITORY_ID` | Numeric repository ID for the private data repository |
-| `YARDHUB_DATA_BRANCH` | Protected data branch, normally `main` |
+| `YARDHUB_DATA_BRANCH` | Protected data branch, default `data/yardhub` |
 | `YARDHUB_DATA_APP_ID` | Data App ID |
 | `YARDHUB_DATA_APP_INSTALLATION_ID` | Data App installation ID |
 | `YARDHUB_BOOTSTRAP_GITHUB_USER_ID` | Optional, pre-approved GitHub numeric ID for the immutable DEV bootstrap identity |
