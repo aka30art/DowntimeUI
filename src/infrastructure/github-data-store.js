@@ -145,7 +145,9 @@ export function createGitHubDataStore({
   };
 
   const getHead = async () => {
-    const result = await request("/git/ref/heads/" + branchPath(branch));
+    // The branch reference is mutable. Never let the browser HTTP cache hide commits
+    // made by another device/profile; content reads pinned to a commit SHA remain cache-safe.
+    const result = await request("/git/ref/heads/" + branchPath(branch), { cache: "no-store" });
     if (!result?.object?.sha) throw new GitHubStoreError("GitHub data branch has no valid HEAD.");
     return result.object.sha;
   };
