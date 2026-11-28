@@ -329,7 +329,7 @@ export function createGitHubDataStore({
         }
         throw new GitHubStoreError("Could not initialise GitHub data authority because the branch changed repeatedly.", 409);
       } catch (error) {
-        if (Number.isInteger(error?.status) && error.status < 500) throw error;
+        if (Number.isInteger(error?.status) && error.status > 0 && error.status < 500) throw error;
         const cached = readLocalCache()?.authority;
         if (cached) return validateAuthority(cached);
         throw error;
@@ -343,7 +343,7 @@ export function createGitHubDataStore({
         cacheAuthority(authority);
         return authority;
       } catch (error) {
-        if (Number.isInteger(error?.status) && error.status < 500) throw error;
+        if (Number.isInteger(error?.status) && error.status > 0 && error.status < 500) throw error;
         const cached = readLocalCache()?.authority;
         if (cached) return validateAuthority(cached);
         throw error;
@@ -463,7 +463,7 @@ export function createGitHubDataStore({
         writeLocalCache({ ...result, authority: cached?.authority || null });
         return result;
       } catch (error) {
-        if (Number.isInteger(error?.status) && error.status < 500) throw error;
+        if (Number.isInteger(error?.status) && error.status > 0 && error.status < 500) throw error;
         const cached = readLocalCache();
         if (cached?.manifest && cached?.tables && typeof cached.tables === "object") return { ...cached, offline: true, cacheAge: cached.cachedAt || null };
         throw error;
@@ -686,7 +686,7 @@ export function createGitHubDataStore({
         }
         return { bucket, path: objectName, bytes, mimeType, size: bytes.byteLength, sha: file.sha, offline: false };
       } catch (error) {
-        if (Number.isInteger(error?.status) && error.status < 500) throw error;
+        if (Number.isInteger(error?.status) && error.status > 0 && error.status < 500) throw error;
         try {
           const cached = JSON.parse(localCacheStorage?.getItem?.(objectCacheKey) || "null");
           if (cached?.base64) {
