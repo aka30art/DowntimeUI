@@ -114,7 +114,7 @@ export async function ensureGitHubDatabaseReady({
   const result = await store.transactDatabase({
     expectedRevision: current.revision,
     actorId: "GITHUB-INSTALLER",
-    operationId: "github-database-bootstrap-" + bootstrapUserId + "-" + (bootstrapCodeHash || "schema"),
+    operationId: "gh-db-bootstrap-" + bootstrapUserId + "-" + (bootstrapCodeHash || "schema"),
     mutate(tables) {
       for (const name of TABLES) {
         if (!Array.isArray(tables[name])) tables[name] = [];
