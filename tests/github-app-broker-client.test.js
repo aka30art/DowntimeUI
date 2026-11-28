@@ -149,6 +149,13 @@ test("GitHub App browser OAuth uses PKCE, validates state and scopes the user to
   let submittedComment = null;
   let decryptedPayload = null;
   let comments = [];
+  const pendingRecords = new Map();
+  const pendingRequestStore = {
+    async put(record) { pendingRecords.set(record.requestId, record); },
+    async get(requestId) { return pendingRecords.get(requestId) || null; },
+    async list(accountId) { return [...pendingRecords.values()].filter(record => record.accountId === accountId); },
+    async remove(requestId) { pendingRecords.delete(requestId); }
+  };
   const broker = await brokerKeyPair();
   const brokerPublicKey = base64Url(await webcrypto.subtle.exportKey("raw", broker.publicKey));
   const calls = [];
@@ -220,7 +227,8 @@ test("GitHub App browser OAuth uses PKCE, validates state and scopes the user to
     fetchImpl,
     cryptoProvider: webcrypto,
     now: () => clock,
-    storage
+    storage,
+    pendingRequestStore
   });
 
   const authorizationRequest = await client.startWebAuthorization({
@@ -264,12 +272,16 @@ test("GitHub App browser OAuth uses PKCE, validates state and scopes the user to
   });
   assert.equal(submitted.commentId, 765);
   assert.equal(submitted.account.id, 990011);
+  assert.equal(pendingRecords.has(submitted.requestId), true, "the private ECDH key must be persisted before response polling");
+  assert.equal((await client.listPendingRequests()).length, 1);
+  assert.equal((await client.restorePendingRequest(submitted.requestId)).requestId, submitted.requestId);
   assert.equal(decryptedPayload.action, "gatelog-customer-arrival");
   assert.equal(submittedComment.includes("Confidential customer"), false);
 
   const response = await client.pollEncryptedResponse(submitted);
   assert.equal(response.pending, false);
   assert.deepEqual(response.payload, { ok: true, visitId: "private-visit-id" });
+  assert.equal(pendingRecords.has(submitted.requestId), false, "completed response polling removes the recoverable pending key");
 
   const exchange = calls.find(call => call.url === "https://github.com/login/oauth/access_token");
   assert.ok(exchange);
