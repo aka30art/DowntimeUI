@@ -79,7 +79,7 @@ try {
   const firstCommit = await pageA.evaluate(async id => {
     const store = window.YARDHUB_GITHUB_STORE;
     let lastError = null;
-    for (let attempt = 0; attempt < 6; attempt += 1) {
+    for (let attempt = 0; attempt < 12; attempt += 1) {
       const current = await store.readDatabase();
       try {
         const result = await store.transactDatabase({
@@ -96,8 +96,10 @@ try {
         return { revision: result.revision };
       } catch (error) {
         lastError = error;
-        if (error?.status !== 409 || attempt === 5) throw error;
-        await new Promise(resolve => setTimeout(resolve, 150 * (attempt + 1)));
+        if (error?.status !== 409 || attempt === 11) {
+          throw new Error("Browser A probe commit failed after " + (attempt + 1) + " attempts; last conflict: " + (error?.message || String(error)));
+        }
+        await new Promise(resolve => setTimeout(resolve, Math.min(500 * (2 ** attempt), 4000)));
       }
     }
     throw lastError || new Error("Browser A could not commit its probe record.");
