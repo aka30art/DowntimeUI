@@ -126,6 +126,7 @@ export async function executeGitHubEdgeAction({
   sessionToken = null,
   requestId,
   actorUserId = null,
+  expectedAuthorityEpoch = null,
   now = () => new Date(),
   origin = "https://aka30art.github.io"
 } = {}) {
@@ -152,6 +153,7 @@ export async function executeGitHubEdgeAction({
   try {
     const committed = await store.transactDatabase({
       expectedRevision: baseline.revision,
+      expectedAuthorityEpoch,
       actorId: "YARDHUB-GITHUB-ACTIONS-BROKER",
       operationId: "broker-" + requestId,
       mutate: async tables => {
