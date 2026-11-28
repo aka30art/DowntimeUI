@@ -14,7 +14,7 @@ The app runs the existing seven service modules locally through the GitHub-nativ
 ## Current validation
 
 - Universal App Foundation CI run **#767** passed on commit `4b72ff7fdb498d92e2b0777a0fbc4b8aaec02e6b`, including `npm run check` and Chromium Playwright browser QA.
-- Universal App Foundation CI run **#770** is validating the newer branch-default and acceptance-test changes on the current PR head.
+- Universal App Foundation CI run **#770** passed on commit `38b24dcc09293bb7f1641e39f16f1cc65b7de7a9`, including `npm run check` and Chromium Playwright browser QA for the branch-default, invalid-token and read-only-token regressions.
 - YARDHUB Real GitHub Acceptance run **#11** is blocked at its credentials preflight. Repository secrets `YARDHUB_DATA_REPOSITORY` and `YARDHUB_DATA_TOKEN` are empty; no live private-repository test was run.
 - The offline-session restoration, invalid-token rejection, read-only-token rejection and writer-identity regression tests are covered by passing CI #767.
 - The current YARDHUB runtime still has no user-facing full-system JSON export/restore workflow that includes operational tables and binary objects. Git history provides prior commits, but is not a substitute for a tested full backup/restore workflow. This remains a release blocker.
