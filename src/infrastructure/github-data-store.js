@@ -615,7 +615,7 @@ export function createGitHubDataStore({
       return { revision: manifest.revision, manifest, tables };
     },
 
-    async transactDatabase({ expectedRevision, actorId, operationId = null, mutate } = {}) {
+    async transactDatabase({ expectedRevision, expectedAuthorityEpoch = null, actorId, operationId = null, mutate } = {}) {
       if (!Number.isInteger(expectedRevision) || expectedRevision < 0) {
         throw new TypeError("expectedRevision must be a non-negative integer.");
       }
@@ -630,6 +630,22 @@ export function createGitHubDataStore({
         throw new GitHubStoreError("Database revision changed. Refresh before retrying.", 409, {
           expectedRevision, currentRevision: current.manifest.revision
         });
+      }
+      if (expectedAuthorityEpoch !== null) {
+        if (!Number.isSafeInteger(expectedAuthorityEpoch) || expectedAuthorityEpoch < 1) {
+          throw new TypeError("Expected authority epoch must be a positive integer.");
+        }
+        const authority = validateAuthority(await readJsonAt(AUTHORITY_PATH, headSha));
+        if (authority.status !== "ACTIVE" ||
+            authority.primarySystemId !== "DOWNTIMEUI-GITHUB" ||
+            authority.epoch !== expectedAuthorityEpoch) {
+          throw new GitHubStoreError("YARDHUB authority changed or GitHub is not primary. Broker transaction denied.", 409, {
+            expectedAuthorityEpoch,
+            currentAuthorityEpoch: authority.epoch,
+            primarySystemId: authority.primarySystemId,
+            authorityStatus: authority.status
+          });
+        }
       }
       const tables = structuredClone(current.tables);
       const result = await mutate(tables);
