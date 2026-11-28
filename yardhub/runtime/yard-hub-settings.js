@@ -181,14 +181,22 @@
     if(view==='roots')loadRootsState().catch(error=>setStatus(error.message||'Unable to load ROOTS directory.','error'));
   }
   async function openSettings(){
-    setStatus('VERIFYING SETTINGS ACCESS…');
+    setStatus('VERIFYING STAFF MANAGEMENT ACCESS…');
     try{
-      const access=await configureButton();
-      if(!access?.canManageSettings||!isSettingsAdmin())throw new Error('YARD HUB Access and Rights is restricted to protected ROOTS identities.');
+      // Load the authoritative GitHub-backed settings state before evaluating
+      // module access. The lightweight offline access probe intentionally does
+      // not claim canManageSettings, so it must not gate the Staff workspace.
+      await configureButton();
       await loadState();
+      const canOpenStaffManagement=
+        isProtectedRoot()||
+        state?.canViewStaffUsers===true||
+        state?.canManageStaffUsers===true||
+        state?.canManageUserAccounts===true;
+      if(!canOpenStaffManagement)throw new Error('Management VIEW permission is required to access Staff & Management.');
       setHomeVisible(true);showSettingsHome();setStatus('');
     }catch(error){
-      setStatus(error.message||'Unable to open YARD HUB Settings.','error');
+      setStatus(error.message||'Unable to open Staff & Management.','error');
     }
   }
   async function openStaffUserManagement(){
