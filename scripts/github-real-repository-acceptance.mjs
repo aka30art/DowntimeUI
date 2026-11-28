@@ -31,6 +31,26 @@ function makeStore(cacheStorage, fetchImpl = globalThis.fetch) {
   });
 }
 
+async function transactWithRetry(store, { actorId, operationId, mutate, maxAttempts = 6 }) {
+  let lastConflict = null;
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    const current = await store.readDatabase();
+    try {
+      return await store.transactDatabase({
+        expectedRevision: current.revision,
+        actorId,
+        operationId: operationId + "-attempt-" + attempt,
+        mutate
+      });
+    } catch (error) {
+      if (error?.status !== 409 || attempt === maxAttempts - 1) throw error;
+      lastConflict = error;
+      await new Promise(resolve => setTimeout(resolve, Math.min(150 * (2 ** attempt), 1500)));
+    }
+  }
+  throw lastConflict || new Error("GitHub acceptance write conflicted repeatedly.");
+}
+
 const headers = {
   Accept: "application/vnd.github+json",
   Authorization: "Bearer " + token,
@@ -167,13 +187,14 @@ try {
 
   const deviceBInitial = await deviceB.readDatabase();
   const baselineRevision = deviceBInitial.revision;
-  await deviceA.transactDatabase({
-    expectedRevision: initial.revision,
+  await transactWithRetry(deviceA, {
     actorId: "REAL-REPOSITORY-ACCEPTANCE",
     operationId: probeId + "-device-a-write",
     mutate(tables) {
       tables.downtime_reports = Array.isArray(tables.downtime_reports) ? tables.downtime_reports : [];
-      tables.downtime_reports.push({ id: probeId, title: "Temporary GitHub acceptance probe", created_at: new Date().toISOString() });
+      if (!tables.downtime_reports.some(row => row.id === probeId)) {
+        tables.downtime_reports.push({ id: probeId, title: "Temporary GitHub acceptance probe", created_at: new Date().toISOString() });
+      }
     }
   });
   probeCommitted = true;
@@ -184,11 +205,15 @@ try {
   assert.equal(refreshedOnB.tables.downtime_reports.some(row => row.id === probeId), true,
     "independent device B must see device A's central commit after manual refresh");
 
-  await deviceA.transactDatabase({
-    expectedRevision: refreshedOnB.revision,
+  await transactWithRetry(deviceA, {
     actorId: "REAL-REPOSITORY-ACCEPTANCE",
     operationId: probeId + "-device-a-second-write",
-    mutate(tables) { tables.downtime_reports.push({ id: probeId + "-second", title: "Concurrent write probe" }); }
+    mutate(tables) {
+      tables.downtime_reports = Array.isArray(tables.downtime_reports) ? tables.downtime_reports : [];
+      if (!tables.downtime_reports.some(row => row.id === probeId + "-second")) {
+        tables.downtime_reports.push({ id: probeId + "-second", title: "Concurrent write probe" });
+      }
+    }
   });
   await assert.rejects(
     deviceB.transactDatabase({
