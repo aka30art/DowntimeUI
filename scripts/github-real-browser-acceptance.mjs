@@ -55,7 +55,13 @@ try {
     await page.locator('#yardhub-github-connect-form [name="branch"]').fill(branch);
     await page.locator('#yardhub-github-connect-form [name="token"]').fill(token);
     await page.locator('#yardhub-github-connect-form [type="submit"]').click();
-    await page.locator("#yardhub-github-connect-overlay").waitFor({ state: "hidden", timeout: 60000 });
+    try {
+      await page.locator("#yardhub-github-connect-overlay").waitFor({ state: "hidden", timeout: 60000 });
+    } catch {
+      const connectionStatus = await page.locator("[data-yardhub-github-status]").textContent().catch(() => "");
+      const authStatus = await page.locator("#authMsg").textContent().catch(() => "");
+      throw new Error("Real browser profile " + (i + 1) + " could not connect to the private repository. Status: " + connectionStatus + "; auth: " + authStatus + "; browser errors: " + pageErrors.join(" | "));
+    }
     await page.waitForFunction(() => window.YARDHUB_GITHUB_CONNECTED === true && !!window.YARDHUB_GITHUB_STORE, null, { timeout: 60000 });
     const status = await page.locator("[data-yardhub-github-status]").textContent();
     assert.match(status || "", /Connected to private GitHub data repository/i, "Each independent browser profile must establish a live private-repository connection.");
