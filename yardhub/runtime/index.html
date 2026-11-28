@@ -2345,10 +2345,26 @@ async function saveCentralUserSettings(){
 function applyIncomingCloudPayload(payload,status,updatedAt=null,version=centralVersion,remoteUser=null){if(!payload)return;const previous=state,incoming=centralAppData(payload);const additions=cloudReady&&managementRole()?addedEntries(previous,incoming):[];const plantChanged=cloudReady&&managementRole()&&typeof previous?.plantOn==='boolean'&&typeof incoming?.plantOn==='boolean'&&previous.plantOn!==incoming.plantOn;centralBankPayload=payload;mergeDailyOperatorRecords(payload.dailyOperators||[]);if(remoteUser){centralUser=remoteUser;activeOperator=remoteUser.username}state=incoming;centralVersion=Number(version)||centralVersion;localStorage.setItem(STORE,JSON.stringify(state));const last=$('lastSync');if(last)last.textContent='Last successful refresh · '+new Date().toLocaleString('en-GB');render();enforceOperatorMode();applyTierVisibility();renderCentralUserSettings();renderAreaPresetSettings();renderReasonPresetSettings();renderShiftSchedule();renderDailyTaskSettings();renderOperatorRosterAdmin();cloudStatus(status);notifyOverviewFrame(centralVersion,updatedAt);if(plantChanged)showPlantTransitionAlert(incoming.plantOn,updatedAt);if(additions.length){additions.slice(0,5).forEach(item=>{item.dayName=DAYS[item.dayIndex];showManagementToast(item)});if(additions.length>5)showManagementToast({entry:{area:(additions.length-5)+' more new downtime records',reason:'',hours:0,minutes:0},dayName:'Updates'})}}
 let managementPollTimer=null,managementPollBusy=false;
 function startManagementPolling(){if(managementPollTimer)clearInterval(managementPollTimer);managementPollTimer=null;return false}
-async function manualRefresh(){const btn=$('manualRefreshBtn');if(!centralReady){cloudStatus('REFRESH FAILED · CENTRAL SESSION NOT CONNECTED');return}if(cloudBusy||centralPendingWrites>0){cloudStatus('REFRESH PAUSED · CENTRAL SAVE IN PROGRESS');return}if(cloudSyncFailed&&!confirm('A local change has not synced. Refreshing will discard that unsynced change and load the central copy. Continue?'))return;if(btn){btn.disabled=true;btn.textContent='↻ REFRESHING…'}try{await cloudWrite;const result=await window.DowntimeCentral.state();applyIncomingCloudPayload(result.payload,'CENTRAL · MANUAL REFRESH COMPLETE',result.updatedAt,result.version,result.user);cloudSyncFailed=false;const last=$('lastSync');if(last)last.textContent='Last successful refresh · '+new Date().toLocaleString('en-GB')}catch(error){cloudStatus('REFRESH FAILED · '+(error.message||'Check central connection'));console.warn('Central manual refresh failed.',error)}finally{if(btn){btn.disabled=false;btn.textContent='↻ REFRESH DATA'}}}
+async function manualRefresh(){
+ const btn=$('manualRefreshBtn');
+ if(!centralReady){cloudStatus('REFRESH FAILED · CENTRAL SESSION NOT CONNECTED');return false}
+ if(cloudBusy||centralPendingWrites>0){cloudStatus('REFRESH PAUSED · CENTRAL SAVE IN PROGRESS');return false}
+ if(cloudSyncFailed&&!confirm('A local change has not synced. Refreshing will discard that unsynced change and load the central copy. Continue?'))return false;
+ if(btn){btn.disabled=true;btn.textContent='↻ REFRESHING…'}
+ try{
+  await cloudWrite;
+  const result=await window.DowntimeCentral.state();
+  applyIncomingCloudPayload(result.payload,'CENTRAL · MANUAL REFRESH COMPLETE',result.updatedAt,result.version,result.user);
+  cloudSyncFailed=false;
+  const last=$('lastSync');if(last)last.textContent='Last successful refresh · '+new Date().toLocaleString('en-GB');
+  return true;
+ }catch(error){cloudStatus('REFRESH FAILED · '+(error.message||'Check central connection'));console.warn('Central manual refresh failed.',error);return false}
+ finally{if(btn){btn.disabled=false;btn.textContent='↻ REFRESH DATA'}}
+}
 $('manualRefreshBtn').onclick=manualRefresh;
 window.refreshYardHubSharedData=async function(){
- await manualRefresh();
+ const refreshed=await manualRefresh();
+ if(!refreshed)return false;
  window.dispatchEvent(new CustomEvent('yardhub:manual-refresh',{detail:{refreshedAt:new Date().toISOString()}}));
  return true;
 };
