@@ -73,6 +73,16 @@
     myHubTier=null;myRootsAuthority=null;myCanManageSettings=false;
     window.DOWNTIME_ROOTS_AUTHORITY=null;window.syncStaffModuleAccess?.();
     if(!currentSession()?.token)return null;
+    if(window.YARDHUB_GITHUB_OFFLINE===true){
+      const user=currentSession()?.user||{};
+      myHubTier=String(user.hubTier||user.tier||'USER').toUpperCase();
+      myRootsAuthority=user.rootsAuthority||null;
+      myCanManageSettings=false;
+      window.DOWNTIME_ROOTS_AUTHORITY=myRootsAuthority;
+      window.syncStaffModuleAccess?.();
+      if(button)button.hidden=true;
+      return {user,rootsAuthority:myRootsAuthority,canManageSettings:false,offline:true};
+    }
     try{
       const result=await callApi('my-access');
       myHubTier=String(result.user?.hubTier||'USER').toUpperCase();
@@ -824,7 +834,7 @@
     document.addEventListener('keydown',event=>{if(event.key==='Escape'&&!$('yardHubUserModal')?.hidden)closeUserModal();if(event.key==='Escape'&&!$('yardHubRoleModal')?.hidden)closeYardRoleModal()});
     window.addEventListener('yard-hub:shown',()=>configureButton().catch(()=>{}));
     window.addEventListener('yardhub:manual-refresh',()=>{const screen=$('yardHubSettingsScreen');if(screen&&!screen.hidden)loadState().then(()=>renderUsers()).catch(error=>setStatus(error.message||'Manual refresh failed.','error'))});
-    configureButton().catch(()=>{});
+    if(window.YARDHUB_GITHUB_CONNECTED)configureButton().catch(()=>{});
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bind,{once:true});
   else bind();
