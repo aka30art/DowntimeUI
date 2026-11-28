@@ -157,6 +157,17 @@ export async function executeGitHubEdgeAction({
       actorId: "YARDHUB-GITHUB-ACTIONS-BROKER",
       operationId: "broker-" + requestId,
       mutate: async tables => {
+        if (expectedAuthorityEpoch !== null) {
+          const currentAuthority = await store.readAuthority();
+          if (!currentAuthority || currentAuthority.status !== "ACTIVE" ||
+              currentAuthority.primarySystemId !== "DOWNTIMEUI-GITHUB" ||
+              currentAuthority.epoch !== expectedAuthorityEpoch) {
+            const error = new Error("YARDHUB authority changed before the broker action could commit.");
+            error.status = 409;
+            error.code = "BROKER_AUTHORITY_EPOCH_CHANGED";
+            throw error;
+          }
+        }
         globalThis.__YARDHUB_BROKER_TRANSACTION__ = { tables, revision: baseline.revision };
         const headers = {
           origin,
