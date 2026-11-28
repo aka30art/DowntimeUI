@@ -704,6 +704,16 @@
     $('backToMachineryFromSettings')?.addEventListener('click',renderSelector);
     $('backFromCustomCategory')?.addEventListener('click',renderSelector);
     window.addEventListener('yard-hub:application-structure',event=>applyMachineCategoryConfig(event.detail?.repairMaintenanceCategories?.categories));
+    window.addEventListener('yardhub:manual-refresh',async()=>{
+      if(document.querySelector('.frame')?.hidden)return;
+      try{
+        if(!currentMachine){await init();return}
+        const selectedAssetId=currentAsset?.id||null;
+        await Promise.all([refreshMachineConfiguration(),refreshMachinePresets()]);
+        if(selectedAssetId)await selectMachineAsset(selectedAssetId);
+        if(currentFault)await refreshDetails();
+      }catch(error){say(error.message||'R&M manual refresh failed.','dashboardStatus','error')}
+    });
     document.querySelectorAll('#settingsMachineGrid .machine-card[data-settings-machine]').forEach(button=>button.addEventListener('click',()=>openMachineSettings(button.dataset.settingsMachine)));
     $('machineAssetSelect')?.addEventListener('change',event=>selectMachineAsset(event.target.value));
     document.querySelectorAll('[data-rms-tab]').forEach(button=>button.addEventListener('click',()=>setRmsSettingsTab(button.dataset.rmsTab)));
