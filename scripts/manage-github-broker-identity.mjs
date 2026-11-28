@@ -90,7 +90,7 @@ export async function runGitHubBrokerIdentityAdmin({
   const store = createStore({
     owner: dataOwner,
     repo: dataRepository,
-    branch: env.YARDHUB_DATA_BRANCH || "main",
+    branch: env.YARDHUB_DATA_BRANCH || "data/yardhub",
     token: dataToken,
     fetchImpl,
     now
