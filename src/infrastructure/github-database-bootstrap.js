@@ -1,0 +1,207 @@
+const TABLES = [
+  "downtime_shared_state", "downtime_reports", "downtime_attachments",
+  "downtime_central_bank", "downtime_central_sessions", "downtime_central_audit",
+  "downtime_central_config_state", "downtime_central_config_history",
+  "repair_maintenance_faults", "repair_maintenance_notes", "repair_maintenance_attachments",
+  "repair_maintenance_audit", "yard_hub_tier_config", "yard_hub_access_audit",
+  "repair_maintenance_machine_presets", "repair_maintenance_pdf_exports",
+  "repair_maintenance_assets", "repair_maintenance_machine_settings",
+  "repair_maintenance_machine_models", "downtime_daily_operator_assignments",
+  "downtime_daily_operator_audit", "gatelog_customers", "gatelog_vehicles",
+  "gatelog_visits", "gatelog_waste_types", "gatelog_visit_waste_types",
+  "gatelog_audit", "gatelog_daily_gateman_assignments", "gatelog_report_archive",
+  "yard_roles", "yard_role_department_permissions", "yard_role_assignments",
+  "yard_role_assignment_audit", "downtime_roots_assignments",
+  "downtime_roots_assignment_audit", "yard_role_definition_audit",
+  "downtime_roots_bootstrap", "downtime_identity_reset_runs",
+  "downtime_roots_role_definitions"
+];
+
+
+function makeId() {
+  const cryptoProvider = globalThis.crypto;
+  if (!cryptoProvider?.randomUUID && !cryptoProvider?.getRandomValues) {
+    throw new Error("Cryptographic UUID generation is unavailable. GitHub database bootstrap is blocked.");
+  }
+  if (cryptoProvider.randomUUID) return cryptoProvider.randomUUID();
+  const bytes = new Uint8Array(16);
+  cryptoProvider.getRandomValues(bytes);
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const hex = Array.from(bytes, value => value.toString(16).padStart(2, "0")).join("");
+  return hex.slice(0, 8) + "-" + hex.slice(8, 12) + "-" + hex.slice(12, 16) + "-" + hex.slice(16, 20) + "-" + hex.slice(20);
+}
+
+function makeBootstrapCode() {
+  const cryptoProvider = globalThis.crypto;
+  if (!cryptoProvider?.getRandomValues || !cryptoProvider?.subtle?.digest) {
+    throw new Error("Secure random generation is unavailable. DEV bootstrap is blocked in this browser.");
+  }
+  const bytes = new Uint8Array(24);
+  cryptoProvider.getRandomValues(bytes);
+  return Array.from(bytes, value => value.toString(16).padStart(2, "0")).join("").toUpperCase();
+}
+
+async function hashBootstrapCode(value) {
+  const bytes = new TextEncoder().encode(String(value));
+  const digest = await globalThis.crypto.subtle.digest("SHA-256", bytes);
+  return Array.from(new Uint8Array(digest), value => value.toString(16).padStart(2, "0")).join("");
+}
+
+function initialRows(table, bootstrapUserId, now) {
+  const timestamp = now().toISOString();
+  if (table === "downtime_shared_state") return [{ id: 1, payload: {}, version: 0, updated_at: timestamp }];
+  if (table === "downtime_central_bank") return [{
+    id: 1, version: 0, updated_at: timestamp,
+    payload: { users: [], tiers: {}, staff: { roster: [], profiles: {} }, appData: {} }
+  }];
+  if (table === "downtime_central_config_state") return [{
+    id: 1, draft_payload: {}, published_payload: {},
+    draft_version: 0, published_version: 0, updated_at: timestamp
+  }];
+  if (table === "yard_hub_tier_config") return [{
+    id: 1, version: 0, payload: { userTiers: {}, tiers: {} },
+    updated_by: null, updated_at: timestamp
+  }];
+  if (table === "downtime_roots_bootstrap") return [{
+    singleton: true, user_id: bootstrapUserId, created_at: timestamp,
+    bootstrap_code: null, bootstrap_code_hash: null, bootstrap_code_expires_at: null
+  }];
+  return [];
+}
+
+export async function ensureGitHubDatabaseReady({
+  store,
+  now = () => new Date(),
+  generateBootstrapCode = makeBootstrapCode
+} = {}) {
+  if (!store || typeof store.readDatabase !== "function" || typeof store.transactDatabase !== "function") {
+    throw new TypeError("A GitHub data store is required.");
+  }
+
+  let candidateBootstrapCode = null;
+  let lastConflict = null;
+  const maxBootstrapAttempts = 5;
+
+  for (let attempt = 0; attempt < maxBootstrapAttempts; attempt += 1) {
+    const current = await store.readDatabase();
+    const missing = TABLES.filter(name => !Object.prototype.hasOwnProperty.call(current.tables, name));
+    const bootstrapRow = (current.tables.downtime_roots_bootstrap || []).find(row => row.singleton === true);
+    const bootstrapMissing = !bootstrapRow;
+    const singletonMissing = [
+      ["downtime_shared_state", row => Number(row.id) === 1],
+      ["downtime_central_bank", row => Number(row.id) === 1],
+      ["downtime_central_config_state", row => Number(row.id) === 1],
+      ["yard_hub_tier_config", row => Number(row.id) === 1]
+    ].some(([name, predicate]) => !(current.tables[name] || []).some(predicate));
+    const bank = (current.tables.downtime_central_bank || []).find(row => Number(row.id) === 1);
+    const hasDevUser = Array.isArray(bank?.payload?.users) && bank.payload.users.length > 0;
+
+    const existingExpiry = Date.parse(bootstrapRow?.bootstrap_code_expires_at || "");
+    const existingHash = bootstrapRow?.bootstrap_code_hash;
+    const existingCode = globalThis.__YARDHUB_BOOTSTRAP_CODE__;
+    const existingCodeIsActive = !hasDevUser &&
+      typeof existingHash === "string" &&
+      /^[a-f0-9]{64}$/i.test(existingHash) &&
+      Number.isFinite(existingExpiry) &&
+      existingExpiry > now().getTime();
+    const storedCode = typeof bootstrapRow?.bootstrap_code === "string" ? bootstrapRow.bootstrap_code : null;
+    const storedCodeIsValid = existingCodeIsActive && storedCode &&
+      await hashBootstrapCode(storedCode) === existingHash;
+    const localCodeIsValid = existingCodeIsActive && existingCode &&
+      await hashBootstrapCode(existingCode) === existingHash;
+
+    let bootstrapCode = null;
+    let bootstrapCodeHash = null;
+    let bootstrapCodeExpiresAt = null;
+    let needsBootstrapCodeUpdate = false;
+
+    if (!hasDevUser) {
+      if (storedCodeIsValid) {
+        // All browser profiles can read the same active one-time code from the private data repository.
+        bootstrapCode = storedCode;
+        bootstrapCodeHash = existingHash;
+        bootstrapCodeExpiresAt = bootstrapRow.bootstrap_code_expires_at;
+        candidateBootstrapCode = null;
+      } else if (localCodeIsValid) {
+        // Upgrade an older installation by persisting the already-active code once.
+        bootstrapCode = existingCode;
+        bootstrapCodeHash = existingHash;
+        bootstrapCodeExpiresAt = bootstrapRow.bootstrap_code_expires_at;
+        needsBootstrapCodeUpdate = true;
+      } else {
+        // Older installations only stored a hash. Rotate once, persist the code,
+        // and let every other browser reuse it instead of creating competing commits.
+        if (!candidateBootstrapCode) candidateBootstrapCode = generateBootstrapCode();
+        bootstrapCode = candidateBootstrapCode;
+        bootstrapCodeHash = await hashBootstrapCode(bootstrapCode);
+        bootstrapCodeExpiresAt = new Date(now().getTime() + 15 * 60 * 1000).toISOString();
+        needsBootstrapCodeUpdate = true;
+      }
+    }
+
+    const needsChange = missing.length || bootstrapMissing || singletonMissing || needsBootstrapCodeUpdate;
+    if (!needsChange) {
+      globalThis.__YARDHUB_BOOTSTRAP_CODE__ = bootstrapCode;
+      return {
+        ready: true,
+        initialized: false,
+        revision: current.revision,
+        tableCount: Object.keys(current.tables).length,
+        bootstrapCode,
+        bootstrapCodeExpiresAt
+      };
+    }
+
+    const bootstrapUserId = bootstrapRow?.user_id || makeId();
+    try {
+      const result = await store.transactDatabase({
+        expectedRevision: current.revision,
+        actorId: "GITHUB-INSTALLER",
+        operationId: "gh-db-bootstrap-" + bootstrapUserId + "-" + (bootstrapCodeHash || "schema"),
+        mutate(tables) {
+          for (const name of TABLES) {
+            if (!Array.isArray(tables[name])) tables[name] = [];
+            const seeded = initialRows(name, bootstrapUserId, now);
+            for (const row of seeded) {
+              const exists = name === "downtime_roots_bootstrap"
+                ? tables[name].some(current => current.singleton === true)
+                : tables[name].some(current => current.id !== undefined && Number(current.id) === Number(row.id));
+              if (!exists) tables[name].push(row);
+            }
+          }
+          const root = tables.downtime_roots_bootstrap.find(row => row.singleton === true);
+          if (!root) throw new Error("Immutable DEV bootstrap record could not be created.");
+          if (needsBootstrapCodeUpdate && bootstrapCode) {
+            root.bootstrap_code = bootstrapCode;
+            root.bootstrap_code_hash = bootstrapCodeHash;
+            root.bootstrap_code_expires_at = bootstrapCodeExpiresAt;
+            root.bootstrap_code_created_at = now().toISOString();
+          }
+          return { tableCount: TABLES.length, bootstrapIdentityPrepared: true, bootstrapCodeRotated: needsBootstrapCodeUpdate };
+        }
+      });
+
+      globalThis.__YARDHUB_BOOTSTRAP_CODE__ = bootstrapCode;
+      return {
+        ready: true,
+        initialized: true,
+        revision: result.revision,
+        tableCount: TABLES.length,
+        bootstrapIdentityPrepared: true,
+        bootstrapCode,
+        bootstrapCodeExpiresAt
+      };
+    } catch (error) {
+      if (error?.status === 409 && attempt < maxBootstrapAttempts - 1) {
+        lastConflict = error;
+        await new Promise(resolve => setTimeout(resolve, Math.min(100 * (2 ** attempt), 1200)));
+        continue;
+      }
+      throw error;
+    }
+  }
+
+  throw lastConflict || Object.assign(new Error("GitHub database bootstrap conflicted repeatedly. Refresh and retry."), { status: 409 });
+}
+export { TABLES as GITHUB_YARDHUB_TABLES };

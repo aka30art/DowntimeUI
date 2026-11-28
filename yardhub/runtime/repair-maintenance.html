@@ -1,0 +1,406 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#061524">
+<title>R&amp;M — Repairs &amp; Maintenance</title>
+<style>
+:root{--navy:#061524;--navy2:#0a1d2e;--panel:#10263a;--panel2:#172d41;--line:#617488;--yellow:#ffd21a;--white:#f3f6fa;--muted:#b5c2d0;--red:#e6242b;--gray:#aab5c0;--green:#46c58a;--shadow:0 18px 48px #0007}
+*{box-sizing:border-box}html,body{margin:0;min-height:100%;background:radial-gradient(ellipse at 18% 0,#18344a 0,#091a2a 48%,#03111d 100%);color:var(--white);font:15px/1.4 Inter,Arial,sans-serif}body{min-height:100vh}button,input,select,textarea{font:inherit}button{cursor:pointer}button:disabled{cursor:not-allowed;opacity:.48}a{color:inherit}.app{max-width:1500px;margin:auto;padding:clamp(10px,2.7vw,34px);min-height:100vh}.frame{position:relative;min-height:calc(100vh - 40px)}
+.hero{position:relative;overflow:hidden;min-height:205px;border:1px solid #263f54;border-radius:18px;padding:20px 28px 23px;margin-bottom:17px;background:linear-gradient(100deg,#041524 0 48%,#10283b 100%);isolation:isolate}.hero:before{content:"";position:absolute;z-index:-1;right:0;top:0;bottom:0;width:51%;background:repeating-linear-gradient(0deg,transparent 0 23px,#b6c2d015 24px 25px),repeating-linear-gradient(90deg,transparent 0 39px,#b6c2d015 40px 41px)}.hero:after{content:"";position:absolute;z-index:-1;right:28%;top:-95px;width:175px;height:420px;transform:rotate(36deg);background:var(--yellow);opacity:.96}.hero-top{display:flex;justify-content:space-between;align-items:flex-start;gap:14px}.downtime-mark{font-size:21px;font-weight:950;letter-spacing:-.5px}.downtime-mark sup{font-size:8px}.mark-rule{height:5px;width:54px;background:var(--yellow);margin-top:5px}.hero-word{margin-top:10px;font-size:clamp(58px,8vw,100px);line-height:.93;font-weight:1000;font-style:italic;letter-spacing:-5px}.hero-word .slash{color:var(--yellow)}.hero-word .r,.hero-word .m{color:var(--yellow)}.hero-tag{margin:8px 0 0 6px;font-size:clamp(11px,1.4vw,16px);font-weight:850;letter-spacing:3.2px}.hero-actions{display:flex;align-items:flex-start;gap:8px;position:relative;z-index:2}.icon-button{height:56px;min-width:56px;border:2px solid var(--yellow);border-radius:13px;background:#0a2032;color:var(--white);font-size:25px;font-weight:900;display:grid;place-items:center;text-decoration:none;padding:0 14px}.icon-button:hover{background:#182f44}.session-label{font-size:10px;color:#d6e0e8;font-weight:850;letter-spacing:.7px;text-align:right;max-width:230px;overflow-wrap:anywhere;padding-top:5px}.session-label strong{display:block;font-size:13px;color:var(--yellow);margin-top:3px}
+.view[hidden]{display:none!important}.section-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 14px}.section-title{font-size:20px;font-weight:950;letter-spacing:.65px}.section-title:before{content:"";display:inline-block;width:8px;height:22px;background:var(--yellow);transform:skew(-25deg);margin-right:12px;vertical-align:-4px}.section-note{font-size:11px;color:var(--muted);font-weight:850;letter-spacing:.8px}
+.machine-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.machine-card{min-height:150px;text-align:left;border:1px solid #556b80;border-radius:14px;background:linear-gradient(145deg,#1b3044,#0b1c2b);color:var(--white);padding:20px;display:grid;grid-template-columns:74px minmax(0,1fr);align-items:center;gap:16px;position:relative;overflow:hidden;box-shadow:0 9px 24px #0003}.machine-card:after{content:"";position:absolute;right:-28px;bottom:-36px;width:120px;height:110px;background:var(--yellow);opacity:.07;transform:rotate(32deg)}.machine-card:hover,.machine-card:focus-visible{border-color:var(--yellow);transform:translateY(-2px);box-shadow:0 13px 27px #0005}.machine-art{width:70px;height:70px;color:var(--yellow);display:grid;place-items:center}.machine-art svg{width:100%;height:100%;fill:none;stroke:currentColor;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}.machine-art img{width:100%;height:100%;object-fit:contain;display:block}.machine-copy strong{display:block;font-size:19px;line-height:1.12;font-weight:950;letter-spacing:.25px}.machine-copy small{display:block;color:var(--muted);font-size:11px;font-weight:800;letter-spacing:.8px;margin-top:7px}.machine-open{display:block;color:var(--yellow);font-size:10px;letter-spacing:1px;font-weight:900;margin-top:13px}
+.machinebar{display:grid;grid-template-columns:128px minmax(0,1fr) max-content;align-items:center;gap:15px;padding-right:12px;border:3px solid var(--yellow);border-radius:16px;background:#10263a;overflow:hidden;margin-bottom:17px}.machineicon{height:78px;background:var(--yellow);color:#071523;display:grid;place-items:center;clip-path:polygon(0 0,100% 0,75% 100%,0 100%)}.machineicon svg{width:70px;height:60px;fill:none;stroke:currentColor;stroke-width:4;stroke-linecap:round;stroke-linejoin:round}.machineicon img{width:70px;height:60px;object-fit:contain;display:block;filter:brightness(0)}.machinelabel{display:block;font-size:11px;letter-spacing:1.2px;font-weight:900;color:var(--muted)}.machine-header-copy{min-width:0}.machine-header-copy strong{display:block;color:var(--white);font-size:clamp(17px,2.4vw,29px);font-weight:950;line-height:1.2}#newFaultOtherField[hidden],.machine-cog-button[hidden]{display:none!important}.machine-cog-button{display:inline-flex;align-items:center;justify-content:center;margin-top:6px;min-height:31px;padding:6px 13px;border:1px solid var(--yellow);border-radius:7px;background:#071725;color:var(--yellow);font-size:10px;font-weight:950;letter-spacing:1px}.machine-cog-button:active{background:#24384a}.preset-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 12px;border:1px solid #3e566c;border-radius:9px;background:#132b40;margin:8px 0}.preset-row strong{min-width:0;overflow-wrap:anywhere}.preset-row small{color:var(--muted);font-size:10px;font-weight:800;letter-spacing:.6px}.preset-manager-list{margin:14px 0;max-height:38vh;overflow:auto}.preset-add-grid{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:end}.preset-add-grid .form-field{min-width:0}
+.rms-config-section{border-top:1px solid #52677d;padding:14px 0 2px;margin-top:12px}
+.rms-section-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:5px}
+.rms-section-heading strong{font-size:13px;font-weight:950;letter-spacing:.7px;color:var(--yellow)}
+.rms-section-heading span{font-size:9px;font-weight:900;letter-spacing:.7px;color:var(--muted);text-align:right}
+.rms-toggle-row{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:12px;border:1px solid #52677d;border-radius:10px;background:#12293c;margin:10px 0 4px;cursor:pointer}
+.rms-toggle-row strong{display:block;font-size:12px;font-weight:950;letter-spacing:.5px}
+.rms-toggle-row small{display:block;max-width:560px;color:var(--muted);font-size:10px;margin-top:4px}
+.rms-toggle-row input{width:25px;height:25px;flex:0 0 auto;accent-color:var(--yellow);cursor:pointer}
+
+/* Compact, section-based R&M machinery settings */
+.rms-settings-dialog{display:flex;flex-direction:column;overflow:hidden;max-height:min(90dvh,900px);padding:16px 20px 14px}
+.rms-settings-dialog>.dialog-head,.rms-settings-dialog>.rms-tabs,.rms-settings-dialog>#machineSettingsModalStatus,.rms-settings-dialog>.modal-footer{flex:0 0 auto}
+.rms-tabs{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0 4px;padding:4px;border:1px solid #3b5368;border-radius:11px;background:#081a29}
+.rms-tab{min-height:42px;border:1px solid transparent;border-radius:8px;background:transparent;color:#b5c2d0;font-size:11px;font-weight:950;letter-spacing:.8px;padding:8px 10px}
+.rms-tab.active,.rms-tab[aria-selected="true"]{background:#ffd21a;border-color:#ffd21a;color:#071523}
+.rms-tab:focus-visible{outline:2px solid #fff;outline-offset:2px}
+.rms-tab-panel{min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:0 4px 2px 0;scrollbar-width:thin;scrollbar-color:#536b80 #0b1b2a}
+.rms-tab-panel[hidden]{display:none!important}
+.rms-tab-panel .rms-config-section:first-child{border-top:0;margin-top:0;padding-top:12px}
+.rms-tab-panel .preset-manager-list{max-height:27vh;margin:9px 0;overscroll-behavior:contain}
+.rms-tab-panel .rms-machinery-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.rms-tab-panel .rms-machinery-actions .btn{min-height:42px;padding:9px;font-size:11px}
+.rms-tab-panel .rms-toggle-row{margin:8px 0 4px;padding:10px}
+.rms-tab-panel .rms-toggle-save-row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:8px}
+.rms-settings-dialog>#machineSettingsModalStatus{margin-top:6px}
+.rms-settings-dialog>.modal-footer{padding-top:8px}
+.rms-settings-dialog>.modal-footer .btn{min-height:40px}
+@media(max-width:620px){
+ .rms-settings-dialog{width:100%;max-height:88dvh;padding:12px 11px 10px;border-width:3px}
+ .rms-settings-dialog>.dialog-head{padding-bottom:9px}
+ .rms-settings-dialog .dialog-title{font-size:16px}
+ .rms-tabs{margin:9px 0 3px;gap:6px;padding:3px}
+ .rms-tab{min-height:39px;font-size:10px;padding:7px 5px}
+ .rms-tab-panel{padding-right:2px}
+ .rms-tab-panel .rms-config-section{padding-top:10px;margin-top:9px}
+ .rms-tab-panel .rms-machinery-actions{grid-template-columns:1fr 1fr}
+ .rms-tab-panel .rms-machinery-actions .btn{font-size:9px;min-height:40px}
+ .rms-tab-panel .preset-manager-list{max-height:24vh}
+ .rms-tab-panel .rms-toggle-save-row{align-items:stretch;flex-direction:column}
+ .rms-tab-panel .rms-toggle-save-row .btn{width:100%}
+ .rms-settings-dialog>.modal-footer .btn{width:100%}
+}
+
+#assetMakeModelManualField[hidden],#assetMakeModelSelectField[hidden],#assetMakeModelOtherField[hidden]{display:none!important}
+@media(max-width:560px){.preset-add-grid{grid-template-columns:1fr}.preset-add-grid .btn{width:100%}.rms-section-heading{align-items:flex-start;flex-direction:column;gap:3px}.rms-section-heading span{text-align:left}}
+.machine-back{border:1px solid #526a7e;background:#12293c;color:#fff;border-radius:8px;padding:9px 12px;font-size:10px;font-weight:900;letter-spacing:.6px;white-space:nowrap}
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:17px}.stat{border:2px solid #607487;border-radius:14px;background:linear-gradient(145deg,#1b3146,#0c2032);min-height:92px;padding:11px 15px;display:flex;align-items:center;gap:13px;box-shadow:0 8px 22px #0002;min-width:0}.staticon{font-size:35px;color:var(--yellow);font-weight:900}.stat:nth-child(2) .staticon{color:var(--red)}.stat:nth-child(3) .staticon{color:var(--yellow)}.stat:nth-child(4) .staticon{color:var(--gray)}.statlabel{font-weight:900;font-size:11px;text-align:left;letter-spacing:.6px;color:#e4ebf1}.statnum{font-size:34px;font-weight:950;line-height:1.03;margin-top:4px}
+.faultpanel{border:2px solid #52677d;border-radius:17px;background:linear-gradient(145deg,#142b40,#091a2a);padding:15px 19px 17px;overflow:hidden;box-shadow:var(--shadow)}.panelhead{display:flex;justify-content:space-between;align-items:center;gap:12px;border-bottom:1px solid #6b7e91;padding:0 4px 11px;margin-bottom:5px}.paneltitle{display:flex;align-items:center;gap:13px;font-size:clamp(20px,2.8vw,34px);font-weight:1000}.panel-slash{width:11px;height:38px;background:var(--yellow);transform:skew(-24deg)}.sort{display:flex;align-items:center;gap:8px;border:2px solid #718397;border-radius:11px;background:#0a1b2b;padding:6px 10px;font-weight:900;font-size:11px;white-space:nowrap}.sort select{border:0;background:transparent;color:#fff;font-size:11px;font-weight:900}.sort select option{background:#10263a}.fault-table-head,.faultrow{display:grid;grid-template-columns:56px minmax(150px,1fr) minmax(145px,1fr) minmax(140px,1.25fr) 112px;gap:10px;align-items:center}.fault-table-head{padding:8px 12px;color:#d7e0e9;font-size:11px;font-weight:900;letter-spacing:.7px;border-bottom:1px solid #64778a}.fault-rows{padding-top:2px}.faultrow{width:100%;border:0;border-radius:11px;background:transparent;color:var(--white);text-align:left;padding:8px 12px;min-height:49px}.faultrow:nth-child(even){background:#263a4e99}.faultrow:hover,.faultrow:focus-visible{background:#32495e;border:1px solid #a1b4c5;outline:none}.rownum{color:var(--yellow);font-size:19px;font-weight:1000}.faultname{font-size:17px;font-weight:900;overflow-wrap:anywhere}.description{font-size:16px;overflow-wrap:anywhere}.priority-pill{border:2px solid;border-radius:12px;padding:5px 8px;text-align:center;font-weight:950;font-size:12px}.priority-pill.high{color:#ff555b;border-color:#ff2028;background:#3a2028}.priority-pill.medium{color:#ffdf38;border-color:#ffd21a;background:#3a3217}.priority-pill.low{color:#d5dde5;border-color:#9aa6b2;background:#273440}.empty{padding:26px;text-align:center;color:var(--muted)}.panel-actions{display:flex;align-items:center;gap:12px;border-top:1px solid #52677d;margin-top:21px;padding-top:14px}.btn{border:2px solid #718397;border-radius:11px;padding:12px 17px;background:linear-gradient(145deg,#1b3044,#0d2133);color:var(--white);font-weight:900;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:9px;min-height:49px}.btn:hover{filter:brightness(1.18)}.btn.primary{background:var(--yellow);color:#0b1722;border-color:var(--yellow)}.btn.add{background:var(--yellow);color:#0b1722;border-color:var(--yellow);font-size:16px;flex:1;clip-path:polygon(4% 0,100% 0,96% 100%,0 100%)}.btn.danger{border-color:#b44a4a;color:#ffd5d5}.btn svg{width:22px;height:22px;flex:0 0 auto}.bottomline{display:flex;align-items:center;gap:14px;margin-top:23px;padding:10px 4px}.rule{height:4px;background:var(--yellow);flex:1;border-radius:2px}.stripes{display:flex;gap:8px}.stripes i{display:block;width:20px;height:38px;background:var(--yellow);transform:skew(-27deg)}.statusbar{min-height:20px;color:var(--muted);font-size:11px;margin-top:8px}.statusbar.error{color:#ff8e8e}.statusbar.ok{color:#7de0af}
+.overlay{display:none;position:fixed;inset:0;background:#000b;z-index:20;place-items:center;padding:16px;overflow:auto}.overlay.open{display:grid}.dialog{width:min(940px,100%);max-height:min(94dvh,1000px);overflow:auto;background:linear-gradient(145deg,#0d2032,#071725);border:6px solid var(--yellow);border-radius:22px;padding:20px 24px 19px;box-shadow:0 25px 75px #000b}.dialog-head{display:flex;align-items:center;justify-content:space-between;gap:12px;border-bottom:1px solid #75869a;padding-bottom:12px}.dialog-title{display:flex;align-items:center;gap:14px;font-size:clamp(18px,2.5vw,27px);font-weight:1000}.dialog-title:before{content:"";width:10px;height:32px;background:var(--yellow);transform:skew(-24deg)}.close{border:0;background:transparent;color:#fff;font-size:34px;line-height:1;padding:0 3px}.fault-identity{display:grid;grid-template-columns:76px 78px minmax(0,1fr) 125px;gap:14px;align-items:center;border-bottom:2px solid #78899b;padding:19px 4px 17px}.identity-no{background:var(--yellow);color:#0a1722;border-radius:11px;min-height:62px;display:grid;place-items:center;font-size:32px;font-weight:1000}.identity-art{width:76px;height:64px;color:#f3f6fa}.identity-art svg{width:100%;height:100%;stroke:currentColor;fill:none;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}.identity-copy strong{font-size:clamp(18px,3vw,30px);font-weight:1000;line-height:1.1;display:block;overflow-wrap:anywhere}.identity-copy small{font-size:12px;letter-spacing:3px;font-style:italic;font-weight:850;display:block;margin-top:6px;color:#e1e7ef}.priority-tag{border:2px solid var(--red);background:linear-gradient(180deg,#47232b,#9d101a);border-radius:12px;text-align:center;padding:6px 4px;font-weight:950}.priority-tag small{font-size:11px;display:block}.priority-tag strong{font-size:22px;display:block}.detail-description{margin:10px 0 0;background:linear-gradient(110deg,#132a3e,#0b1e30);border-radius:13px;padding:12px 14px;display:grid;grid-template-columns:75px minmax(0,1fr);gap:12px;border-bottom:1px solid #6b7d90}.detail-symbol{font-size:35px;display:grid;place-items:center}.detail-label{font-size:12px;font-weight:900;color:#d3dce5}.detail-value{font-size:18px;font-weight:850;margin-top:2px;overflow-wrap:anywhere}.detail-edit-grid{display:grid;grid-template-columns:1fr 1fr;gap:0;margin-top:15px;border-bottom:1px solid #64778a;padding:0 0 15px}.edit-cell{display:grid;grid-template-columns:70px minmax(0,1fr);align-items:center;gap:12px;padding:0 16px 0 5px}.edit-cell+ .edit-cell{border-left:1px solid #8291a1;padding-left:26px}.edit-symbol{font-size:36px;text-align:center}.edit-copy label{display:block;font-size:12px;font-weight:900;color:#d5dfe8;margin-bottom:4px}.edit-copy select,.edit-copy input,.edit-copy textarea,.form-field input,.form-field select,.form-field textarea{width:100%;min-width:0;border:2px solid #5b6e82;border-radius:10px;background:#071725;color:#fff;padding:10px;font-weight:850}.edit-copy select.status-select{border-color:var(--yellow);color:#fff}.edit-copy select.priority-select{border-color:var(--red);background:#321d26;color:#fff}.evidence-block{padding:13px 0;border-bottom:1px solid #64778a}.evidence-head{display:flex;align-items:center;gap:12px;font-size:12px;font-weight:950;color:#e3eaf0;margin-bottom:9px}.evidence-symbol{font-size:29px}.evidence-items{display:flex;gap:10px;flex-wrap:wrap;align-items:center}.photo-thumb{width:145px;height:112px;border:1px solid #718499;border-radius:12px;object-fit:cover;background:#172b3d}.file-chip{padding:10px 12px;border:1px solid #718499;border-radius:10px;background:#142c40;font-size:11px;max-width:210px;overflow-wrap:anywhere}.add-evidence{width:126px;height:112px;border:2px dashed #8a9aab;border-radius:12px;background:transparent;color:#fff;font-size:13px;font-weight:850;display:grid;place-items:center;gap:0}.add-evidence span{font-size:37px;line-height:1}.notes-block{padding:12px 0 4px;border-bottom:1px solid #64778a}.notes-head{display:flex;justify-content:space-between;align-items:center;gap:12px;font-size:12px;font-weight:950}.notes-list{display:grid;gap:7px;margin-top:8px}.note-item{background:#10263a;border:1px solid #3e586e;border-radius:9px;padding:8px 10px;font-size:12px;overflow-wrap:anywhere}.note-item small{display:block;color:var(--muted);margin-top:4px}.modal-footer{display:flex;flex-direction:column;align-items:stretch;gap:10px;padding-top:15px}.modal-footer .btn{min-height:48px}.modal-footer .save{background:var(--yellow);color:#071725;border-color:var(--yellow);font-size:16px;width:100%;min-width:0}.modal-footer .solved{background:#16833c;color:#fff;border-color:#16833c;font-size:16px;width:100%;min-width:0}.modal-footer .spacer{flex:1}.modal-footer .compact{font-size:11px;padding:10px 12px}.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:15px}.form-field{min-width:0}.form-field.full{grid-column:1/-1}.form-field label{display:block;font-size:11px;font-weight:900;letter-spacing:.65px;color:#c4cfda;margin-bottom:5px}.form-field textarea{min-height:105px;resize:vertical}.form-help{font-size:10px;color:var(--muted);margin-top:4px}.note-composer{display:none;margin-top:10px}.note-composer.open{display:block}.note-composer textarea{width:100%;min-height:76px;background:#071725;border:1px solid #718397;border-radius:9px;color:#fff;padding:10px}.note-actions{display:flex;justify-content:flex-end;gap:7px;margin-top:6px}
+.access-denied{display:none;text-align:center;padding:65px 20px;border:1px solid #556b80;border-radius:17px;background:#10263a}.access-denied.show{display:block}.access-denied h2{font-size:26px}.access-denied p{color:var(--muted)}.loading{padding:40px;text-align:center;color:var(--muted)}
+@media(max-width:900px){.machine-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.fault-table-head,.faultrow{grid-template-columns:42px minmax(105px,1fr) minmax(105px,1fr) minmax(110px,1.1fr) 88px;gap:7px}.stats{gap:8px}.stat{padding:10px}.statnum{font-size:29px}}
+@media(max-width:620px){.faultpanel{padding:10px 8px}.fault-table-head,.faultrow{grid-template-columns:26px minmax(58px,.9fr) minmax(60px,1fr) minmax(70px,1.2fr) 48px;gap:4px}.fault-table-head{font-size:9px;padding:7px 3px}.faultrow{padding:8px 3px}.rownum{font-size:13px}.equipment-name,.faultname,.description{font-size:10px}.priority-pill{font-size:8px;padding:4px 2px}}
+@media(max-width:620px){.app{padding:8px}.hero{min-height:174px;padding:16px 16px 18px;margin-bottom:11px}.hero:after{right:16%;width:105px;opacity:.9}.downtime-mark{font-size:16px}.hero-word{font-size:60px;letter-spacing:-3px;margin-top:12px}.hero-tag{font-size:9px;letter-spacing:1.6px;margin-top:7px}.icon-button{height:44px;min-width:44px;font-size:20px}.session-label{font-size:8px;max-width:120px}.session-label strong{font-size:11px}.machine-grid{grid-template-columns:1fr;gap:8px}.machine-card{min-height:103px;grid-template-columns:55px minmax(0,1fr);padding:12px;gap:12px}.machine-art{width:52px;height:52px}.machine-copy strong{font-size:16px}.machine-copy small{font-size:9px;margin-top:5px}.machine-open{font-size:9px;margin-top:7px}.section-head{margin-bottom:9px}.section-title{font-size:17px}.section-note{font-size:9px}.machinebar{grid-template-columns:74px minmax(0,1fr) auto;gap:6px;margin-bottom:9px;border-width:2px}.machineicon{height:67px}.machineicon svg{width:52px;height:50px}.machineicon img{width:52px;height:50px}.machinelabel{font-size:9px}.machine-header-copy strong{font-size:15px}.machine-chevron{font-size:22px}.machine-back{grid-column:1/-1;justify-self:start;margin:0 0 7px 8px;padding:7px 9px}.stats{gap:6px;margin-bottom:9px}.stat{min-height:73px;border-radius:10px;padding:8px 7px;gap:6px}.staticon{font-size:24px}.statlabel{font-size:9px;letter-spacing:.2px}.statnum{font-size:25px}.faultpanel{padding:10px 8px;border-radius:12px}.panelhead{align-items:flex-start;padding:0 2px 8px}.paneltitle{font-size:19px;gap:9px}.panel-slash{height:28px;width:8px}.sort{font-size:9px;padding:5px 6px;gap:4px}.sort select{font-size:9px;max-width:88px}.fault-table-head{display:none}.faultrow{grid-template-columns:34px minmax(0,1fr) 86px;gap:6px;padding:8px 6px;min-height:55px}.faultrow .description{grid-column:2;grid-row:2;font-size:12px;color:#d2dce6}.faultrow .priority-pill{grid-column:3;grid-row:1/3;font-size:9px;padding:5px 3px}.faultname{font-size:14px}.rownum{font-size:16px}.panel-actions{gap:7px;flex-wrap:wrap;margin-top:13px;padding-top:10px}.btn{padding:10px 9px;min-height:43px;font-size:10px;gap:5px}.btn.add{flex:1 1 100%;font-size:14px}.panel-actions .btn:not(.add){flex:1}.bottomline{margin-top:12px}.stripes i{width:13px;height:25px}.dialog{padding:13px 12px 12px;border-width:4px;border-radius:15px;max-height:96dvh}.dialog-title{font-size:17px;gap:9px}.dialog-title:before{height:26px;width:7px}.close{font-size:28px}.fault-identity{grid-template-columns:52px 48px minmax(0,1fr);gap:7px;padding:12px 2px 11px}.identity-no{min-height:48px;font-size:22px}.identity-art{width:46px;height:46px}.identity-copy strong{font-size:16px}.identity-copy small{font-size:9px;letter-spacing:1px}.priority-tag{grid-column:1/-1;justify-self:end;width:100px;padding:3px}.priority-tag strong{font-size:17px}.priority-tag small{font-size:9px}.detail-description{grid-template-columns:40px minmax(0,1fr);padding:9px;margin-top:8px}.detail-symbol{font-size:25px}.detail-label{font-size:10px}.detail-value{font-size:14px}.detail-edit-grid{grid-template-columns:1fr;gap:10px;padding-bottom:10px;margin-top:10px}.edit-cell{grid-template-columns:43px minmax(0,1fr);padding:0 4px;gap:7px}.edit-cell+.edit-cell{border-left:0;border-top:1px solid #53677a;padding:10px 4px 0}.edit-symbol{font-size:27px}.edit-copy label{font-size:10px}.edit-copy select{padding:9px}.evidence-block{padding:9px 0}.evidence-head{font-size:10px;margin-bottom:6px}.evidence-symbol{font-size:22px}.photo-thumb{width:105px;height:84px}.add-evidence{width:96px;height:84px;font-size:10px}.add-evidence span{font-size:30px}.file-chip{font-size:9px;max-width:150px;padding:8px}.modal-footer{flex-wrap:wrap;gap:6px;padding-top:10px}.modal-footer .btn{flex:1;min-width:0;font-size:9px;padding:8px 6px}.modal-footer .save{flex:1 1 100%;min-width:0;font-size:13px}.modal-footer .spacer{display:none}.form-grid{grid-template-columns:1fr;gap:8px;margin-top:10px}.form-field.full{grid-column:auto}.form-field textarea{min-height:75px}.access-denied{padding:45px 12px}}
+@media print{body{background:#fff!important;color:#111!important}.app{padding:0;max-width:none}.hero,.machinebar,.stats,.faultpanel{print-color-adjust:exact;-webkit-print-color-adjust:exact}.hero-actions,.machine-back,.panel-actions,.bottomline{display:none!important}.faultpanel{box-shadow:none}.overlay{display:none!important}.machinebar{break-after:avoid}}
+.status-fixed:disabled{background:#091923!important;border-color:#334b5d!important;color:#f3f6f8!important;opacity:1!important;font-weight:900;letter-spacing:.5px;cursor:not-allowed}.report-intro{color:var(--muted);font-size:13px;margin:14px 0}.report-summary{display:grid;gap:5px;margin-top:14px;padding:12px 13px;background:#091923;border:1px solid #334b5d;border-radius:10px}.report-summary strong{font-size:10px;letter-spacing:.8px;color:var(--yellow)}.report-summary span{font-size:12px;color:var(--muted);line-height:1.5}.report-icon{font-size:22px}
+.report-actions{display:flex;gap:10px;margin-top:13px}.report-actions .btn{flex:1;min-height:50px;font-size:14px;letter-spacing:.7px}.report-actions .export-report-button{background:var(--yellow);border-color:var(--yellow);color:#071725}.report-actions .archive-report-button{border-color:var(--yellow);color:var(--yellow)}.report-actions button[hidden],.load-more-exports[hidden]{display:none!important}.pdf-exports-dialog{max-width:900px}.pdf-export-list{display:grid;gap:9px;margin-top:13px;max-height:55dvh;overflow:auto}.pdf-export-row{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:12px;padding:12px;border:1px solid #425a70;border-radius:10px;background:#10263a}.pdf-export-main{min-width:0}.pdf-export-name{display:block;font-size:13px;font-weight:950;overflow-wrap:anywhere;color:var(--white)}.pdf-export-meta{display:block;margin-top:5px;font-size:10px;line-height:1.5;color:var(--muted)}.pdf-export-actions{display:flex;align-items:center;justify-content:flex-end;gap:6px;flex-wrap:wrap}.pdf-export-actions .btn{min-height:37px;padding:7px 10px;font-size:9px;letter-spacing:.3px}.pdf-export-actions .delete-export{border-color:#b44a4a;color:#ffd5d5}.load-more-exports{width:100%;margin-top:8px;min-height:42px}@media(max-width:620px){.report-actions{display:grid;grid-template-columns:1fr;gap:8px}.report-actions .btn{min-height:47px}.pdf-export-row{grid-template-columns:1fr;gap:9px;padding:10px}.pdf-export-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}.pdf-export-actions .btn{width:100%;padding:7px 4px;font-size:8px}}
+.machine-asset-controls{display:flex;align-items:center;flex-wrap:wrap;gap:7px;margin-top:9px;max-width:100%}.machine-asset-controls label{flex:0 0 auto;color:#9fb4c1;font-size:9px;font-weight:950;letter-spacing:.8px}.machine-asset-controls select{min-width:150px;max-width:100%;min-height:36px;padding:7px 9px;border:1px solid #385568;border-radius:8px;background:#0a1b27;color:#eef3f6;font:inherit;font-size:10px;font-weight:800}.machine-asset-controls[hidden]{display:none!important}
+.settings-shortcut{font-family:system-ui,sans-serif;font-size:28px;line-height:1;color:var(--yellow)}
+.rms-toggle-save-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:10px}
+.rms-toggle-save-row .btn{min-height:42px;white-space:nowrap}
+.rms-toggle-save-row .btn:disabled{opacity:.48;cursor:not-allowed}
+.rms-machinery-actions{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:10px}
+.rms-machinery-actions .btn{min-height:45px;width:100%}
+#settingsMachinerySection[hidden]{display:none!important}
+
+@media(max-width:560px){.rms-toggle-save-row{align-items:stretch;flex-direction:column}.rms-toggle-save-row .btn{width:100%}.rms-machinery-actions{grid-template-columns:1fr}}
+.rms-unified-machinery-list{display:grid;gap:10px;max-height:34vh;overflow:auto;padding-right:3px}.rms-unified-model-group{border:1px solid #40596f;border-radius:10px;background:#0d2132;padding:9px}.rms-unified-model-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:2px 1px 8px;border-bottom:1px solid #40596f}.rms-unified-model-title{display:grid;gap:2px;min-width:0}.rms-unified-model-title strong{font-size:13px;font-weight:950;letter-spacing:.5px;overflow-wrap:anywhere}.rms-unified-model-title small{font-size:9px;color:var(--yellow);font-weight:900;letter-spacing:.8px}.rms-unified-model-head .btn{min-height:32px;padding:6px 9px;font-size:9px;white-space:nowrap}.rms-unified-asset-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 2px 2px 12px}.rms-unified-asset-copy{display:grid;gap:2px;min-width:0}.rms-unified-asset-copy strong{font-size:11px;overflow-wrap:anywhere}.rms-unified-asset-copy small{font-size:9px;color:var(--muted);overflow-wrap:anywhere}.rms-unified-asset-row .btn{min-height:31px;padding:5px 10px;font-size:9px}.rms-unified-model-empty{margin:8px 0 1px 12px;color:var(--muted);font-size:10px}@media(max-width:620px){.rms-unified-machinery-list{max-height:32vh}.rms-unified-model-group{padding:8px}.rms-unified-model-head{align-items:flex-start}.rms-unified-model-head .btn{font-size:8px;padding:5px 7px}}
+
+/* R&M mode separation: operational register vs administrative configuration */
+.rm-mode-banner{display:flex;align-items:center;gap:12px;min-height:68px;padding:11px 15px;margin:0 0 14px;border-radius:12px;border:2px solid;box-shadow:0 7px 18px #0003}
+.rm-mode-icon{width:42px;height:42px;flex:0 0 42px;display:grid;place-items:center;border-radius:9px;font-size:24px;font-weight:950}
+.rm-mode-banner>span:nth-child(2){display:grid;gap:3px;min-width:0}
+.rm-mode-banner strong{font-size:13px;letter-spacing:1.15px;font-weight:1000}
+.rm-mode-banner small{font-size:9px;letter-spacing:.8px;font-weight:850;line-height:1.35}
+.rm-mode-tag{margin-left:auto;padding:7px 9px;border:1px solid currentColor;border-radius:6px;font-size:9px;font-weight:950;letter-spacing:.8px;white-space:nowrap}
+.operations-banner{border-color:#1687f8;background:linear-gradient(100deg,#102d48,#0b1d2c 80%);color:#d9edff}
+.operations-banner .rm-mode-icon{background:#1687f8;color:#fff}
+.operations-banner small{color:#a9c9e4}
+.configuration-banner{border-color:#e5a91b;background:linear-gradient(100deg,#49350f,#241d10 80%);color:#fff0c5}
+.configuration-banner .rm-mode-icon{background:#e5a91b;color:#171006}
+.configuration-banner small{color:#f0d99d}
+.configuration-mode>.section-head .section-title:before{background:#e5a91b}
+.configuration-mode .machine-card{border-color:#87651f;background:linear-gradient(145deg,#332b1d,#191b1b)}
+.configuration-mode .machine-art{color:#f0bd43}
+.configuration-mode .machine-open{color:#ffd36a}
+.configuration-mode .machine-card:hover,.configuration-mode .machine-card:focus-visible{border-color:#ffd36a}
+.configuration-dialog{border:2px solid #d69a1a;box-shadow:0 0 0 5px #d69a1a24,0 25px 75px #000b}
+.configuration-dialog .dialog-title:before{background:#e5a91b}
+.modal-mode-banner{margin:12px 0 8px;min-height:58px}
+.modal-mode-banner .rm-mode-icon{width:34px;height:34px;flex-basis:34px;font-size:19px}
+.modal-mode-banner strong{font-size:11px}
+.modal-mode-banner small{font-size:8px}
+@media(max-width:620px){
+ .rm-mode-banner{min-height:60px;padding:9px 10px;gap:8px;margin-bottom:10px}
+ .rm-mode-icon{width:34px;height:34px;flex-basis:34px;font-size:20px}
+ .rm-mode-banner strong{font-size:10px;letter-spacing:.8px}
+ .rm-mode-banner small{font-size:8px;letter-spacing:.35px}
+ .rm-mode-tag{font-size:7px;padding:6px}
+ .modal-mode-banner{margin:9px 0 5px}
+}
+
+.machine-nav-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap}
+.machine-config-action{border-color:var(--yellow);color:var(--yellow)}
+.workspace-config-button{border-color:#c6972a;color:#ffd36a}
+@media(max-width:620px){
+ .machine-nav-actions{grid-column:1/-1;justify-self:start;display:flex;flex-wrap:wrap;justify-content:flex-start;gap:7px;margin:0 0 7px 8px}
+ .machine-nav-actions .machine-back{grid-column:auto;justify-self:auto;margin:0;padding:7px 9px}
+ .workspace-config-button{align-self:flex-start}
+}
+
+/* FAULT / DEFECT CARDS — full-width readable hierarchy on mobile and desktop */
+.fault-table-head{display:none!important}
+.faultrow{
+  display:block!important;
+  width:100%;
+  min-width:0;
+  margin:9px 0;
+  padding:12px 14px;
+  border:1px solid #2d4658;
+  border-radius:12px;
+  background:linear-gradient(145deg,#172c3b,#0d1c28);
+  color:var(--white);
+  text-align:left;
+  box-shadow:0 3px 10px #0002;
+}
+.faultrow:nth-child(even){background:linear-gradient(145deg,#172c3b,#0d1c28)}
+.faultrow:hover,.faultrow:focus-visible{border-color:#648398;background:linear-gradient(145deg,#1b3547,#0e202e);outline:2px solid #648398;outline-offset:1px}
+.fault-card-top{display:grid;grid-template-columns:38px minmax(0,1fr) auto;align-items:center;gap:10px;min-width:0;padding-bottom:9px;border-bottom:1px solid #2d4658}
+.fault-card-top .rownum{font-size:18px;line-height:1;color:var(--yellow);font-weight:1000}
+.fault-card-top .equipment-name{min-width:0;color:#dce5ec;font-size:13px;font-weight:850;letter-spacing:.45px;line-height:1.3;overflow-wrap:anywhere}
+.fault-card-top .priority-pill{min-width:96px;padding:5px 9px;font-size:11px}
+.fault-card-body{display:grid;gap:4px;min-width:0;padding:10px 0 1px 48px}
+.fault-card-body .faultname{font-size:16px;line-height:1.3;font-weight:950;overflow-wrap:anywhere}
+.fault-card-body .description{font-size:14px;line-height:1.45;color:#c2cfda;overflow-wrap:anywhere}
+@media(max-width:620px){
+ .faultrow{margin:8px 0;padding:11px 10px;border-radius:11px}
+ .fault-card-top{grid-template-columns:30px minmax(0,1fr) auto;gap:7px;padding-bottom:8px}
+ .fault-card-top .rownum{font-size:16px}
+ .fault-card-top .equipment-name{font-size:11px;letter-spacing:.25px}
+ .fault-card-top .priority-pill{min-width:78px;padding:5px 6px;font-size:9px}
+ .fault-card-body{gap:4px;padding:9px 0 0 37px}
+ .fault-card-body .faultname{font-size:15px;line-height:1.3}
+ .fault-card-body .description{font-size:12px;line-height:1.45}
+}
+@media(max-width:360px){
+ .fault-card-top{grid-template-columns:26px minmax(0,1fr) auto;gap:5px}
+ .fault-card-top .equipment-name{font-size:10px}
+ .fault-card-top .priority-pill{min-width:70px;font-size:8px}
+ .fault-card-body{padding-left:31px}
+}
+</style>
+<link rel="stylesheet" href="shared-ui-system.css?v=20261124-2">
+<link rel="stylesheet" href="yard-hub-visual-system.css?v=20261125-1">
+<style id="yardhub-github-connect-style">
+body.yardhub-github-locked{overflow:hidden}
+body.yardhub-github-locked>:not(#yardhub-github-connect-overlay){visibility:hidden!important}
+#yardhub-github-connect-overlay{position:fixed;inset:0;z-index:999999;display:grid;place-items:center;padding:22px;background:#07111f;color:#e9eef5;font-family:Arial,sans-serif}
+#yardhub-github-connect-overlay[hidden]{display:none}
+.yardhub-github-connect-card{width:min(620px,100%);padding:30px;border:1px solid #344256;border-top:4px solid #f0c43b;border-radius:12px;background:#111d2c;box-shadow:0 24px 80px #0009}
+.yardhub-github-connect-kicker{font-size:11px;font-weight:700;letter-spacing:.16em;color:#f0c43b;margin-bottom:16px}
+.yardhub-github-connect-card h1{font-size:25px;margin:0 0 12px}
+.yardhub-github-connect-card p{font-size:14px;line-height:1.55;color:#b9c5d3}
+.yardhub-github-connect-note{padding:11px 13px;border-left:3px solid #f0c43b;background:#182638}
+#yardhub-github-connect-form{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:20px 0}
+#yardhub-github-connect-form label{display:grid;gap:6px;font-size:12px;color:#cbd5e1}
+#yardhub-github-connect-form label:nth-child(3),#yardhub-github-connect-form label:nth-child(4),#yardhub-github-connect-form button{grid-column:1/-1}
+#yardhub-github-connect-form input{width:100%;box-sizing:border-box;padding:12px;border:1px solid #40516a;border-radius:6px;background:#081321;color:#fff;font:inherit}
+#yardhub-github-connect-form button{padding:13px;border:0;border-radius:6px;background:#f0c43b;color:#111827;font-weight:800;letter-spacing:.08em;cursor:pointer}
+#yardhub-github-connect-form button:disabled{opacity:.55;cursor:wait}
+#yardhub-github-connect-form [data-create-private]{background:transparent;border:1px solid #f0c43b;color:#f0c43b}
+.yardhub-github-connect-status{min-height:22px;font-weight:700}
+.yardhub-github-connect-status[data-state=error]{color:#ff9c9c}
+@media(max-width:520px){.yardhub-github-connect-card{padding:20px}#yardhub-github-connect-form{grid-template-columns:1fr}#yardhub-github-connect-form label{grid-column:1/-1}}
+</style>
+</head>
+<body>
+<div class="app rm-module-root" id="appRoot"><div class="frame">
+<header class="hero">
+  <div class="hero-top"><div><div class="downtime-mark">DOWNTIME<sup>®</sup></div><div class="mark-rule"></div></div>
+  <div class="hero-actions"><div class="session-label">HUB AUTHENTICATED AS<strong id="sessionUser">—</strong></div><button class="icon-button report-icon" id="openReports" type="button" aria-label="Open PDF EXPORTS" title="PDF EXPORTS">▤</button><a class="icon-button" id="backToHub" href="index.html" aria-label="Return to YARD HUB" title="Return to YARD HUB">⌂</a></div></div>
+  <div class="hero-word"><span class="slash">/</span><span class="r">R</span><span>&amp;</span><span class="m">M</span></div>
+  <p class="hero-tag">REPAIRS &amp; MAINTENANCE</p>
+</header>
+<div id="loadingView" class="loading">VERIFYING YARD HUB SESSION…</div>
+<section id="selectorView" class="view operations-mode" hidden>
+  <div class="rm-mode-banner operations-banner" role="status"><span class="rm-mode-icon" aria-hidden="true">▤</span><span><strong>OPERATIONS WORKSPACE</strong><small>FAULT REGISTER · LIVE MACHINERY · REPAIRS</small></span><span class="rm-mode-tag">WORKING AREA</span></div>
+  <div class="section-head">
+    <div><div class="section-title">R&amp;M OPERATIONS</div><div class="section-note">SELECT A MACHINE TO VIEW FAULTS / DEFECTS</div></div>
+    <button class="machine-back workspace-config-button" id="openSettingsWorkspace" type="button" hidden>CONFIGURATION →</button>
+  </div>
+  <div class="machine-grid" id="machineGrid">
+    <button class="machine-card" data-machine="KIVERCO_PICKING_LINE"><span class="machine-art"><img src="assets/rm-icons/kiverco.svg" alt="" aria-hidden="true" decoding="async"></span><span class="machine-copy"><strong>KIVERCO — PICKING LINE</strong><small>CONVEYORS &amp; SORTING SYSTEM</small><span class="machine-open">OPEN MACHINE →</span></span></button>
+    <button class="machine-card" data-machine="TANNA_SHREDDER"><span class="machine-art"><img src="assets/rm-icons/tanna.svg" alt="" aria-hidden="true" decoding="async"></span><span class="machine-copy"><strong>TANNA — SHREDDER</strong><small>SHREDDING EQUIPMENT</small><span class="machine-open">OPEN MACHINE →</span></span></button>
+    <button class="machine-card" data-machine="FORKLIFT"><span class="machine-art"><img src="assets/rm-icons/forklift.svg" alt="" aria-hidden="true" decoding="async"></span><span class="machine-copy"><strong>FORKLIFT</strong><small>FORKLIFT FLEET</small><span class="machine-open">OPEN MACHINE →</span></span></button>
+    <button class="machine-card" data-machine="TELEHANDLER"><span class="machine-art"><img src="assets/rm-icons/telehandler.svg" alt="" aria-hidden="true" decoding="async"></span><span class="machine-copy"><strong>TELEHANDLER</strong><small>TELEHANDLER FLEET</small><span class="machine-open">OPEN MACHINE →</span></span></button>
+    <button class="machine-card" data-machine="EXCAVATORS_360"><span class="machine-art"><img src="assets/rm-icons/excavators_360.svg" alt="" aria-hidden="true" decoding="async"></span><span class="machine-copy"><strong>360 EXCAVATORS</strong><small>EXCAVATOR FLEET</small><span class="machine-open">OPEN MACHINE →</span></span></button>
+    <button class="machine-card" data-machine="OTHER_EQUIPMENT"><span class="machine-art"><img src="assets/rm-icons/other_equipment.svg" alt="" aria-hidden="true" decoding="async"></span><span class="machine-copy"><strong>OTHER EQUIPMENT</strong><small>ADDITIONAL MACHINERY</small><span class="machine-open">OPEN MACHINE →</span></span></button>
+  </div>
+  <div class="statusbar" id="selectorStatus" role="status"></div>
+</section>
+<section id="settingsView" class="view configuration-mode" hidden>
+  <div class="rm-mode-banner configuration-banner" role="status"><span class="rm-mode-icon" aria-hidden="true">⚙</span><span><strong>CONFIGURATION WORKSPACE</strong><small>ADMINISTRATION · REGISTERED MACHINES · SYSTEM RULES</small></span><span class="rm-mode-tag">SETUP AREA</span></div>
+  <div class="section-head">
+    <div><div class="section-title">R&amp;M CONFIGURATION</div><div class="section-note">MANAGE REGISTERED MACHINES, MODELS AND CATEGORY SETTINGS</div></div>
+    <button class="machine-back" id="backToMachineryFromSettings" type="button">← OPERATIONS</button>
+  </div>
+  <div class="machine-grid" id="settingsMachineGrid">
+    <button class="machine-card" type="button" data-settings-machine="KIVERCO_PICKING_LINE"><span class="machine-art"><img src="assets/rm-icons/kiverco.svg" alt="" aria-hidden="true" decoding="async"></span><span class="machine-copy"><strong>KIVERCO — PICKING LINE</strong><small>CONVEYORS &amp; SORTING SYSTEM</small><span class="machine-open">MANAGE MACHINES →</span></span></button>
+    <button class="machine-card" type="button" data-settings-machine="TANNA_SHREDDER"><span class="machine-art"><img src="assets/rm-icons/tanna.svg" alt="" aria-hidden="true" decoding="async"></span><span class="machine-copy"><strong>TANNA — SHREDDER</strong><small>SHREDDING EQUIPMENT</small><span class="machine-open">MANAGE MACHINES →</span></span></button>
+    <button class="machine-card" type="button" data-settings-machine="FORKLIFT"><span class="machine-art"><img src="assets/rm-icons/forklift.svg" alt="" aria-hidden="true" decoding="async"></span><span class="machine-copy"><strong>FORKLIFT</strong><small>FORKLIFT FLEET</small><span class="machine-open">MANAGE MACHINES →</span></span></button>
+    <button class="machine-card" type="button" data-settings-machine="TELEHANDLER"><span class="machine-art"><img src="assets/rm-icons/telehandler.svg" alt="" aria-hidden="true" decoding="async"></span><span class="machine-copy"><strong>TELEHANDLER</strong><small>TELEHANDLER FLEET</small><span class="machine-open">MANAGE MACHINES →</span></span></button>
+    <button class="machine-card" type="button" data-settings-machine="EXCAVATORS_360"><span class="machine-art"><img src="assets/rm-icons/excavators_360.svg" alt="" aria-hidden="true" decoding="async"></span><span class="machine-copy"><strong>360 EXCAVATORS</strong><small>EXCAVATOR FLEET</small><span class="machine-open">MANAGE MACHINES →</span></span></button>
+    <button class="machine-card" type="button" data-settings-machine="OTHER_EQUIPMENT"><span class="machine-art"><img src="assets/rm-icons/other_equipment.svg" alt="" aria-hidden="true" decoding="async"></span><span class="machine-copy"><strong>OTHER EQUIPMENT</strong><small>ADDITIONAL MACHINERY</small><span class="machine-open">MANAGE MACHINES →</span></span></button>
+  </div>
+  <div class="statusbar" id="settingsStatus" role="status" aria-live="polite"></div>
+</section>
+<section id="customCategoryView" class="view configuration-mode" hidden>
+  <div class="rm-mode-banner configuration-banner" role="status"><span class="rm-mode-icon" aria-hidden="true">＋</span><span><strong>NEW MACHINERY CATEGORY</strong><small>APPLICATION STRUCTURE · GENERATED MENU ENTRY</small></span><span class="rm-mode-tag">PLACEHOLDER</span></div>
+  <div class="section-head">
+    <div><div class="section-title" id="customCategoryTitle">MACHINERY CATEGORY</div><div class="section-note" id="customCategoryDescription">CATEGORY DESCRIPTION</div></div>
+    <button class="machine-back" id="backFromCustomCategory" type="button">← MACHINERY</button>
+  </div>
+  <div class="statusbar" id="customCategoryStatus" role="status">This category is registered in Data Center but does not yet have a dedicated machine data type or operational workflow. Existing R&amp;M records and reports remain unchanged.</div>
+</section>
+<section id="dashboardView" class="view" hidden>
+  <div class="machinebar"><div class="machineicon" aria-hidden="true"><img id="machineIcon" src="assets/rm-icons/kiverco.svg" alt="" decoding="async"></div><div class="machine-header-copy"><span class="machinelabel" id="machineCategoryLabel">MACHINE TYPE</span><strong id="machineTitle">—</strong><div class="machine-asset-controls" id="machineAssetControls" hidden><label for="machineAssetSelect">REGISTERED MACHINE · FAULT REGISTER</label><select id="machineAssetSelect"><option value="">SELECT REGISTERED MACHINE</option></select><small class="form-help">This selects an existing machine record. Its model is shown in the Machinery &amp; Model Register.</small></div></div><div class="machine-nav-actions"><button class="machine-back" id="backToMachinery" type="button">← MACHINERY</button><button class="machine-back machine-config-action" id="openRmsSettingsShortcut" type="button" aria-label="Open current machinery configuration" title="Configure selected machinery" hidden>CONFIGURATION</button></div></div>
+  <div class="stats"><div class="stat"><span class="staticon">🔧</span><div><div class="statlabel">TOTAL FAULTS</div><div class="statnum" id="totalCount">0</div></div></div><div class="stat"><span class="staticon">⚠</span><div><div class="statlabel">HIGH</div><div class="statnum" id="highCount">0</div></div></div><div class="stat"><span class="staticon">⚠</span><div><div class="statlabel">MEDIUM</div><div class="statnum" id="mediumCount">0</div></div></div><div class="stat"><span class="staticon">ⓘ</span><div><div class="statlabel">LOW</div><div class="statnum" id="lowCount">0</div></div></div></div>
+  <section class="faultpanel"><div class="panelhead"><div class="paneltitle"><span class="panel-slash"></span>FAULTS / DEFECTS</div><label class="sort">SORT: <select id="sortSelect"><option value="priority">PRIORITY</option><option value="newest">NEWEST</option><option value="oldest">OLDEST</option></select></label></div>
+    <div class="fault-table-head"><div>#</div><div>EQUIPMENT</div><div>FAULT / DEFECT</div><div>DESCRIPTION</div><div>PRIORITY</div></div><div id="faultRows" class="fault-rows"><div class="empty">Loading fault records…</div></div>
+    <div class="panel-actions"><button class="btn add" id="openCreateFault">＋ ADD FAULT / DEFECT</button></div>
+  </section>
+  <div class="report-actions"><button class="btn export-report-button" id="exportReportButton" type="button">EXPORT REPORT</button><button class="btn archive-report-button" id="pdfExportsButton" type="button">PDF EXPORTS</button></div>
+  <div class="statusbar" id="dashboardStatus" role="status"></div>
+</section>
+<div class="bottomline"><div class="rule"></div><div class="stripes"><i></i><i></i><i></i></div></div>
+</div><section id="accessDenied" class="access-denied"><h2>ACCESS NOT AVAILABLE</h2><p id="accessDeniedMessage">Your current account does not have permission to access R&amp;M.</p><button class="btn primary" id="retrySession" type="button" style="margin-top:12px">RETRY SESSION VERIFICATION</button><a class="btn" href="index.html" style="display:inline-flex;text-decoration:none;margin-top:12px">RETURN TO YARD HUB</a></section></div>
+
+<!-- R&M individual machinery registry -->
+<div class="overlay" id="assetOverlay" style="z-index:30" role="dialog" aria-modal="true" aria-labelledby="assetEditorTitle">
+  <div class="dialog rms-settings-dialog" style="max-width:620px">
+    <div class="dialog-head"><div class="dialog-title" id="assetEditorTitle">ADD MACHINERY</div><button class="close" type="button" data-close="assetOverlay" aria-label="Close">×</button></div>
+    <form id="assetForm">
+      <div class="form-grid">
+        <div class="form-field full"><label>MACHINERY CATEGORY</label><div class="form-help" id="assetMachineType">—</div></div>
+        <div class="form-field"><label for="assetCode">FLEET NUMBER / REGISTRATION</label><input id="assetCode" maxlength="40" placeholder="Optional"></div>
+        <div class="form-field" id="assetMakeModelManualField"><label for="assetMakeModel">MAKE / MODEL</label><input id="assetMakeModel" maxlength="120" placeholder="Enter make / model"></div>
+        <div class="form-field" id="assetMakeModelSelectField" hidden><label for="assetMakeModelSelect">MAKE / MODEL</label><select id="assetMakeModelSelect"><option value="">SELECT MAKE / MODEL</option></select></div>
+        <div class="form-field full" id="assetMakeModelOtherField" hidden><label for="assetMakeModelOther">OTHER MAKE / MODEL</label><input id="assetMakeModelOther" maxlength="120" placeholder="Enter make / model manually"></div>
+      </div>
+      <div id="assetStatus" class="statusbar" role="status" aria-live="polite"></div>
+      <div class="modal-footer"><button class="btn" type="button" data-close="assetOverlay">CANCEL</button><button class="btn danger" type="button" id="archiveAssetButton" hidden>ARCHIVE MACHINE</button><span class="spacer"></span><button class="btn save" type="submit" id="assetSaveButton">ADD MACHINERY</button></div>
+    </form>
+  </div>
+</div>
+
+<!-- New fault form -->
+<div class="overlay" id="createOverlay" role="dialog" aria-modal="true" aria-labelledby="createTitle"><div class="dialog" style="max-width:650px"><div class="dialog-head"><div class="dialog-title" id="createTitle">ADD FAULT / DEFECT</div><button class="close" type="button" data-close="createOverlay" aria-label="Close">×</button></div>
+  <form id="createForm"><div class="form-grid"><div class="form-field full"><label for="newFaultName">AREA / PART OF MACHINERY</label><select id="newFaultName" required><option value="" selected disabled>SELECT AREA / PART</option></select></div><div class="form-field full" id="newFaultOtherField" hidden><label for="newFaultOther">ENTER AREA / PART OF MACHINERY</label><input id="newFaultOther" maxlength="120" placeholder="Enter the machinery area or part" disabled></div><div class="form-field"><label for="newFaultPriority">PRIORITY</label><select id="newFaultPriority"><option>HIGH</option><option selected>MEDIUM</option><option>LOW</option></select></div><div class="form-field full"><label for="newFaultDescription">TYPE OF DEFECT</label><textarea id="newFaultDescription" maxlength="2000" required placeholder="Describe the fault or defect"></textarea></div><div class="form-field"><label for="newFaultStatus">STATUS</label><input id="newFaultStatus" class="status-fixed" type="text" value="OPEN" disabled aria-label="New faults always start as OPEN"><div class="form-help">New fault records always start as OPEN.</div></div><div class="form-field"><label for="newFaultPhoto">ADD PHOTO (OPTIONAL)</label><input id="newFaultPhoto" type="file" accept="image/jpeg,image/png,image/webp"><div class="form-help">JPEG, PNG or WebP · maximum 5 MB</div></div></div><div class="modal-footer"><button class="btn" type="button" data-close="createOverlay">CANCEL</button><span class="spacer"></span><button class="btn save" type="submit" id="createFaultSave">CREATE FAULT</button></div></form>
+</div></div>
+
+<!-- R&M PDF reports -->
+<div class="overlay" id="reportOverlay" role="dialog" aria-modal="true" aria-labelledby="reportTitle">
+  <div class="dialog" style="max-width:580px">
+    <div class="dialog-head"><div class="dialog-title" id="reportTitle">R&amp;M PDF REPORTS</div><button class="close" type="button" data-close="reportOverlay" aria-label="Close">×</button></div>
+    <p class="report-intro">Generate a consolidated fault and defect report. Select one machinery category or include all machinery.</p>
+    <div class="form-grid"><div class="form-field full"><label for="reportMachineType">MACHINERY FILTER</label><select id="reportMachineType">
+      <option value="">ALL MACHINERY</option>
+      <option value="KIVERCO_PICKING_LINE">KIVERCO — PICKING LINE</option>
+      <option value="TANNA_SHREDDER">TANNA — SHREDDER</option>
+      <option value="FORKLIFT">FORKLIFT</option>
+      <option value="TELEHANDLER">TELEHANDLER</option>
+      <option value="EXCAVATORS_360">360 EXCAVATORS</option>
+      <option value="OTHER_EQUIPMENT">OTHER EQUIPMENT</option>
+    </select></div><div class="form-field full"><label for="reportAssetId">INDIVIDUAL MACHINE</label><select id="reportAssetId" disabled><option value="">ALL MACHINES IN CATEGORY</option></select></div></div>
+    <div class="report-summary"><strong>REPORT CONTENT</strong><span>Fault number · Machinery · Area / Part · Defect description · Priority · Status · Date recorded</span></div>
+    <div class="modal-footer"><button class="btn" type="button" data-close="reportOverlay">CANCEL</button><button class="btn save" type="button" id="generatePdfReport">GENERATE PDF REPORT</button></div>
+  </div>
+</div>
+
+<!-- R&M PDF export archive -->
+<div class="overlay" id="exportsOverlay" role="dialog" aria-modal="true" aria-labelledby="exportsTitle"><div class="dialog pdf-exports-dialog">
+<div class="dialog-head"><div class="dialog-title" id="exportsTitle">PDF EXPORTS</div><button class="close" type="button" data-close="exportsOverlay" aria-label="Close">×</button></div>
+<p class="report-intro">Stored R&amp;M PDF reports. Display or print an exported snapshot, or delete reports when your account has edit access.</p>
+<div class="form-grid"><div class="form-field full"><label for="pdfExportsMachineType">FILTER BY MACHINERY</label><select id="pdfExportsMachineType">
+<option value="">ALL MACHINERY</option><option value="KIVERCO_PICKING_LINE">KIVERCO — PICKING LINE</option><option value="TANNA_SHREDDER">TANNA — SHREDDER</option><option value="FORKLIFT">FORKLIFT</option><option value="TELEHANDLER">TELEHANDLER</option><option value="EXCAVATORS_360">360 EXCAVATORS</option><option value="OTHER_EQUIPMENT">OTHER EQUIPMENT</option>
+</select></div><div class="form-field full"><label for="pdfExportsAssetId">INDIVIDUAL MACHINE</label><select id="pdfExportsAssetId" disabled><option value="">ALL MACHINES IN CATEGORY</option></select></div></div><div id="pdfExportList" class="pdf-export-list" aria-live="polite"></div>
+<button class="btn compact load-more-exports" id="loadMoreExports" type="button" hidden>LOAD MORE REPORTS</button>
+<div class="modal-footer"><button class="btn" type="button" data-close="exportsOverlay">CLOSE</button></div></div></div>
+<!-- Machine-specific presets -->
+<div class="overlay" id="presetsOverlay" role="dialog" aria-modal="true" aria-labelledby="presetsTitle">
+  <div class="dialog configuration-dialog" style="max-width:620px">
+    <div class="dialog-head"><div><div class="dialog-title" id="presetsTitle">MACHINERY SETTINGS</div><div class="form-help" id="presetMachineTitle">—</div></div><button class="close" type="button" data-close="presetsOverlay" aria-label="Close">×</button></div>
+    <div class="rm-mode-banner configuration-banner modal-mode-banner" role="status"><span class="rm-mode-icon" aria-hidden="true">⚙</span><span><strong>CONFIGURATION MODE</strong><small>YOU ARE EDITING SYSTEM SETUP — NOT THE FAULT REGISTER</small></span><span class="rm-mode-tag">ADMIN</span></div>
+    <nav class="rms-tabs" role="tablist" aria-label="Machinery settings sections">
+      <button class="rms-tab active" id="rmsTabMachinery" type="button" role="tab" aria-selected="true" aria-controls="rmsPanelMachinery" data-rms-tab="machinery">MACHINERY</button>
+      <button class="rms-tab" id="rmsTabAreaParts" type="button" role="tab" aria-selected="false" aria-controls="rmsPanelAreaParts" data-rms-tab="area-parts">AREA &amp; PARTS</button>
+    </nav>
+    <section class="rms-tab-panel" id="rmsPanelMachinery" role="tabpanel" aria-labelledby="rmsTabMachinery" data-rms-panel="machinery">
+    <section class="rms-config-section" id="settingsMachinerySection">
+      <div class="rms-section-heading"><strong>MACHINERY &amp; MODEL REGISTER</strong><span>ONE CONSOLIDATED LIST</span></div>
+      <p class="form-help">The catalogue is the registered-machine list. Add a machine here to make it selectable on the dashboard. Select EDIT to update or archive it; archived machines and their fault history remain available.</p>
+      <div class="preset-manager-list rms-unified-machinery-list" id="machineModelItems"></div>
+      <div class="rms-machinery-actions">
+        <button class="btn primary" id="settingsAddMachineryButton" type="button" hidden>＋ ADD MACHINERY</button>
+      </div>
+      
+    </section>
+    <section class="rms-config-section" id="settingsRegistrationSection">
+      <div class="rms-section-heading"><strong>FLEET NUMBER / REGISTRATION</strong><span>MACHINERY FORM</span></div>
+      <label class="rms-toggle-row" for="registrationEnabled">
+        <span><strong>ENABLE FLEET NUMBER / REGISTRATION</strong><small>When enabled, the optional registration field appears in Add / Edit Machinery for this category. Disabling it hides the field without deleting saved registration data.</small></span>
+        <input id="registrationEnabled" type="checkbox" checked>
+      </label>
+      <div class="rms-toggle-save-row"><span class="form-help">Changes are not applied until saved.</span><button class="btn primary" id="saveRegistrationSettings" type="button" disabled>SAVE SETTINGS</button></div>
+    </section>
+    <section class="rms-config-section" id="settingsModelDropdownSection">
+      <div class="rms-section-heading"><strong>MAKE / MODEL DROPDOWN</strong><span>MACHINERY FORM</span></div>
+      <label class="rms-toggle-row" for="modelDropdownEnabled">
+        <span><strong>ENABLE MAKE / MODEL DROPDOWN</strong><small>When enabled, the MAKE / MODEL field uses this category's model catalogue. When disabled, staff can enter the make / model manually. This setting does not control the registered-machine menu on the dashboard.</small></span>
+        <input id="modelDropdownEnabled" type="checkbox" checked>
+      </label>
+      <div class="rms-toggle-save-row">
+        <span class="form-help">Changes are not applied until saved.</span>
+        <button class="btn primary" id="saveModelDropdownSettings" type="button" disabled>SAVE SETTINGS</button>
+      </div>
+    </section>
+    <section class="rms-config-section" id="settingsAssetSelectorSection">
+      <div class="rms-section-heading"><strong>REGISTERED MACHINE MENU</strong><span>R&amp;M DASHBOARD</span></div>
+      <label class="rms-toggle-row" for="assetSelectorEnabled">
+        <span><strong>ENABLE SCROLL-DOWN MENU</strong><small>When enabled, the registered-machine selector is visible on the R&amp;M dashboard. When disabled, that selector is hidden. This setting does not change the MAKE / MODEL field.</small></span>
+        <input id="assetSelectorEnabled" type="checkbox" checked>
+      </label>
+      <div class="rms-toggle-save-row">
+        <span class="form-help">Changes are not applied until saved.</span>
+        <button class="btn primary" id="saveAssetSelectorSettings" type="button" disabled>SAVE SETTINGS</button>
+      </div>
+    </section>
+
+    </section>
+    <section class="rms-tab-panel" id="rmsPanelAreaParts" role="tabpanel" aria-labelledby="rmsTabAreaParts" data-rms-panel="area-parts" hidden>
+    <section class="rms-config-section">
+      <div class="rms-section-heading"><strong>AREA / PART PRESETS</strong><span>FAULT REPORTING OPTIONS</span></div>
+      <p class="form-help">Add or remove the area and part choices available when recording faults for this category. Existing fault records are retained.</p>
+      <div class="preset-manager-list" id="presetItems"></div>
+      <form id="presetAddForm" class="preset-add-grid">
+        <div class="form-field"><label for="newPresetName">NEW PRESET AREA / PART</label><input id="newPresetName" maxlength="80" required placeholder="e.g. Motor, Bearing, Conveyor belt"></div>
+        <button class="btn primary" type="submit" id="addPresetSave">ADD PRESET</button>
+      </form>
+    </section>
+    </section>
+    <div id="machineSettingsModalStatus" class="statusbar" role="status" aria-live="polite"></div>
+    <div class="modal-footer"><button class="btn" type="button" data-close="presetsOverlay">CLOSE</button></div>
+  </div>
+</div>
+
+<!-- Existing fault details -->
+<div class="overlay" id="detailsOverlay" role="dialog" aria-modal="true" aria-labelledby="detailsTitle"><div class="dialog"><div class="dialog-head"><div class="dialog-title" id="detailsTitle">FAULT / DEFECT DETAILS</div><button class="close" type="button" data-close="detailsOverlay" aria-label="Close">×</button></div>
+  <div class="fault-identity"><div class="identity-no" id="detailNumber">01</div><div class="identity-art"><svg viewBox="0 0 100 80"><path d="M5 61h90M12 61V45l19-12 11 7-7 12H12m27-4 12-13 8 6-2 11H39M51 33l8-23 25-6 9 9-22 18m-3-16 5 22m17-15 6 7-8 7-8-6"/></svg></div><div class="identity-copy"><strong id="detailName">—</strong><small id="detailMachine">—</small></div><div class="priority-tag" id="detailPriorityTag"><small>PRIORITY</small><strong id="detailPriorityText">HIGH</strong></div></div>
+  <div class="detail-description"><div class="detail-symbol">▤</div><div><div class="detail-label">DESCRIPTION</div><div class="detail-value" id="detailDescription">—</div></div></div>
+  <div class="detail-edit-grid"><div class="edit-cell"><div class="edit-symbol">⚒</div><div class="edit-copy"><label for="detailStatus">STATUS</label><select id="detailStatus" class="status-select"><option>OPEN</option><option>PERM. FIX</option></select></div></div><div class="edit-cell"><div class="edit-symbol">⊙</div><div class="edit-copy"><label for="detailPriority">REPAIR PRIORITY</label><select id="detailPriority" class="priority-select"><option>HIGH</option><option>MEDIUM</option><option>LOW</option></select></div></div></div>
+  <div class="evidence-block"><div class="evidence-head"><span class="evidence-symbol">▧</span><span>PHOTOS (<span id="photoCount">0</span>)</span></div><div class="evidence-items" id="photoItems"></div><button class="add-evidence" id="addPhoto" type="button"><span>＋</span>ADD PHOTO</button><input id="photoInput" type="file" accept="image/jpeg,image/png,image/webp" hidden></div>
+  <div class="evidence-block"><div class="evidence-head"><span class="evidence-symbol">📎</span><span>ATTACHED FILES (<span id="fileCount">0</span>)</span></div><div class="evidence-items" id="fileItems"></div></div>
+  <div class="notes-block"><div class="notes-head"><span>NOTES / HISTORY</span><button class="btn compact" type="button" id="toggleNoteComposer">＋ ADD NOTE</button></div><div class="notes-list" id="notesList"></div><div class="note-composer" id="noteComposer"><textarea id="noteText" maxlength="2000" placeholder="Enter a note or repair update…"></textarea><div class="note-actions"><button type="button" class="btn compact" id="cancelNote">CANCEL</button><button type="button" class="btn primary compact" id="saveNote">SAVE NOTE</button></div></div></div>
+  <div class="modal-footer"><div class="statusbar" id="detailUpdateStatus" role="status" aria-live="polite" hidden></div><button class="btn save" id="updateFault" type="button">✓ UPDATE</button><button class="btn solved" id="deleteFault" type="button">✓ SOLVED</button><input id="fileInput" type="file" accept="image/jpeg,image/png,image/webp,application/pdf,text/plain" hidden></div>
+</div></div>
+<div class="overlay" id="messageOverlay" role="dialog" aria-modal="true"><div class="dialog" style="max-width:420px"><div class="dialog-head"><div class="dialog-title" id="messageTitle">NOTICE</div><button class="close" type="button" data-close="messageOverlay" aria-label="Close">×</button></div><p id="messageText"></p><div class="modal-footer"><button class="btn primary" type="button" data-close="messageOverlay">CLOSE</button></div></div></div>
+
+<script>window.DOWNTIME_CENTRAL_API='https://github-native.invalid/functions/v1/central-bank';window.DOWNTIME_CENTRAL_API_KEY='github-native';window.REPAIR_MAINTENANCE_API='https://github-native.invalid/functions/v1/repair-maintenance-api';window.CENTRAL_CONFIG_ADMIN_API='https://github-native.invalid/functions/v1/central-config-admin';</script>
+<script src="central-bank-client.js"></script>
+<script src="repair-maintenance-app.js?v=20261125-4"></script>
+<script src="repair-maintenance-structure.js?v=phase09-1"></script>
+<style>
+.rm-custom-category-icon{display:grid;place-items:center;width:100%;height:100%;color:#ffd21a;font-size:24px;font-weight:950;letter-spacing:-1px}
+#customCategoryStatus{margin-top:18px;padding:16px;border:1px solid #665723;border-radius:11px;background:linear-gradient(110deg,#332c16,#1c241e);color:#cabf99;line-height:1.6}
+</style>
+<div id="yardhub-github-connect-overlay" role="dialog" aria-modal="true" aria-labelledby="yardhub-github-connect-title">
+  <div class="yardhub-github-connect-card">
+    <div class="yardhub-github-connect-kicker">DOWNTIMEUI · INDEPENDENT DATA INFRASTRUCTURE</div>
+    <h1 id="yardhub-github-connect-title">Connect YARDHUB to GitHub</h1>
+    <p>Connect the dedicated <strong>private</strong> GitHub repository used by the YARDHUB twin. Do not use the DOWNTIME or DOWNTIMEUI application-source repositories.</p>
+    <p class="yardhub-github-connect-note">Create the private data repository once, then connect using a fine-grained token limited to that repository with Contents read/write and Metadata read.</p>
+    <form id="yardhub-github-connect-form">
+      <label>GitHub owner<input name="owner" value="aka30art" autocomplete="username" required></label>
+      <label>Private data repository<input name="repo" placeholder="e.g. YARDHUB-DATA" autocomplete="off" required></label>
+      <label>Data branch<input name="branch" value="main" autocomplete="off" required></label>
+      <label>Fine-grained GitHub token<input name="token" type="password" autocomplete="off" required></label>
+      <button type="submit">CONNECT & INITIALISE</button>
+      <button type="button" data-create-private>CREATE PRIVATE DATA REPOSITORY</button>
+    </form>
+    <p class="yardhub-github-connect-status" data-yardhub-github-status>Waiting for a private GitHub data repository.</p>
+  </div>
+</div>
+<script type="module" src="github-bootstrap.js"></script>
+</body></html>

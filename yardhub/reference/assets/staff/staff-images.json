@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 3,
+  "library": "DOWNTIME STAFF IMAGE LIBRARY",
+  "basePath": "assets/staff/originals/",
+  "folderConvention": "<normalized-staff-key>/original.png",
+  "preserveOriginals": true,
+  "uploadFormat": "PNG",
+  "resolutionPolicy": "Preserve uploaded source resolution; app loads original.png directly.",
+  "dynamicStaffFolders": true,
+  "staff": {
+    "jan": {
+      "directory": "jan",
+      "filename": "original.png",
+      "available": true
+    },
+    "mick": {
+      "directory": "mick",
+      "filename": "original.png",
+      "available": true
+    },
+    "gigi": {
+      "directory": "gigi",
+      "filename": "original.png",
+      "available": true
+    },
+    "daz": {
+      "directory": "daz",
+      "filename": "original.png",
+      "available": true
+    },
+    "shayne": {
+      "directory": "shayne",
+      "filename": "original.png",
+      "available": true
+    }
+  }
+}

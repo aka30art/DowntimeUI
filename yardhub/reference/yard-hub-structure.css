@@ -1,0 +1,17 @@
+.yard-tile-custom-icon{font-size:clamp(28px,4vw,44px);font-weight:1000;letter-spacing:-2px;color:#ffd21a;text-shadow:0 3px 12px #0007}
+.yard-tile-custom .yard-tile-copy strong{overflow-wrap:anywhere}
+.yard-structure-screen{display:grid;gap:16px;padding:4px 0 22px}
+.yard-structure-screen[hidden]{display:none!important}
+.yard-structure-header{display:grid;gap:10px;padding:0 0 18px;border-bottom:1px solid #30465b}
+.yard-structure-back{justify-self:start;min-height:46px}
+.yard-structure-header h1{margin:0;color:#f5f7fa;font-size:clamp(25px,4vw,38px);font-weight:950;letter-spacing:-.7px;overflow-wrap:anywhere}
+.yard-structure-description{margin:0;color:#a8bac8;font-size:13px;line-height:1.55}
+.yard-structure-status{color:#ffd21a;font-size:10px;font-weight:950;letter-spacing:1.3px}
+.yard-structure-links{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.yard-structure-link{display:grid;gap:8px;min-width:0;min-height:112px;padding:18px;text-align:left;border:1px solid #526a7e;border-radius:13px;background:linear-gradient(145deg,#10273d,#0a1d30);color:#f4f7fa;box-shadow:0 10px 24px #0003}
+.yard-structure-link:hover,.yard-structure-link:focus-visible{border-color:#ffd21a;outline:2px solid #ffd21a55;outline-offset:2px}
+.yard-structure-link strong{font-size:17px;font-weight:950;overflow-wrap:anywhere}
+.yard-structure-link small{color:#91a8b7;font-size:10px;font-weight:850;letter-spacing:.8px}
+.yard-structure-note{padding:14px;border:1px solid #665723;border-radius:10px;background:linear-gradient(110deg,#332c16,#1c241e);color:#cabf99;font-size:11px;line-height:1.55}
+@media(max-width:540px){.yard-structure-links{grid-template-columns:1fr}.yard-structure-link{min-height:92px;padding:15px}.yard-structure-header h1{font-size:25px}}
+@media(prefers-reduced-motion:reduce){.yard-structure-link{transition:none}}

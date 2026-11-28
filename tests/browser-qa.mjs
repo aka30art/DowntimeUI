@@ -272,7 +272,173 @@ try{
   assert.ok(mobileNavigation.buttons.every(button=>button.left>=0&&button.right<=mobileNavigation.viewport+1&&button.width>0&&button.scrollWidth<=button.clientWidth+1&&button.scrollHeight<=button.clientHeight+1),"Mobile navigation labels must remain visible, un-clipped and inside the viewport: "+JSON.stringify(mobileNavigation));
   await page.screenshot({path:"artifacts/workspace-mobile.png",fullPage:true});
   assert.deepEqual(failures,[],"Browser runtime errors: "+failures.join(" | "));
-  console.log("PASS: Chromium installer, daily operations, plant overview, task-lock persistence, reports, Settings edits, backup/restore and 390px mobile layout");
+  await page.locator('.workspace-navigation [data-view="people"]').click();
+  let resetDialogIndex=0;
+  page.on("dialog",async dialog=>{
+    resetDialogIndex++;
+    if(resetDialogIndex===2)await dialog.dismiss(); // choose NO backup; continue empty reset
+    else await dialog.accept();
+  });
+  await page.locator('[data-action="factory-reset"]').click();
+  await page.getByRole("heading",{name:"Set up your workspace."}).waitFor();
+  const remainingAppKeys=await page.evaluate(()=>Object.keys(localStorage).filter(key=>key.startsWith("downtimeui:")));
+  assert.deepEqual(remainingAppKeys,[],"Factory reset must remove all DOWNTIMEUI-owned local storage and return to empty installer.");
+  assert.equal(resetDialogIndex,3,"WIPE OUT must require three explicit confirmation choices.");
+  const yardhubPage=await browser.newPage({viewport:{width:1440,height:900},deviceScaleFactor:1});
+  const yardhubRequests=[];
+  const yardhubFailures=[];
+  yardhubPage.on("request",request=>yardhubRequests.push(request.url()));
+  yardhubPage.on("pageerror",error=>yardhubFailures.push(error.message));
+  await yardhubPage.route("https://github-native.invalid/**",route=>route.fulfill({status:503,contentType:"application/json",body:JSON.stringify({error:"Isolated browser QA: no live repository token supplied"})}));
+  await yardhubPage.goto("http://127.0.0.1:"+address.port+"/yardhub/runtime/index.html",{waitUntil:"networkidle"});
+  await yardhubPage.getByRole("heading",{name:"Connect YARDHUB to GitHub"}).waitFor();
+  assert.equal(await yardhubPage.locator("#yardhub-github-connect-overlay").isVisible(),true,"YARDHUB must remain locked behind the private GitHub setup gate.");
+  assert.equal(await yardhubPage.locator('[name="owner"]').inputValue(),"aka30art");
+  assert.equal(await yardhubPage.locator('[name="repo"]').inputValue(),"");
+  assert.equal(await yardhubPage.locator('[name="branch"]').inputValue(),"","First setup must allow GitHub to supply the repository default branch.");
+  assert.equal(await yardhubPage.locator('[name="token"]').inputValue(),"");
+  assert.equal(await yardhubPage.locator("[data-create-private]").isEnabled(),true,"First-run private repository creation must be available.");
+  assert.equal(await yardhubPage.locator("#firstDevBootstrapPanel").isHidden(),true,"DEV bootstrap must remain hidden until a private database issues a one-time code.");
+  assert.equal(yardhubRequests.some(url=>url.startsWith("https://github-native.invalid/")),false,"YARDHUB must wait for the private GitHub runtime before querying central login data.");
+  assert.equal(yardhubRequests.some(url=>url.includes("supabase.co")),false,"The YARDHUB runtime must not call any original Supabase endpoint.");
+  await yardhubPage.setViewportSize({width:390,height:844});
+  const setupLayout=await yardhubPage.evaluate(()=>{
+    const card=document.querySelector(".yardhub-github-connect-card").getBoundingClientRect();
+    return {viewport:innerWidth,document:document.documentElement.scrollWidth,cardLeft:card.left,cardRight:card.right};
+  });
+  assert.ok(setupLayout.document<=setupLayout.viewport+1,"YARDHUB connection gate must not overflow mobile width: "+JSON.stringify(setupLayout));
+  assert.ok(setupLayout.cardLeft>=0&&setupLayout.cardRight<=setupLayout.viewport+1,"YARDHUB connection card must fit the mobile viewport: "+JSON.stringify(setupLayout));
+  await yardhubPage.screenshot({path:"artifacts/yardhub-private-setup-mobile.png",fullPage:true});
+
+  const offlinePage=await browser.newPage({viewport:{width:1440,height:900},deviceScaleFactor:1});
+  const offlineErrors=[];
+  const offlineConsole=[];
+  let githubApiRequests=0;
+  offlinePage.on("pageerror",error=>offlineErrors.push(error.message));
+  offlinePage.on("console",message=>{if(message.type()==="warning"||message.type()==="error")offlineConsole.push(message.text())});
+  await offlinePage.addInitScript(()=>{
+    const user={username:"DEV",displayName:"DEV ROOT",tier:"DEV",role:"DEV",userId:"dev-user-1",staffId:"dev-staff-1",rootsAuthority:"DEV",yardRolePermissions:{SCPL:{view:true,enter:true,edit:true,manage:true},Management:{view:true,enter:true,edit:true,manage:true},GATELOG:{view:true,enter:true,edit:true,manage:true},"R&M":{view:true,enter:true,edit:true,manage:true}}};
+    const payload={users:[{username:"DEV",displayName:"DEV ROOT",tier:"DEV",enabled:true}],appData:{},staff:[],tiers:[]};
+    const tables={downtime_central_bank:[{id:1,version:1,updated_at:"2026-11-28T00:00:00.000Z",payload}],downtime_central_sessions:[{token_hash:"cached-session-hash",username:"DEV",expires_at:"2026-11-28T01:00:00.000Z"}],downtime_daily_operator_assignments:[]};
+    const authority={schemaVersion:1,systemId:"YARDHUB-ECOSYSTEM",primarySystemId:"YARDHUB-PRIMARY",secondarySystemId:"DOWNTIMEUI-GITHUB",epoch:1,status:"ACTIVE",replication:{direction:"YARDHUB-PRIMARY_TO_DOWNTIMEUI-GITHUB",status:"NOT_CONFIGURED",lastSuccessfulCheckpoint:null},updatedAt:"2026-11-28T00:00:00.000Z"};
+    localStorage.setItem("yardhub:github-data-connection:v1",JSON.stringify({owner:"demo",repo:"yardhub-data",branch:"main",token:"ghp_offline_test_token",writeAccessVerified:true}));
+    localStorage.setItem("yardhub:central-session:v1",JSON.stringify({authenticated:true,token:"offline-session-token",expiresAt:"2026-11-28T01:00:00.000Z",user}));
+    localStorage.setItem("yardhub:github-cache:v1:demo:yardhub-data:YARDHUB-PRIMARY",JSON.stringify({revision:1,manifest:{schemaVersion:1,revision:1,systemId:"YARDHUB-PRIMARY"},tables,authority,headSha:"cached-head",cachedAt:"2026-11-28T00:00:00.000Z"}));
+  });
+  await offlinePage.route("https://api.github.com/**",route=>{githubApiRequests++;return route.abort("internetdisconnected")});
+  await offlinePage.route("https://github-native.invalid/**",route=>route.fulfill({status:503,contentType:"application/json",body:JSON.stringify({error:"Offline browser QA"})}));
+  await offlinePage.goto("http://127.0.0.1:"+address.port+"/yardhub/runtime/index.html",{waitUntil:"networkidle"});
+  try{
+    await offlinePage.locator("#yardHubOfflineBanner").waitFor({state:"visible",timeout:15000});
+  }catch{
+    const status=await offlinePage.locator("[data-yardhub-github-status]").textContent().catch(()=> "");
+    const auth=await offlinePage.locator("#authMsg").textContent().catch(()=> "");
+    throw new Error("Offline cached bootstrap did not open YARDHUB. GitHub status: "+status+"; auth: "+auth+"; page errors: "+offlineErrors.join(" | ")+"; console: "+offlineConsole.join(" | "));
+  }
+  assert.equal(await offlinePage.locator("#yardHub").isVisible(),true,"A previously connected device must reopen cached YARDHUB data when GitHub is unavailable.");
+  assert.match(await offlinePage.locator("#yardHubOfflineBanner").innerText(),/READ ONLY.*NOT SAVED TO GITHUB/,"Offline mode must be visibly read-only and must not claim central saves.");
+  const freshInstall=await offlinePage.evaluate(()=>JSON.parse(localStorage.getItem("plantDowntime.v1")||"{}"));
+  assert.deepEqual(freshInstall.areas,[],"A fresh install must not import plant checkpoints.");
+  assert.deepEqual(freshInstall.reasons,[],"A fresh install must not import reason presets.");
+  assert.deepEqual(freshInstall.staffRoster,[],"A fresh install must not import staff.");
+  assert.deepEqual(freshInstall.stationConfig,[],"A fresh install must not import station presets.");
+  assert.deepEqual(freshInstall.dailyTaskPresets,[],"A fresh install must not import task presets.");
+  assert.deepEqual(freshInstall.operatorProfiles,{},"A fresh install must not import operator profiles.");
+  const requestsBeforeOfflineRefresh=githubApiRequests;
+  await offlinePage.locator("#yardHubRefreshBtn").click();
+  assert.match(await offlinePage.locator("#cloudStatus").textContent(),/REFRESH UNAVAILABLE/,"Manual refresh must report unavailable while offline.");
+  assert.equal(githubApiRequests,requestsBeforeOfflineRefresh,"Offline refresh must not issue a GitHub request or claim a successful sync.");
+  assert.deepEqual(offlineErrors,[],"Offline cached runtime errors: "+offlineErrors.join(" | "));
+  await offlinePage.screenshot({path:"artifacts/yardhub-offline-readonly.png",fullPage:true});
+  await offlinePage.close();
+
+  const invalidAuthPage=await browser.newPage({viewport:{width:1440,height:900},deviceScaleFactor:1});
+  let invalidRepoChecks=0,invalidRefChecks=0;
+  await invalidAuthPage.addInitScript(()=>{
+    const user={username:"DEV",displayName:"DEV ROOT",tier:"DEV",role:"DEV",userId:"dev-user-1"};
+    const payload={users:[{username:"DEV",displayName:"DEV ROOT",tier:"DEV",enabled:true}],appData:{},staff:[],tiers:[]};
+    const tables={downtime_central_bank:[{id:1,version:1,updated_at:"2026-11-28T00:00:00.000Z",payload}],downtime_central_sessions:[],downtime_daily_operator_assignments:[]};
+    const manifest={schemaVersion:1,revision:1,systemId:"YARDHUB-PRIMARY",tables:{}};
+    localStorage.setItem("yardhub:github-data-connection:v1",JSON.stringify({owner:"demo",repo:"yardhub-data",branch:"main",token:"invalid-token"}));
+    localStorage.setItem("yardhub:central-session:v1",JSON.stringify({authenticated:true,token:"cached-session-token",expiresAt:"2026-11-28T01:00:00.000Z",user}));
+    localStorage.setItem("yardhub:github-cache:v1:demo:yardhub-data:YARDHUB-PRIMARY",JSON.stringify({revision:1,manifest,tables,authority:null,headSha:"cached-head",cachedAt:"2026-11-28T00:00:00.000Z"}));
+  });
+  await invalidAuthPage.route("https://api.github.com/**",route=>{
+    const path=new URL(route.request().url()).pathname;
+    if(path==="/repos/demo/yardhub-data"){invalidRepoChecks++;return route.fulfill({status:401,contentType:"application/json",body:JSON.stringify({message:"Bad credentials"})})}
+    invalidRefChecks++;return route.abort("internetdisconnected");
+  });
+  await invalidAuthPage.route("https://github-native.invalid/**",route=>route.fulfill({status:503,contentType:"application/json",body:JSON.stringify({error:"Invalid credential must not use offline compatibility"})}));
+  await invalidAuthPage.goto("http://127.0.0.1:"+address.port+"/yardhub/runtime/index.html",{waitUntil:"networkidle"});
+  await invalidAuthPage.locator("[data-yardhub-github-status]").waitFor({state:"visible"});
+  await invalidAuthPage.waitForTimeout(250);
+  assert.equal(invalidRepoChecks,1,"Saved repository credentials must be checked against GitHub.");
+  assert.equal(invalidRefChecks,0,"An HTTP 401 must not be reclassified as a network outage and fall back to cached data.");
+  assert.equal(await invalidAuthPage.locator("#yardhub-github-connect-overlay").isVisible(),true,"Invalid credentials must leave YARDHUB locked behind its connection gate.");
+  assert.equal(await invalidAuthPage.locator("#yardHubOfflineBanner").isVisible(),false,"Invalid credentials must not be presented as genuine offline mode.");
+  await invalidAuthPage.close();
+
+  const readOnlyTokenPage=await browser.newPage({viewport:{width:1440,height:900},deviceScaleFactor:1});
+  let readOnlyRepositoryChecks=0,readOnlyWriteProbeChecks=0,readOnlyRefChecks=0;
+  await readOnlyTokenPage.addInitScript(()=>{
+    localStorage.setItem("yardhub:github-data-connection:v1",JSON.stringify({owner:"demo",repo:"yardhub-data",branch:"main",token:"read-only-token"}));
+  });
+  await readOnlyTokenPage.route("https://api.github.com/**",route=>{
+    const path=new URL(route.request().url()).pathname;
+    if(path==="/repos/demo/yardhub-data"){readOnlyRepositoryChecks++;return route.fulfill({status:200,contentType:"application/json",body:JSON.stringify({private:true,archived:false,default_branch:"main",permissions:{pull:true,push:true}})})}
+    if(path==="/repos/demo/yardhub-data/git/blobs"){readOnlyWriteProbeChecks++;return route.fulfill({status:403,contentType:"application/json",body:JSON.stringify({message:"Resource not accessible by personal access token"})})}
+    readOnlyRefChecks++;return route.abort("internetdisconnected");
+  });
+  await readOnlyTokenPage.route("https://github-native.invalid/**",route=>route.fulfill({status:503,contentType:"application/json",body:JSON.stringify({error:"Read-only repository token must be rejected"})}));
+  await readOnlyTokenPage.goto("http://127.0.0.1:"+address.port+"/yardhub/runtime/index.html",{waitUntil:"networkidle"});
+  await readOnlyTokenPage.locator("[data-yardhub-github-status]").waitFor({state:"visible"});
+  await readOnlyTokenPage.waitForTimeout(250);
+  assert.equal(readOnlyRepositoryChecks,1,"YARDHUB must inspect private repository visibility.");
+  assert.equal(readOnlyWriteProbeChecks,1,"YARDHUB must verify the PAT's actual Contents: write scope with Git Data.");
+  assert.equal(readOnlyRefChecks,0,"A token without Contents: write must be rejected before database branch access.");
+  assert.equal(await readOnlyTokenPage.locator("#yardhub-github-connect-overlay").isVisible(),true,"A read-only GitHub token must not unlock the operational app.");
+  assert.equal(await readOnlyTokenPage.locator("#yardHubOfflineBanner").isVisible(),false,"A read-only token must not be treated as a network outage.");
+  await readOnlyTokenPage.close();
+
+  const defaultBranchPage=await browser.newPage({viewport:{width:1440,height:900},deviceScaleFactor:1});
+  const requestedGitRefs=[];
+  await defaultBranchPage.addInitScript(()=>{
+    localStorage.setItem("yardhub:github-data-connection:v1",JSON.stringify({owner:"demo",repo:"yardhub-data",branch:"",token:"write-token"}));
+  });
+  await defaultBranchPage.route("https://api.github.com/**",route=>{
+    const url=new URL(route.request().url());
+    if(url.pathname==="/repos/demo/yardhub-data")return route.fulfill({status:200,contentType:"application/json",body:JSON.stringify({private:true,archived:false,default_branch:"trunk",permissions:{pull:true,push:true}})});
+    if(url.pathname==="/repos/demo/yardhub-data/git/blobs")return route.fulfill({status:201,contentType:"application/json",body:JSON.stringify({sha:"verified-write-probe-blob"})});
+    if(url.pathname.includes("/git/ref/heads/")){requestedGitRefs.push(url.pathname);return route.fulfill({status:404,contentType:"application/json",body:JSON.stringify({message:"Test stopped after branch resolution"})})}
+    return route.abort("internetdisconnected");
+  });
+  await defaultBranchPage.route("https://github-native.invalid/**",route=>route.fulfill({status:503,contentType:"application/json",body:JSON.stringify({error:"Branch resolution QA"})}));
+  await defaultBranchPage.goto("http://127.0.0.1:"+address.port+"/yardhub/runtime/index.html",{waitUntil:"networkidle"});
+  await defaultBranchPage.locator("[data-yardhub-github-status]").waitFor({state:"visible"});
+  await defaultBranchPage.waitForTimeout(250);
+  assert.equal(requestedGitRefs.length,1,"A valid private repository should proceed to database branch access.");
+  assert.equal(requestedGitRefs[0],"/repos/demo/yardhub-data/git/ref/heads/trunk","When no branch is entered, YARDHUB must use the repository's declared default branch.");
+  assert.equal(await defaultBranchPage.locator("#yardhub-github-connect-overlay").isVisible(),true,"The deliberately missing test ref must leave the connection gate visible.");
+  await defaultBranchPage.close();
+
+  const rmPage=await browser.newPage({viewport:{width:390,height:844},deviceScaleFactor:1});
+  const rmRequests=[];
+  const rmFailures=[];
+  rmPage.on("request",request=>rmRequests.push(request.url()));
+  rmPage.on("pageerror",error=>rmFailures.push(error.message));
+  await rmPage.route("https://github-native.invalid/**",route=>route.fulfill({status:503,contentType:"application/json",body:JSON.stringify({error:"Isolated browser QA: no live repository token supplied"})}));
+  await rmPage.goto("http://127.0.0.1:"+address.port+"/yardhub/runtime/repair-maintenance.html",{waitUntil:"networkidle"});
+  await rmPage.getByRole("heading",{name:"Connect YARDHUB to GitHub"}).waitFor();
+  assert.equal(await rmPage.locator("#yardhub-github-connect-overlay").isVisible(),true,"Standalone R&M must use the same private data setup gate.");
+  assert.equal(rmRequests.some(url=>url.includes("supabase.co")),false,"Standalone R&M must not call the original Supabase project.");
+  const rmLayout=await rmPage.evaluate(()=>({viewport:innerWidth,document:document.documentElement.scrollWidth}));
+  assert.ok(rmLayout.document<=rmLayout.viewport+1,"Standalone R&M connection gate must not overflow mobile width: "+JSON.stringify(rmLayout));
+  await rmPage.screenshot({path:"artifacts/yardhub-rm-setup-mobile.png",fullPage:true});
+  await rmPage.close();
+  await yardhubPage.close();
+  assert.deepEqual(yardhubFailures,[],"YARDHUB browser runtime errors: "+yardhubFailures.join(" | "));
+  assert.deepEqual(rmFailures,[],"Standalone R&M browser runtime errors: "+rmFailures.join(" | "));
+  console.log("PASS: Chromium installer, daily operations, plant overview, task-lock persistence, reports, Settings edits, backup/restore, 390px mobile layout and WIPE OUT reset, YARDHUB private setup gate, offline cached read-only mode, standalone R&M lock and mobile layout");
 }finally{
   await browser.close();
   await new Promise(resolve=>server.close(resolve));

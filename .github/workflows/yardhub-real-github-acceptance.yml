@@ -1,0 +1,73 @@
+name: YARDHUB Real GitHub Acceptance
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: yardhub-real-github-acceptance
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  private-repository-acceptance:
+    name: Verify the configured private YARDHUB data repository
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - name: Check private-repository credentials
+        id: credentials
+        shell: bash
+        env:
+          YARDHUB_DATA_REPOSITORY: ${{ secrets.YARDHUB_DATA_REPOSITORY }}
+          YARDHUB_DATA_TOKEN: ${{ secrets.YARDHUB_DATA_TOKEN }}
+        run: |
+          if [[ -n "$YARDHUB_DATA_REPOSITORY" && -n "$YARDHUB_DATA_TOKEN" ]]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+            echo "Private YARDHUB repository credentials are configured." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "BLOCKED — configure repository secrets YARDHUB_DATA_REPOSITORY and YARDHUB_DATA_TOKEN to run real private-repository acceptance. No mocked test is substituted." >> "$GITHUB_STEP_SUMMARY"
+            echo "::error::Real private-repository acceptance cannot run until YARDHUB_DATA_REPOSITORY and YARDHUB_DATA_TOKEN are configured."
+            exit 1
+          fi
+      - name: Checkout selected PR branch
+        if: steps.credentials.outputs.configured == 'true'
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        if: steps.credentials.outputs.configured == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install test dependencies
+        if: steps.credentials.outputs.configured == 'true'
+        run: npm install --no-audit --no-fund
+      - name: Run real GitHub repository acceptance
+        if: steps.credentials.outputs.configured == 'true'
+        run: npm run test:github-real
+        env:
+          YARDHUB_DATA_REPOSITORY: ${{ secrets.YARDHUB_DATA_REPOSITORY }}
+          YARDHUB_DATA_TOKEN: ${{ secrets.YARDHUB_DATA_TOKEN }}
+          YARDHUB_DATA_BRANCH: ${{ secrets.YARDHUB_DATA_BRANCH }}
+      - name: Build all seven GitHub-native YARDHUB service bundles
+        if: steps.credentials.outputs.configured == 'true'
+        run: npm run build:yardhub
+      - name: Exercise real module persistence and recovery on an isolated data branch
+        if: steps.credentials.outputs.configured == 'true'
+        run: npm run test:github-real-modules
+        env:
+          YARDHUB_DATA_REPOSITORY: ${{ secrets.YARDHUB_DATA_REPOSITORY }}
+          YARDHUB_DATA_TOKEN: ${{ secrets.YARDHUB_DATA_TOKEN }}
+          YARDHUB_DATA_BRANCH: ${{ secrets.YARDHUB_DATA_BRANCH }}
+      - name: Install Chromium for real browser acceptance
+        if: steps.credentials.outputs.configured == 'true'
+        run: npx playwright install --with-deps chromium
+      - name: Run real two-browser repository acceptance
+        if: steps.credentials.outputs.configured == 'true'
+        run: npm run test:github-real-browser
+        env:
+          YARDHUB_DATA_REPOSITORY: ${{ secrets.YARDHUB_DATA_REPOSITORY }}
+          YARDHUB_DATA_TOKEN: ${{ secrets.YARDHUB_DATA_TOKEN }}
+          YARDHUB_DATA_BRANCH: ${{ secrets.YARDHUB_DATA_BRANCH }}

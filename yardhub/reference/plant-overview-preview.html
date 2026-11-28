@@ -1,0 +1,362 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>DOWNTIME | Plant Overview — UI Preview</title>
+<style>
+:root{--bg:#07121b;--surface:#0e1f2c;--surface2:#142b3b;--border:#243e52;--text:#edf4f8;--muted:#8ea6b7;--yellow:#ffd400;--green:#2be078;--red:#ff5258;--blue:#58aaff}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(900px 500px at 50% -15%,#19364b 0%,transparent 65%),var(--bg);color:var(--text);font:14px/1.45 Inter,system-ui,-apple-system,Segoe UI,sans-serif}
+main{max-width:1500px;margin:auto;padding:24px}.top{display:flex;justify-content:space-between;align-items:center;gap:14px;padding:0 0 16px;border-bottom:2px solid var(--yellow);margin-bottom:18px}.logo{font-size:24px;font-weight:950;letter-spacing:-.8px}.logo i{color:var(--yellow);font-style:normal}.sub{font-size:12px;color:var(--muted);font-weight:650;letter-spacing:1.4px;margin-left:12px}.right{display:flex;align-items:center;gap:12px;color:#b8c9d4}.pill{border:1px solid #1e8c54;background:#0d3022;color:var(--green);padding:6px 11px;border-radius:30px;font-size:11px;font-weight:850;letter-spacing:.7px}
+.metrics{display:grid;grid-template-columns:1.45fr repeat(4,1fr);gap:12px;margin-bottom:16px}.panel{background:linear-gradient(145deg,#14293a,#0b1924);border:1px solid var(--border);border-radius:15px;padding:16px;box-shadow:0 8px 28px #0002}.status{background:linear-gradient(145deg,#0c3525,#0b1a24);border-color:#1a6541}.label{font-size:10px;letter-spacing:1.3px;font-weight:900;color:var(--muted)}.status .label{color:#9de8b9}.plantstate{display:flex;align-items:center;gap:11px;margin-top:11px;font-size:30px;font-weight:950;letter-spacing:-1px;color:var(--green)}.status.off{background:linear-gradient(145deg,#3a1720,#0b1a24);border-color:#7b2733}.status.off .label{color:#ffb1b4}.status.off .plantstate{color:var(--red)}.status.off .lamp{background:var(--red);box-shadow:0 0 16px #ff525880}#plantToggle{margin-top:12px;padding:10px 14px;border:1px solid var(--yellow);border-radius:9px;background:var(--yellow);color:#101820;font-weight:900;cursor:pointer}#plantToggle:focus-visible{outline:3px solid white;outline-offset:2px}.lamp{width:15px;height:15px;background:var(--green);border-radius:50%;box-shadow:0 0 16px #2be07880}.metric{font-size:28px;font-weight:900;letter-spacing:-.8px;margin-top:12px}.metric em{font-style:normal;font-size:12px;color:var(--yellow)}
+.section{margin:0 0 16px}.heading{font-size:15px;font-weight:900;letter-spacing:.4px;margin:0 0 13px;display:flex;align-items:center;gap:9px}.heading:before{content:"";width:4px;height:17px;background:var(--yellow);border-radius:3px}.opgrid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}.op{overflow:hidden;text-align:center;border-radius:12px;border:1px solid var(--border);background:linear-gradient(150deg,#142b3a,#0a1924)}.photo{height:145px;display:grid;place-items:center;background:radial-gradient(circle at 50% 30%,#36566b,#162a39 70%);border-bottom:1px solid var(--border)}.avatar{width:100px;height:108px;position:relative}.avatar .helmet{position:absolute;left:14px;top:4px;width:72px;height:33px;border-radius:40px 40px 12px 12px;background:var(--yellow);border:5px solid #d5af00}.avatar .helmet:after{content:"";position:absolute;left:-12px;right:-12px;bottom:-8px;height:9px;background:#e5c000;border-radius:6px}.avatar .face{position:absolute;left:27px;top:35px;width:46px;height:50px;border-radius:22px 22px 18px 18px;background:#9eb0bd}.avatar .body{position:absolute;left:7px;bottom:0;width:86px;height:39px;border-radius:25px 25px 6px 6px;background:linear-gradient(90deg,#c49c00,#ffd400,#c49c00)}.avatar .eye{position:absolute;top:54px;width:4px;height:4px;border-radius:50%;background:#23394a;z-index:2}.avatar .e1{left:39px}.avatar .e2{left:57px}.name{font-size:16px;font-weight:900;margin:11px 10px 5px}.station{display:inline-block;margin:0 12px 12px;padding:7px 12px;border-radius:8px;border:1px solid #36566c;background:#20384a;color:var(--yellow);font-weight:800;font-size:12px}
+.bottom{display:grid;grid-template-columns:1.1fr .9fr;gap:14px}.timeline{display:flex;gap:3px;height:17px;border-radius:6px;overflow:hidden;margin:22px 0 10px;background:#223748}.run{background:var(--green)}.stop{background:var(--red)}.tick{display:flex;justify-content:space-between;color:var(--muted);font-size:11px}.legend{display:flex;gap:16px;margin-top:17px;color:#b9cad5;font-size:12px}.legend span{display:flex;align-items:center;gap:7px}.key{width:10px;height:10px;border-radius:3px}.reason{margin:12px 0 15px}.rhead{display:flex;justify-content:space-between;margin-bottom:6px;font-size:13px}.rhead strong{font-weight:850}.track{height:10px;background:#203647;border-radius:20px;overflow:hidden}.fill{height:100%;border-radius:20px}.f1{background:var(--red)}.f2{background:#ff923b}.f3{background:var(--yellow)}.f4{background:#8295a5}.note{color:#667d8e;font-size:10px;text-align:right;margin-top:15px}
+@media(max-width:1050px){.metrics{grid-template-columns:repeat(4,1fr)}.status{grid-column:1/-1}.opgrid{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:680px){main{padding:12px}.top{align-items:flex-start;flex-direction:column}.right{width:100%;justify-content:space-between}.metrics{grid-template-columns:repeat(2,1fr);gap:8px}.status{grid-column:1/-1}.plantstate{font-size:26px}.panel{padding:12px}.metric{font-size:22px}.opgrid{grid-template-columns:repeat(2,1fr);gap:8px}.photo{height:125px}.bottom{grid-template-columns:1fr}.note{text-align:left}}
+.topcontrol{display:inline-block;text-decoration:none;color:var(--text);border:1px solid var(--border);border-radius:9px;padding:8px 11px;background:#142b3b;font:inherit;font-weight:850;cursor:pointer}.topcontrol:hover{border-color:var(--yellow);color:var(--yellow)}@media(max-width:680px){.right{flex-wrap:wrap;gap:7px}.topcontrol{font-size:11px;padding:7px 9px}}.stationblueprint{position:relative;padding:20px 16px 22px;border-radius:13px;border:1px solid #35516a;background:linear-gradient(180deg,#0b2440,#07192d);overflow:hidden}.stationblueprint:before{content:"";position:absolute;inset:0;background-image:linear-gradient(#24496c55 1px,transparent 1px),linear-gradient(90deg,#24496c55 1px,transparent 1px);background-size:22px 22px;opacity:.6;pointer-events:none}.blueprintbays{position:relative;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;max-width:1000px;margin:0 auto;min-height:350px}.blueprintbay{display:grid;grid-template-rows:1fr 1fr;gap:7px;min-width:0}.stationbay{border-radius:10px;border:2px solid #d8e1e8;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:4px;min-height:75px;padding:8px 5px;text-align:center;color:#fff}.stationbay strong{font-size:12px;letter-spacing:.5px}.stationbay span{font-size:17px;font-weight:950}.stationbay small{font-size:10px;line-height:1.2;color:#f4f7fa;opacity:.9}.stationbay.wood{background:#80552f;border-color:#f2dfc4}.stationbay.wood span{color:#fff}.stationbay.scrap{background:#696b72;border-color:#e6e8ed}.stationbay.scrap span{color:#fff}.stationbay.general{background:#c5a878;border-color:#f7e9d1;color:#16191c}.stationbay.general small{color:#262626}.blueprintlane{position:absolute;left:0;right:0;top:50%;transform:translateY(-50%);z-index:2;display:flex;align-items:center;justify-content:space-around;gap:6px;min-height:86px;margin:0 -4px;border:4px solid #e9edf1;border-radius:19px;background:#050607;color:#f6f7f8;padding:10px 12px;box-shadow:0 0 0 1px #000}.lanemark{font-size:clamp(18px,3vw,32px);font-weight:900;letter-spacing:2px;white-space:nowrap}.lanearrow{font-size:clamp(26px,4vw,42px);line-height:1;font-weight:900}.materialcaption{position:relative;margin:10px 0 0;text-align:right;color:#a8bfd0;font-size:10px;letter-spacing:1px}@media(max-width:680px){.stationblueprint{padding:12px 7px}.blueprintbays{gap:5px}.stationbay{min-height:62px;padding:6px 2px;border-width:1px}.stationbay strong{font-size:9px}.stationbay span{font-size:13px}.stationbay small{font-size:8px}.blueprintlane{min-height:66px;border-width:3px;border-radius:13px;padding:8px 4px;gap:2px;margin:0 -3px}.lanemark{font-size:clamp(12px,3vw,18px);letter-spacing:1px}.lanearrow{font-size:clamp(18px,5vw,27px)}.materialcaption{font-size:9px}}.staff-photo-zoom{cursor:zoom-in;position:relative}.staff-photo-zoom:after{content:"⤢";position:absolute;right:7px;bottom:7px;background:#07121bcc;color:#fff;border:1px solid #ffffff40;border-radius:7px;padding:3px 7px;font-size:16px;pointer-events:none}.photo-lightbox{position:fixed;inset:0;z-index:10050;background:#000e;backdrop-filter:blur(8px);display:none;align-items:center;justify-content:center;padding:18px}.photo-lightbox.open{display:flex}.photo-lightbox img{max-width:min(92vw,900px);max-height:88dvh;width:auto;height:auto;object-fit:contain;border-radius:14px;box-shadow:0 25px 90px #000a;border:1px solid #ffffff30;touch-action:pan-x pan-y pinch-zoom;cursor:zoom-in}.photo-lightbox-close{position:absolute;top:14px;right:14px;border:1px solid #ffffff40;background:#172b3a;color:white;border-radius:50%;width:44px;height:44px;font-size:24px;font-weight:800;cursor:pointer}.photo-lightbox-hint{position:absolute;bottom:14px;color:#d2dbe2;font-size:11px;letter-spacing:.5px;text-align:center}
+/* Compact overview layout — better first-screen fit */
+.opgrid{grid-template-columns:repeat(5,minmax(0,1fr));gap:clamp(14px,2vw,28px)}
+.op{border-radius:10px}.photo{height:82px}.avatar{transform:scale(.64);transform-origin:center center;width:100px;height:108px}
+.name{margin:7px 6px 4px;font-size:14px}.station{margin:0 7px 8px;padding:5px 8px;font-size:10px;line-height:1.25}
+.stationblueprint{padding:9px 10px 10px}.blueprintbays{min-height:230px;gap:8px}
+.stationbay{min-height:60px;padding:5px 4px;gap:2px;border-radius:8px;border-width:1.5px}
+.stationbay strong{font-size:10px}.stationbay span{font-size:14px}.stationbay small{font-size:9px}
+.blueprintlane{min-height:56px;border-width:3px;border-radius:13px;padding:5px 7px;gap:3px}
+.lanemark{font-size:clamp(15px,2.5vw,24px);letter-spacing:1px}.lanearrow{font-size:clamp(22px,3.2vw,30px)}
+.materialcaption{margin-top:5px;font-size:9px}.section.panel{padding:12px}.heading{margin-bottom:8px}.metrics{gap:8px;margin-bottom:10px}
+.bottom{grid-template-columns:1fr}
+@media(max-width:680px){.opgrid{gap:8px}.photo{height:66px}.avatar{transform:scale(.5)}.name{font-size:11px;margin:5px 2px 3px}.station{font-size:8px;margin:0 3px 6px;padding:4px 3px}.blueprintbays{min-height:190px;gap:4px}.stationbay{min-height:52px}.stationbay strong{font-size:8px}.stationbay span{font-size:11px}.stationbay small{font-size:7px}.blueprintlane{min-height:46px;padding:4px 2px;border-radius:10px}.lanemark{font-size:clamp(10px,2.7vw,16px)}.lanearrow{font-size:clamp(14px,4vw,21px)}.stationblueprint{padding:6px 4px}.section.panel{padding:9px}.heading{font-size:13px}}
+/* PHOTO ZOOM FIX: render thumbnail/original at viewport size instead of intrinsic thumbnail dimensions */
+.photo-lightbox img{width:min(92vw,900px);max-height:88dvh;height:auto;object-fit:contain}
+@media(max-width:680px){.photo-lightbox{padding:8px}.photo-lightbox img{width:96vw;max-height:92dvh;border-radius:10px}}
+/* OVERVIEW BLUEPRINT VIEW SWITCH */
+.blueprint-switch-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}.blueprint-switch-head .heading{margin:0}.blueprint-switch{display:flex;gap:5px;padding:3px;border:1px solid #34506a;border-radius:10px;background:#081827}.blueprint-switch-btn{padding:8px 11px;border-radius:7px;background:transparent;border:1px solid transparent;color:#c7d6e4;font-size:10px;font-weight:900;letter-spacing:.6px}.blueprint-switch-btn.active{background:#ffd400;color:#101820;border-color:#ffd400}.overall-blueprint{position:relative;overflow:hidden;border:1px solid #34506a;border-radius:12px;background:#071a2e;color:#eaf2f8;padding:10px}.bp-title{font-size:clamp(16px,2.4vw,24px);font-weight:950;letter-spacing:.8px;margin:3px 5px 12px}.bp-title small{display:block;font-size:10px;letter-spacing:1.1px;color:#9bb5ca;margin-top:3px}.plant-layout-svg{display:block;width:100%;height:auto;min-width:0}.bp-legend{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;border-top:1px solid #2b4968;margin-top:8px;padding:8px 5px 2px;color:#bdd0e0;font-size:10px;font-weight:800;letter-spacing:.4px}.bp-legend span:first-child{display:flex;align-items:center;gap:7px}.bp-legend i{display:inline-block;width:11px;height:11px;border-radius:50%;background:#b51e2a;border:2px solid #f3f6fa}@media(max-width:680px){.blueprint-switch-btn{font-size:9px;padding:7px 8px}.overall-blueprint{padding:6px}.bp-legend{font-size:8px}.plant-layout-svg{min-width:620px}.overall-blueprint{overflow-x:auto}}
+</style></head><body><main>
+<header class="top"><div class="logo"><i>◢</i> DOWNTIME <span class="sub">PLANT OVERVIEW</span></div><div class="right"><span>SHIFT · DAILY VIEW</span><span class="pill" id="liveDataBadge">● CONNECTING DATA</span><a id="exitOverview" class="topcontrol" href="index.html" aria-label="Exit Overview and return to homepage">↩ EXIT OVERVIEW</a></div></header>
+<div class="metrics">
+<div class="panel status"><div class="label">PLANT STATUS</div><div class="plantstate"><span class="lamp" id="plantLamp"></span><span id="plantLabel">PLANT ON</span></div><button id="plantToggle" type="button" hidden aria-pressed="true">TURN PLANT OFF</button><div id="plantControlNote" class="label" style="margin-top:8px">STATUS VIEW · READ ONLY</div></div>
+<div class="panel" data-daily-operator="true"><div class="label">OPERATOR ON DUTY</div><div class="metric" id="dailyOperatorName">—</div><div class="label" id="dailyOperatorDate" style="margin-top:4px">TODAY</div></div>
+<div class="panel"><div class="label">OPERATORS</div><div class="metric" id="operatorCount">—</div></div>
+<div class="panel"><div class="label">TOTAL DOWNTIME</div><div class="metric" id="totalDowntime">—</div></div>
+<div class="panel"><div class="label">DOWNTIME ENTRIES TODAY</div><div class="metric" id="incidentCount">—</div></div>
+<div class="panel"><div class="label">AVAILABILITY</div><div class="metric" id="availability">—</div></div>
+</div>
+<section class="section panel"><h2 class="heading">OPERATORS ON PLANT</h2><div class="opgrid">
+<article class="op" data-opprofile="JAN"><div class="photo" aria-label="Generic illustrative operator portrait"><div class="avatar"><div class="helmet"></div><div class="face"></div><span class="eye e1"></span><span class="eye e2"></span><div class="body"></div></div></div><div class="name">JAN</div><div class="station">Station 01</div></article><article class="op" data-opprofile="MICK"><div class="photo" aria-label="Generic illustrative operator portrait"><div class="avatar"><div class="helmet"></div><div class="face"></div><span class="eye e1"></span><span class="eye e2"></span><div class="body"></div></div></div><div class="name">MICK</div><div class="station">Station 02</div></article><article class="op" data-opprofile="GIGI"><div class="photo" aria-label="Generic illustrative operator portrait"><div class="avatar"><div class="helmet"></div><div class="face"></div><span class="eye e1"></span><span class="eye e2"></span><div class="body"></div></div></div><div class="name">GIGI</div><div class="station">Station 03</div></article><article class="op" data-opprofile="DAZ"><div class="photo" aria-label="Generic illustrative operator portrait"><div class="avatar"><div class="helmet"></div><div class="face"></div><span class="eye e1"></span><span class="eye e2"></span><div class="body"></div></div></div><div class="name">DAZ</div><div class="station">Station 04</div></article><article class="op" data-opprofile="SHAYNE"><div class="photo" aria-label="Generic illustrative operator portrait"><div class="avatar"><div class="helmet"></div><div class="face"></div><span class="eye e1"></span><span class="eye e2"></span><div class="body"></div></div></div><div class="name">SHAYNE</div><div class="station">Station 05</div></article>
+</div></section>
+<section class="section panel"><div class="blueprint-switch-head"><h2 class="heading">STATION LAYOUT</h2><div class="blueprint-switch" role="group" aria-label="Blueprint view"><button type="button" class="blueprint-switch-btn active" id="stationViewBtn" aria-pressed="true">STATION VIEW</button><button type="button" class="blueprint-switch-btn" id="plantViewBtn" aria-pressed="false">PLANT BLUEPRINT</button></div></div><div id="stationClassificationView"><div class="stationblueprint"><div class="blueprintbays"><div class="blueprintbay"><div class="stationbay general"><strong>STATION 5</strong><span>GENERAL</span><small class="stationassigned" data-stationassigned="5">UNASSIGNED</small></div><div class="stationbay general"><strong>STATION 6</strong><span>GENERAL</span><small class="stationassigned" data-stationassigned="6">UNASSIGNED</small></div></div><div class="blueprintbay"><div class="stationbay scrap"><strong>STATION 3</strong><span>SCRAP</span><small class="stationassigned" data-stationassigned="3">UNASSIGNED</small></div><div class="stationbay scrap"><strong>STATION 4</strong><span>SCRAP</span><small class="stationassigned" data-stationassigned="4">UNASSIGNED</small></div></div><div class="blueprintbay"><div class="stationbay wood"><strong>STATION 1</strong><span>WOOD</span><small class="stationassigned" data-stationassigned="1">UNASSIGNED</small></div><div class="stationbay wood"><strong>STATION 2</strong><span>WOOD</span><small class="stationassigned" data-stationassigned="2">UNASSIGNED</small></div></div><div class="blueprintlane"><span class="lanemark">←</span><span class="lanemark">—</span><span class="lanearrow">←</span><span class="lanemark">—</span><span class="lanemark">—</span><span class="lanearrow">←</span><span class="lanemark">—</span><span class="lanemark">—</span><span class="lanearrow">←</span><span class="lanemark">—</span><span class="lanemark">—</span></div></div></div><div class="materialcaption">PLANT LANE FLOW · LEFTWARD DIRECTION</div></div><div id="overallPlantBlueprintView" hidden><div class="overall-blueprint"><div class="bp-title">CONVEYOR LINE LAYOUT <small>PLANT OVERVIEW · E-STOP LOCATIONS</small></div><svg class="plant-layout-svg" viewBox="0 0 1400 460" role="img" aria-label="Plant conveyor blueprint with nine emergency stop locations"><defs><pattern id="bpgrid" width="24" height="24" patternUnits="userSpace"><path d="M24 0H0V24" fill="none" stroke="#24496c" stroke-width="1" opacity=".45"/></pattern></defs><rect width="1400" height="460" fill="url(#bpgrid)"/><g fill="#d7cbb2" stroke="#eaf0f5" stroke-width="5"><rect x="55" y="155" width="155" height="90" rx="18"/><rect x="210" y="155" width="260" height="90" rx="18"/><rect x="470" y="155" width="240" height="90" rx="18"/><rect x="710" y="155" width="205" height="90" rx="18"/><rect x="915" y="175" width="270" height="50" rx="10"/><rect x="1185" y="140" width="150" height="120" rx="22"/></g><g fill="#12243a" font-family="system-ui,sans-serif" font-size="20" font-weight="900" text-anchor="middle"><text x="132" y="194">END SEGMENT</text><text x="132" y="222" font-size="16">1 E-STOP</text><text x="340" y="194">PICKING LINE</text><text x="340" y="222" font-size="16">2 E-STOPS</text><text x="590" y="194">MIDDLE SEGMENT</text><text x="590" y="222" font-size="16">2 E-STOPS</text><text x="812" y="194">SHAKER</text><text x="812" y="222" font-size="16">2 E-STOPS</text><text x="1045" y="208">INCLINE · 1 E-STOP</text><text x="1260" y="190">FEEDER</text><text x="1260" y="218" font-size="16">1 E-STOP</text></g><g fill="#b51e2a" stroke="#f3f6fa" stroke-width="3"><circle cx="72" cy="210" r="12"/><circle cx="275" cy="175" r="12"/><circle cx="275" cy="225" r="12"/><circle cx="480" cy="175" r="12"/><circle cx="480" cy="225" r="12"/><circle cx="705" cy="175" r="12"/><circle cx="705" cy="225" r="12"/><circle cx="950" cy="200" r="12"/><circle cx="1310" cy="260" r="12"/></g><g fill="#f4f7fb" stroke="#c8d6e4" stroke-width="2" font-family="system-ui,sans-serif" font-size="17" font-weight="800"><rect x="48" y="70" width="170" height="56" rx="8" fill="#10283f"/><text x="133" y="95" text-anchor="middle" stroke="none" fill="#f4f7fb">END SEGMENT</text><text x="133" y="115" text-anchor="middle" stroke="none" fill="#f4f7fb" font-size="14">1 E-STOP</text><path d="M133 126V155" fill="none"/><rect x="480" y="42" width="220" height="70" rx="8" fill="#10283f"/><text x="590" y="70" text-anchor="middle" stroke="none" fill="#f4f7fb">MIDDLE SEGMENT</text><text x="590" y="94" text-anchor="middle" stroke="none" fill="#f4f7fb" font-size="14">2 E-STOPS</text><path d="M590 114V155" fill="none"/><rect x="735" y="295" width="180" height="58" rx="8" fill="#10283f"/><text x="825" y="320" text-anchor="middle" stroke="none" fill="#f4f7fb">SHAKER</text><text x="825" y="340" text-anchor="middle" stroke="none" fill="#f4f7fb" font-size="14">2 E-STOPS</text><path d="M825 295V245" fill="none"/><rect x="985" y="70" width="175" height="55" rx="8" fill="#10283f"/><text x="1072" y="94" text-anchor="middle" stroke="none" fill="#f4f7fb">INCLINE</text><text x="1072" y="115" text-anchor="middle" stroke="none" fill="#f4f7fb" font-size="14">1 E-STOP</text><path d="M1072 125V175" fill="none"/><rect x="1195" y="295" width="145" height="55" rx="8" fill="#10283f"/><text x="1267" y="319" text-anchor="middle" stroke="none" fill="#f4f7fb">FEEDER</text><text x="1267" y="340" text-anchor="middle" stroke="none" fill="#f4f7fb" font-size="14">1 E-STOP</text><path d="M1267 295V260" fill="none"/><rect x="250" y="295" width="190" height="55" rx="8" fill="#10283f"/><text x="345" y="319" text-anchor="middle" stroke="none" fill="#f4f7fb">PICKING LINE</text><text x="345" y="340" text-anchor="middle" stroke="none" fill="#f4f7fb" font-size="14">2 E-STOPS</text><path d="M345 295V245" fill="none"/></g><g fill="#e8f1fa" font-family="system-ui,sans-serif" font-size="18" font-weight="800"><text x="65" y="395">MIDDLE — MIDDLE SIZE CONVEYOR</text><text x="65" y="423" font-size="15">MAGNET 1 · BLOWER 1 + 2 · OVERSIZE CONVEYOR · CAGE 1</text><text x="730" y="395">END — MAGNET 2</text><text x="730" y="423" font-size="15">CAGE 2 · BLOWER 3</text><text x="1100" y="395">E-STOP TOTAL: 9</text></g></svg><div class="bp-legend"><span><i></i> E-STOP LOCATION</span><span>FEEDER 1 · INCLINE 1 · SHAKER 2 · MIDDLE 2 · PICKING LINE 2 · END 1</span></div></div></div><div class="bottom"><section class="panel"><h2 class="heading">DOWNTIME BY REASON · TODAY</h2><div id="reasonStats" class="label">Loading real downtime records…</div></section></div><div class="note" id="dataSourceNote">LIVE DATA · connecting to main downtime tracker</div>
+</main><script src="assets/staff/staff-image-library.js"></script><script>
+(() => {
+ const params=new URLSearchParams(location.search),testMode=params.has('test');
+ const operator=(params.get('operator')||'').trim().toUpperCase();
+ let authorized=testMode&&(operator==='JAN'||operator==='MICK'),viewerTier='',centralToken=null,centralVersion=0,plantPayload=null,plantSyncBusy=false,plantConnected=false,canViewPlantOverview=true,canViewStaff=true,canViewDashboards=true,canViewAssignments=true;
+ const CENTRAL_API='https://ygwfipksbbprqynvbklk.supabase.co/functions/v1/central-bank';
+ const CENTRAL_API_KEY='sb_publishable_PDLmXilBlFT-aC3G14XcbA_GsZlgJGx';
+ try{const session=JSON.parse(sessionStorage.getItem('downtime.central.session.v1')||'null');centralToken=session?.token||null}catch{}
+ const statusPanel = document.querySelector('.status');
+ const toggle = document.getElementById('plantToggle');
+ const note = document.getElementById('plantControlNote');
+ const label = document.getElementById('plantLabel');
+ const lamp = document.getElementById('plantLamp');
+ let plantOn = true;
+ const OPERATOR_PHOTO_DB='downtime-operator-originals';
+async function getStaffOriginalPhoto(name){if(!window.indexedDB)return null;return new Promise(resolve=>{let req;try{req=indexedDB.open(OPERATOR_PHOTO_DB,1)}catch(e){resolve(null);return}req.onupgradeneeded=()=>{const db=req.result;if(!db.objectStoreNames.contains('photos'))db.createObjectStore('photos')};req.onerror=()=>resolve(null);req.onsuccess=()=>{const db=req.result;try{const tx=db.transaction('photos','readonly'),store=tx.objectStore('photos'),getKeys=store.getAllKeys();getKeys.onsuccess=()=>{const keys=getKeys.result||[],target=String(name||'').trim().toLowerCase(),match=keys.find(k=>String(k).trim().toLowerCase()===target);if(match===undefined){db.close();resolve(null);return}const get=store.get(match);get.onsuccess=()=>{const value=get.result||null;db.close();resolve(value)};get.onerror=()=>{db.close();resolve(null)}};getKeys.onerror=()=>{db.close();resolve(null)}}catch(e){db.close();resolve(null)}}})}
+function ensurePhotoLightbox(){let box=document.getElementById('staffPhotoLightbox');if(box)return box;box=document.createElement('div');box.id='staffPhotoLightbox';box.className='photo-lightbox';box.setAttribute('role','dialog');box.setAttribute('aria-modal','true');box.setAttribute('aria-label','Expanded staff photo');box.innerHTML='<button type="button" class="photo-lightbox-close" aria-label="Close photo">×</button><img alt="Expanded staff photo"><div class="photo-lightbox-hint">TAP OUTSIDE OR × TO CLOSE</div>';document.body.appendChild(box);const close=()=>{box.classList.remove('open');box.querySelector('img').src='';};box.querySelector('.photo-lightbox-close').addEventListener('click',close);box.addEventListener('click',e=>{if(e.target===box)close()});document.addEventListener('keydown',e=>{if(e.key==='Escape'&&box.classList.contains('open'))close()});return box;}
+ async function openStaffPhoto(src,alt,name){const box=ensurePhotoLightbox(),img=box.querySelector('img');img.src=src;img.alt=alt||'Expanded staff photo';box.classList.add('open');try{const original=await getStaffOriginalPhoto(name);if(original&&box.classList.contains('open')&&img.alt===(alt||'Expanded staff photo')){const objectUrl=URL.createObjectURL(original);img.onload=()=>{if(img.dataset.originalObjectUrl)URL.revokeObjectURL(img.dataset.originalObjectUrl);img.dataset.originalObjectUrl=objectUrl;};img.src=objectUrl;}}catch(e){/* thumbnail remains available */}}
+ function createOperatorAvatar(){
+   const avatar=document.createElement('div');avatar.className='avatar';
+   ['helmet','face','eye e1','eye e2','body'].forEach(className=>{const part=document.createElement('span');part.className=className;avatar.appendChild(part)});
+   return avatar;
+ }
+ function createOperatorCard(name){
+   const card=document.createElement('article');card.className='op';card.dataset.opprofile=name.toUpperCase();
+   const photo=document.createElement('div');photo.className='photo';photo.setAttribute('aria-label','Operator portrait');
+   photo.appendChild(createOperatorAvatar());
+   const label=document.createElement('div');label.className='name';label.textContent=name.toUpperCase();
+   const station=document.createElement('div');station.className='station';
+   card.append(photo,label,station);
+   return card;
+ }
+ function profileForName(profiles,name){
+   const key=Object.keys(profiles||{}).find(candidate=>candidate.trim().toLowerCase()===String(name).trim().toLowerCase());
+   return key?profiles[key]||{}:{};
+ }
+ function updateOperatorPhoto(photoBox,profile,name){
+   photoBox.classList.add('staff-photo-zoom');
+   photoBox.onclick=()=>{const image=photoBox.querySelector('img');if(image?.src)openStaffPhoto(image.src,image.alt,name)};
+   const libraryUrl=window.DowntimeStaffImages?.resolve(name);
+   if(libraryUrl){
+     let image=photoBox.querySelector('img');
+     if(!image){photoBox.replaceChildren();image=document.createElement('img');image.style.cssText='width:100%;height:100%;object-fit:cover;border-radius:12px';photoBox.appendChild(image)}
+     image.alt=name+' operator photo';
+     photoBox.dataset.photoPath='library:'+name;
+     image.onerror=()=>{
+       image.onerror=null;
+       if(profile.photo){image.src=profile.photo;return;}
+       if(profile.photoPath&&centralToken){
+         const path=profile.photoPath;photoBox.dataset.photoPath=path;
+         centralCall('staff-photo-read',{path}).then(result=>{
+           if(photoBox.isConnected&&photoBox.dataset.photoPath===path)image.src=result.url;
+         }).catch(error=>console.warn('Central staff photo unavailable',error));
+       }else if(photoBox.isConnected){photoBox.dataset.photoPath='';photoBox.replaceChildren(createOperatorAvatar())}
+     };
+     if(image.getAttribute('src')!==libraryUrl)image.src=libraryUrl;
+     return;
+   }
+   if(profile.photo){
+     let image=photoBox.querySelector('img');
+     if(!image){photoBox.replaceChildren();image=document.createElement('img');image.style.cssText='width:100%;height:100%;object-fit:cover;border-radius:12px';photoBox.appendChild(image)}
+     image.alt=name+' operator photo';
+     if(image.getAttribute('src')!==profile.photo)image.src=profile.photo;
+     photoBox.dataset.photoPath='';
+     return;
+   }
+   if(profile.photoPath&&centralToken){
+     if(photoBox.dataset.photoPath!==profile.photoPath){
+       photoBox.dataset.photoPath=profile.photoPath;
+       let image=photoBox.querySelector('img');
+       if(!image){photoBox.replaceChildren();image=document.createElement('img');image.style.cssText='width:100%;height:100%;object-fit:cover;border-radius:12px';photoBox.appendChild(image)}
+       image.alt=name+' operator photo';
+       const path=profile.photoPath;
+       centralCall('staff-photo-read',{path}).then(result=>{
+         if(photoBox.isConnected&&photoBox.dataset.photoPath===path){image.src=result.url;}
+       }).catch(error=>console.warn('Central staff photo unavailable',error));
+     }
+     return;
+   }
+   photoBox.dataset.photoPath='';
+   if(photoBox.querySelector('img'))photoBox.replaceChildren(createOperatorAvatar());
+ }
+ function stationConfigFor(payload){
+   const appData=payload?.appData||payload||{};
+   const defaults=[
+     {id:'station-1',name:'Station 1',category:'WOOD',active:true,aliases:[]},
+     {id:'station-2',name:'Station 2',category:'WOOD',active:true,aliases:[]},
+     {id:'station-3',name:'Station 3',category:'SCRAP',active:true,aliases:[]},
+     {id:'station-4',name:'Station 4',category:'SCRAP',active:true,aliases:[]},
+     {id:'station-5',name:'Station 5',category:'GENERAL',active:true,aliases:[]},
+     {id:'station-6',name:'Station 6',category:'GENERAL',active:true,aliases:[]}
+   ];
+   const source=Array.isArray(appData.stationConfig)&&appData.stationConfig.length?appData.stationConfig:defaults;
+   return source.map((station,index)=>({id:String(station?.id||'station-'+(index+1)),name:String(station?.name||'Station '+(index+1)),category:String(station?.category||'GENERAL').toUpperCase(),active:station?.active!==false,aliases:Array.isArray(station?.aliases)?station.aliases:[]}));
+ }
+ function stationConfigLabel(station){return String(station?.name||'Station')+' · '+String(station?.category||'GENERAL')}
+ function resolveProfileStation(profile,stations){
+   const raw=String(profile?.station||profile?.assignedStation||'').trim();if(!raw)return null;
+   const matched=stations.find(station=>stationConfigLabel(station)===raw||String(station.name||'').trim()===raw||(Array.isArray(station.aliases)&&station.aliases.includes(raw)));
+   if(matched)return matched;
+   const legacyMatch=raw.match(/^Station\s*0?([1-6])(?:\s|$)/i);
+   return legacyMatch?stations.find(station=>station.id==='station-'+legacyMatch[1])||null:null;
+ }
+ function renderStationBlueprint(stations,names,profiles){
+   const host=document.querySelector('.blueprintbays');if(!host)return;
+   const lane=host.querySelector('.blueprintlane')?.cloneNode(true);
+   host.replaceChildren();
+   const groups={GENERAL:[],SCRAP:[],WOOD:[]};
+   stations.forEach(station=>{const category=String(station.category||'GENERAL').toUpperCase(),key=category==='WOOD'?'WOOD':category==='SCRAP'?'SCRAP':'GENERAL';groups[key].push(station)});
+   const visibleGroups=['GENERAL','SCRAP','WOOD'].filter(key=>groups[key].length);
+   host.style.gridTemplateColumns='repeat('+Math.max(1,Math.min(3,visibleGroups.length))+',minmax(0,1fr))';
+   visibleGroups.forEach(key=>{
+     const column=document.createElement('div');column.className='blueprintbay';
+     groups[key].forEach(station=>{
+       const bay=document.createElement('div');bay.className='stationbay '+key.toLowerCase();
+       const title=document.createElement('strong');title.textContent=station.name.toUpperCase();
+       const category=document.createElement('span');category.textContent=station.category;
+       const assigned=names.filter(name=>{const profile=profileForName(profiles,name);return profile.onSite!==false&&resolveProfileStation(profile,stations)?.id===station.id}).map(name=>name.toUpperCase());
+       const namesBox=document.createElement('small');namesBox.className='stationassigned';namesBox.dataset.stationId=station.id;const legacyStationNumber=String(station.id||'').match(/^station-(\d+)$/);if(legacyStationNumber)namesBox.dataset.stationassigned=legacyStationNumber[1];namesBox.textContent=assigned.length?assigned.join(', '):(station.active===false?'INACTIVE':'UNASSIGNED');
+       if(station.active===false){bay.style.opacity='.58';bay.title='Inactive station · retained for existing assignments and history'}
+       bay.append(title,category,namesBox);column.appendChild(bay);
+     });
+     host.appendChild(column);
+   });
+   if(lane)host.appendChild(lane);
+ }
+ function applyOperatorProfiles(payload){
+   const profiles=payload?.staff?.profiles||payload?.appData?.operatorProfiles||payload?.operatorProfiles||{};
+   const roster=Array.isArray(payload?.staff?.roster)?payload.staff.roster:
+     (Array.isArray(payload?.appData?.staffRoster)?payload.appData.staffRoster:Object.keys(profiles));
+   const names=[...new Set(roster.filter(name=>typeof name==='string'&&name.trim()).map(name=>name.trim()))];
+   const stations=stationConfigFor(payload),grid=document.querySelector('.opgrid');
+   if(grid){
+     names.forEach(name=>{
+       let card=[...grid.querySelectorAll('[data-opprofile]')].find(item=>item.dataset.opprofile.toLowerCase()===name.toLowerCase());
+       if(!card){card=createOperatorCard(name);grid.appendChild(card)}
+       const profile=profileForName(profiles,name),assignedStation=resolveProfileStation(profile,stations);
+       const isAssigned=profile.onSite!==false&&!!assignedStation;
+       card.style.display=isAssigned?'':'none';
+       card.dataset.onPlant=isAssigned?'true':'false';
+       const nameBox=card.querySelector('.name'),station=card.querySelector('.station'),photoBox=card.querySelector('.photo');
+       if(nameBox)nameBox.textContent=name.toUpperCase();
+       if(station)station.textContent=isAssigned?stationConfigLabel(assignedStation):'UNASSIGNED';
+       if(photoBox)updateOperatorPhoto(photoBox,profile,name);
+       grid.appendChild(card);
+     });
+     [...grid.querySelectorAll('[data-opprofile]')].forEach(card=>{
+       if(!names.some(name=>name.toLowerCase()===card.dataset.opprofile.toLowerCase()))card.style.display='none';
+     });
+   }
+   renderStationBlueprint(stations,names,profiles);
+ }
+ function fmtMinutes(m){m=Math.max(0,Math.round(m||0));return String(Math.floor(m/60)).padStart(2,'0')+'h '+String(m%60).padStart(2,'0')+'m'}
+ function mins(t){if(!t||!/^\d{2}:\d{2}$/.test(t))return null;const [h,m]=t.split(':').map(Number);return h>23||m>59?null:h*60+m}
+ function getCurrentWeekKey(now=new Date()){const d=new Date(now);d.setHours(0,0,0,0);const day=(d.getDay()+6)%7;d.setDate(d.getDate()-day);return d.toISOString().slice(0,10)}
+ function renderLiveStats(payload,now=new Date()){
+   const badge=document.getElementById('liveDataBadge'),reasonBox=document.getElementById('reasonStats'),source=document.getElementById('dataSourceNote');
+   const appData=payload?.appData||payload||{};
+   const today=new Date(now),weekKey=getCurrentWeekKey(today),weekData=appData?.weeks?.[weekKey],dayIndex=(today.getDay()+6)%7,dateKey=[today.getFullYear(),String(today.getMonth()+1).padStart(2,'0'),String(today.getDate()).padStart(2,'0')].join('-'),dutyRecord=(payload?.dailyOperators||[]).find(record=>record?.duty_date===dateKey);document.getElementById('dailyOperatorName').textContent=dutyRecord?.operator_name||'NOT ASSIGNED';document.getElementById('dailyOperatorDate').textContent=dutyRecord?.is_locked?'LOCKED · '+dateKey:dateKey;
+   const profiles=payload?.staff?.profiles||appData?.operatorProfiles||payload?.operatorProfiles||{},stations=stationConfigFor(payload),operators=Object.values(profiles).filter(profile=>profile&&profile.onSite!==false&&!!resolveProfileStation(profile,stations));
+   document.getElementById('operatorCount').textContent=String(operators.length);
+   if(!weekData?.days||!Array.isArray(weekData.days)){
+     document.getElementById('totalDowntime').textContent='NO DATA';
+     document.getElementById('incidentCount').textContent='—';
+     document.getElementById('availability').textContent='—';
+     reasonBox.textContent='No main-tracker records found for the current week.';
+     badge.textContent='● LIVE · NO WEEK DATA';source.textContent='LIVE DATA · main downtime tracker · current week record missing';return;
+   }
+   const dayRecord=dayIndex<6?weekData.days[dayIndex]:null;
+   if(!dayRecord){
+     document.getElementById('totalDowntime').textContent='—';
+     document.getElementById('incidentCount').textContent='—';
+     document.getElementById('availability').textContent='—';
+     reasonBox.textContent='No weekday tracker record available for today.';
+     badge.textContent='● LIVE · NO DAY RECORD';source.textContent='LIVE DATA · main tracker · no weekday record for today';return;
+   }
+   const start=mins(dayRecord.start),stop=mins(dayRecord.stop),scheduled=(start===null||stop===null)?0:stop-start+(stop<=start?1440:0),net=Math.max(0,scheduled-75);
+   const entries=Array.isArray(dayRecord.entries)?dayRecord.entries:[],totalDown=entries.reduce((sum,e)=>sum+Math.max(0,(Number(e.hours)||0)*60+(Number(e.minutes)||0)),0),totalRun=Math.max(0,net-totalDown);
+   const incidents=entries.length;
+   document.getElementById('totalDowntime').textContent=fmtMinutes(totalDown);
+   document.getElementById('incidentCount').textContent=String(incidents);
+   document.getElementById('availability').textContent=net?((totalRun/net)*100).toFixed(1)+'%':'—';
+   document.getElementById('operatorCount').textContent=String(operators.length);
+   const causes={};entries.forEach(e=>{const reason=String(e.reason||'Unspecified');causes[reason]=(causes[reason]||0)+Math.max(0,(Number(e.hours)||0)*60+(Number(e.minutes)||0));});
+   const sorted=Object.entries(causes).sort((a,b)=>b[1]-a[1]);
+   reasonBox.innerHTML=sorted.length?sorted.map(([name,value])=>'<div class="reason"><div class="rhead"><span>'+name.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))+'</span><strong>'+fmtMinutes(value)+'</strong></div><div class="track"><div class="fill" style="width:'+Math.max(0,Math.min(100,totalDown?value/totalDown*100:0))+'%"></div></div></div>').join(''):'No downtime reasons recorded.';
+   badge.textContent='● LIVE · MAIN TRACKER';source.textContent='LIVE DATA · main downtime tracker · today · downtime '+fmtMinutes(totalDown)+' · running '+fmtMinutes(totalRun)+' · availability '+(net?((totalRun/net)*100).toFixed(1)+'%':'not calculable');
+ }
+ if(testMode)window.__DOWNTIME_OVERVIEW_TEST__={renderLiveStats,applyCentralVisibility};
+ function closeOverviewPlantAlert(){const host=document.getElementById('overviewPlantAlertHost');if(host)host.remove();if(overviewPlantAlertTimer){clearTimeout(overviewPlantAlertTimer);overviewPlantAlertTimer=null}overviewPlantAlertActive=null}
+ function showOverviewPlantAlert(isOn,updatedAt){if(isOn&&overviewPlantAlertActive&&!overviewPlantAlertActive.isOn)closeOverviewPlantAlert();if(!isOn&&overviewPlantAlertActive?.isOn)closeOverviewPlantAlert();const item={isOn,updatedAt:updatedAt||new Date().toISOString()};overviewPlantAlertActive=item;let host=document.getElementById('overviewPlantAlertHost');if(!host){host=document.createElement('div');host.id='overviewPlantAlertHost';host.style.cssText='position:fixed;inset:0;z-index:10000;background:#000c;display:grid;place-items:center;padding:14px;pointer-events:none';document.body.appendChild(host)}const modal=document.createElement('div');modal.setAttribute('role','alertdialog');modal.setAttribute('aria-modal','true');modal.style.cssText='pointer-events:auto;width:min(460px,100%);border-radius:18px;padding:24px;background:linear-gradient(145deg,#172b3a,#091721);border:2px solid '+(isOn?'#22c55e':'#ef4444')+';box-shadow:0 22px 90px #000a;color:#f3f6f8;font-family:Inter,system-ui,sans-serif;text-align:center';const status=document.createElement('div');status.style.cssText='font-size:12px;font-weight:900;letter-spacing:1.4px;color:#9fb2c0';status.textContent='PLANT STATUS CHANGE';const headline=document.createElement('h2');headline.style.cssText='margin:14px 0;font-size:clamp(26px,7vw,36px);font-weight:950;color:'+(isOn?'#2be078':'#ff5258');headline.textContent=isOn?'PLANT ON':'PLANT OFF';const time=document.createElement('p');time.style.cssText='margin:0;color:#c4d3dc;font-size:13px';time.textContent='Changed at '+new Date(item.updatedAt).toLocaleString('en-GB');const ack=document.createElement('button');ack.type='button';ack.textContent='ACKNOWLEDGE';ack.style.cssText='margin-top:22px;width:100%;padding:14px;border:0;border-radius:10px;background:#ffd400;color:#101820;font-weight:950;font-size:14px;cursor:pointer';ack.onclick=closeOverviewPlantAlert;modal.append(status,headline,time,ack);host.appendChild(modal);ack.focus();if(isOn)overviewPlantAlertTimer=setTimeout(closeOverviewPlantAlert,10000)}
+ let overviewPlantAlertActive=null,overviewPlantAlertTimer=null;
+ function render(){
+   statusPanel.classList.toggle('off', !plantOn);
+   label.textContent = plantOn ? 'PLANT ON' : 'PLANT OFF';
+   lamp.style.background = plantOn ? 'var(--green)' : 'var(--red)';
+   lamp.style.boxShadow = plantOn ? '0 0 16px #2be07880' : '0 0 16px #ff525880';
+   toggle.textContent = plantOn ? 'TURN PLANT OFF' : 'TURN PLANT ON';
+   toggle.setAttribute('aria-pressed', String(plantOn));
+   toggle.disabled = authorized && !plantConnected;
+   note.textContent = authorized ? (plantConnected ? 'CONTROL ACCESS · '+operator+' · LIVE SYNC' : 'CONTROL ACCESS · '+operator+' · CONNECTING') : 'STATUS VIEW · PREVIEW';
+ }
+ async function centralCall(action,body={}){
+   if(!centralToken)throw new Error('Central session missing. Return to the tracker and sign in again.');
+   const response=await fetch(CENTRAL_API,{method:'POST',headers:{'Content-Type':'application/json','apikey':CENTRAL_API_KEY,'x-downtime-session':centralToken},body:JSON.stringify({action,...body})});
+   const data=await response.json().catch(()=>({error:'Invalid central response'}));
+   if(!response.ok){const error=new Error(data.error||'Central request failed');error.status=response.status;throw error}
+   return data;
+ }
+ function applyCentralVisibility(payload,user){
+   const tier=user?.tier||'USER',defaults={
+     OWNER:{canEditTracker:true,canControlPlantPower:true,canViewPlantOverview:true,canViewStaff:true,canViewAssignments:true,canViewDashboards:true},
+     DEVACC:{canEditTracker:true,canControlPlantPower:true,canViewPlantOverview:true,canViewStaff:true,canViewAssignments:true,canViewDashboards:true},
+     ADMIN:{canEditTracker:true,canControlPlantPower:true,canViewPlantOverview:true,canViewStaff:true,canViewAssignments:true,canViewDashboards:true},
+     MANAGER:{canEditTracker:false,canControlPlantPower:true,canViewPlantOverview:true,canViewStaff:true,canViewAssignments:true,canViewDashboards:true},
+     SUPERVISOR:{canEditTracker:true,canControlPlantPower:true,canViewPlantOverview:true,canViewStaff:true,canViewAssignments:true,canViewDashboards:true},
+     USER:{canEditTracker:false,canControlPlantPower:true,canViewPlantOverview:true,canViewStaff:true,canViewAssignments:true,canViewDashboards:true},
+     SPECTATOR:{canEditTracker:false,canControlPlantPower:true,canViewPlantOverview:false,canViewStaff:false,canViewAssignments:false,canViewDashboards:false}
+   };
+   const rights={...(defaults[tier]||defaults.USER),...(payload?.tiers?.[tier]||{})};
+   authorized=!!rights.canControlPlantPower;viewerTier=tier;canViewPlantOverview=!!rights.canViewPlantOverview;canViewStaff=!!rights.canViewStaff;canViewAssignments=!!rights.canViewAssignments;canViewDashboards=!!rights.canViewDashboards;
+   toggle.hidden=!authorized;const overviewRoot=document.querySelector('main');if(overviewRoot)overviewRoot.hidden=!canViewPlantOverview;
+   const staffSection=document.querySelector('.opgrid')?.closest('.section');
+   const stationSection=document.querySelector('.stationblueprint')?.closest('.section');
+   if(staffSection)staffSection.style.display=canViewStaff?'':'none';
+   if(stationSection)stationSection.style.display=canViewAssignments?'':'none';
+   const metricCards=document.querySelectorAll('.metrics>.panel');
+   metricCards.forEach((card,index)=>{if(index>0)card.style.display=card.dataset.dailyOperator==='true'?'':(canViewDashboards?'':'none')});
+   const bottom=document.querySelector('.bottom');if(bottom)bottom.style.display=canViewDashboards?'':'none';
+   if(!canViewStaff)applyOperatorProfiles({staff:{profiles:{}}});
+ }
+ function renderCentralPayload(result,notify=false){
+   const previous=plantOn,next=result.payload?.appData?.plantOn!==false;
+   centralVersion=Number(result.version)||centralVersion;
+   plantPayload=result.payload||{};
+   plantOn=next;plantConnected=true;
+   applyCentralVisibility(plantPayload,result.user||{tier:viewerTier});
+   if(canViewStaff)applyOperatorProfiles(plantPayload);
+   renderLiveStats(plantPayload);
+   render();
+   if(notify&&previous!==next)showOverviewPlantAlert(next,result.updatedAt);
+ }
+ let overviewRefreshBusy=false,overviewRefreshQueued=false,overviewRefreshTimer=null;
+ async function refreshOverviewCentralState(expectedVersion=0,notify=true){
+   if(testMode||!centralToken)return;
+   const hintedVersion=Number(expectedVersion)||0;
+   if(hintedVersion&&hintedVersion<=centralVersion)return;
+   if(overviewRefreshBusy){overviewRefreshQueued=true;return}
+   overviewRefreshBusy=true;
+   try{
+     const latest=await centralCall('get-state');
+     renderCentralPayload(latest,notify);
+   }catch(error){
+     if(error.status===401){plantConnected=false;note.textContent='SESSION EXPIRED · RETURN TO TRACKER AND SIGN IN AGAIN'}
+     else console.warn('Central Overview live refresh failed',error);
+   }finally{
+     overviewRefreshBusy=false;
+     if(overviewRefreshQueued){
+       overviewRefreshQueued=false;
+       refreshOverviewCentralState(0,true);
+     }
+   }
+ }
+ async function connectPlantStatus(){
+   try{
+     if(testMode)return;
+     const result=await centralCall('get-state');
+     renderCentralPayload(result,false);
+     if(overviewRefreshTimer)clearInterval(overviewRefreshTimer);
+     overviewRefreshTimer=setInterval(()=>refreshOverviewCentralState(0,true),30000);
+   }catch(error){
+     note.textContent='CENTRAL DATA UNAVAILABLE · '+(error.message||'Return to the tracker and sign in again');
+     console.warn('Central Overview connection failed',error);
+   }
+ }
+ async function savePlantStatus(){
+   if(!authorized||!centralToken||!plantPayload||plantSyncBusy)return;
+   plantSyncBusy=true;toggle.disabled=true;
+   try{
+     const result=await centralCall('set-plant-status',{plantOn,version:centralVersion});
+     centralVersion=Number(result.version)||centralVersion;plantPayload.appData=plantPayload.appData||{};plantPayload.appData.plantOn=plantOn;plantConnected=true;
+   }catch(error){
+     plantConnected=false;console.warn('Central plant status update failed',error);
+     alert(error.message==='Version conflict; refresh before changing plant status'?'Plant status changed elsewhere. Reloading the latest central state.':'Plant status could not sync. Please retry when the connection is restored.');
+     try{renderCentralPayload(await centralCall('get-state'),false)}catch{}
+   }finally{plantSyncBusy=false;toggle.disabled=false;render()}
+ }
+ if(testMode){
+   authorized=operator==='JAN'||operator==='MICK';
+   if(authorized){toggle.hidden=false;note.textContent='CONTROL ACCESS · TEST MODE'}
+   toggle.addEventListener('click',()=>{plantOn=!plantOn;render();showOverviewPlantAlert(plantOn,new Date().toISOString())});
+ }else{
+   toggle.addEventListener('click',async()=>{if(!authorized||plantSyncBusy)return;plantOn=!plantOn;render();await savePlantStatus()});
+ }
+ if(window.parent!==window){
+   document.body.classList.add('embedded-overview');
+   document.getElementById('exitOverview')?.addEventListener('click',event=>{
+     event.preventDefault();
+     window.parent.postMessage({type:'DOWNTIME_OVERVIEW_CLOSE'},location.origin);
+   });
+   document.addEventListener('keydown',event=>{
+     if(event.key!=='Escape')return;
+     if(document.querySelector('.photo-lightbox.open'))return;
+     window.parent.postMessage({type:'DOWNTIME_OVERVIEW_CLOSE'},location.origin);
+   });
+   window.addEventListener('message',event=>{
+     if(event.origin!==location.origin||event.source!==window.parent||event.data?.type!=='DOWNTIME_CENTRAL_STATE_CHANGED')return;
+     refreshOverviewCentralState(Number(event.data.version)||0,true);
+   });
+ }
+ if(testMode){plantConnected=true;plantPayload={plantOn:true,operatorProfiles:{},weeks:{}};note.textContent='CONTROL ACCESS · TEST MODE';renderLiveStats(plantPayload);}
+ render();
+ if(!testMode)connectPlantStatus();
+})();
+
+ // Station classification / overall plant blueprint view switch.
+ const stationViewBtn=document.getElementById('stationViewBtn'),plantViewBtn=document.getElementById('plantViewBtn'),stationClassificationView=document.getElementById('stationClassificationView'),overallPlantBlueprintView=document.getElementById('overallPlantBlueprintView');
+ function setBlueprintView(view){const isPlant=view==='plant';stationClassificationView.hidden=isPlant;overallPlantBlueprintView.hidden=!isPlant;stationViewBtn.classList.toggle('active',!isPlant);plantViewBtn.classList.toggle('active',isPlant);stationViewBtn.setAttribute('aria-pressed',String(!isPlant));plantViewBtn.setAttribute('aria-pressed',String(isPlant));}
+ stationViewBtn?.addEventListener('click',()=>setBlueprintView('station'));plantViewBtn?.addEventListener('click',()=>setBlueprintView('plant'));
+</script></body></html>

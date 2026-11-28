@@ -1,0 +1,132 @@
+/* YARD HUB SETTINGS — isolated styles. No DOWNTIME selectors are changed. */
+.yard-hub-settings-trigger{min-width:116px}
+.yard-hub-settings-screen{width:100%;min-width:0;color:#f5f7fa}
+.yard-hub-settings-heading{display:grid;gap:8px;margin:4px 0 20px}
+.yard-hub-back{justify-self:start;min-height:38px;padding:8px 12px;border:1px solid #5a6d80;border-radius:9px;background:#102638;color:#f6d22a;font-size:10px;font-weight:900;letter-spacing:1px}
+.yard-hub-settings-eyebrow{margin-top:12px;color:#f6d22a;font-size:10px;font-weight:900;letter-spacing:2px}
+.yard-hub-settings-heading h1{margin:0;color:#fff;font-size:clamp(27px,5vw,40px);font-weight:950;letter-spacing:-1px}
+.yard-hub-settings-heading p,.yard-hub-view-toolbar p{margin:0;color:#9cabb9;font-size:13px;line-height:1.5}
+.yard-hub-settings-status{min-height:20px;margin:0 0 14px;color:#f6d22a;font-size:11px;font-weight:850;letter-spacing:.5px}
+.yard-hub-settings-status[data-state="error"]{color:#ff8f82}
+.yard-hub-settings-status[data-state="ok"]{color:#8ed7ad}
+.yard-hub-settings-home{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.yard-hub-settings-card[hidden]{display:none!important}
+.yard-hub-settings-card{position:relative;display:flex;min-width:0;min-height:188px;flex-direction:column;align-items:flex-start;justify-content:center;gap:12px;padding:24px;border:1px solid #51677c;border-radius:15px;background:linear-gradient(145deg,#142d43,#091b2b);color:#f7f8fa;text-align:left;overflow:hidden}
+.yard-hub-settings-card:after{content:"";position:absolute;right:0;bottom:0;width:76px;height:70px;background:#f5cb18;clip-path:polygon(100% 0,100% 100%,0 100%);opacity:.92}
+.yard-hub-settings-card:hover{border-color:#f5cb18;transform:translateY(-2px)}
+.yard-hub-settings-card-icon{font-size:28px;color:#f5cb18;font-weight:900}
+.yard-hub-settings-card strong{font-size:23px;font-weight:950;letter-spacing:.5px}
+.yard-hub-settings-card small{max-width:320px;color:#9fb0bf;font-size:12px;line-height:1.5}
+.yard-hub-settings-card-arrow{position:absolute;right:22px;bottom:15px;color:#061624;font-size:26px;font-weight:900}
+.yard-hub-settings-home[hidden],.yard-hub-settings-view[hidden]{display:none!important}
+.yard-hub-settings-view{min-width:0}
+.yard-hub-view-toolbar{display:flex;align-items:flex-end;justify-content:space-between;gap:14px;margin:3px 0 18px}
+.yard-hub-view-toolbar h2{margin:0 0 5px;color:#fff;font-size:23px;font-weight:950}
+.yard-hub-view-toolbar p{max-width:560px}
+.yard-hub-primary,.yard-hub-secondary,.yard-hub-small-button{min-height:39px;padding:9px 13px;border:1px solid #e5c326;border-radius:8px;background:#f5cb18;color:#101c26;font-size:10px;font-weight:950;letter-spacing:.6px;white-space:nowrap}
+.yard-hub-secondary{border-color:#52677b;background:#152b3d;color:#e8eef3}
+.yard-hub-primary:disabled,.yard-hub-secondary:disabled,.yard-hub-small-button:disabled{cursor:not-allowed;opacity:.42}
+.yard-hub-tier-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.yard-hub-user-columns{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(150px,.9fr) minmax(170px,.9fr);gap:12px;padding:0 12px 9px;border-bottom:1px solid #344b60;color:#94a6b6;font-size:9px;font-weight:950;letter-spacing:1px}
+.yard-hub-users-list{display:grid;gap:0}
+.yard-hub-user-row{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(150px,.9fr) minmax(170px,.9fr);align-items:center;gap:12px;padding:13px 12px;border-bottom:1px solid #263d51}
+.yard-hub-user-identity{display:grid;gap:3px;min-width:0}
+.yard-hub-user-identity strong{overflow:hidden;color:#f5f7f9;font-size:13px;text-overflow:ellipsis}
+.yard-hub-user-identity small{overflow:hidden;color:#91a4b5;font-size:10px;text-overflow:ellipsis}
+.yard-hub-user-meta{display:flex;flex-direction:column;align-items:flex-start;gap:4px}
+.yard-hub-tier-tag,.yard-hub-legacy-tag{color:#f6d22a;font-size:9px;font-weight:900;letter-spacing:.45px}
+.yard-hub-legacy-tag{color:#9db0bf}
+.yard-hub-status{color:#86d6a5;font-size:9px;font-weight:950;letter-spacing:.8px}
+.yard-hub-status.off{color:#f09b90}
+.yard-hub-user-actions{display:flex;justify-content:flex-end;gap:7px;flex-wrap:wrap}
+.yard-hub-small-button{min-height:32px;padding:7px 10px;border-color:#5b7185;background:#132b3e;color:#f3f6f8;font-size:9px}
+.yard-hub-small-button.danger{border-color:#8f5651;color:#ffc0b8}
+.yard-hub-tier-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}
+.yard-hub-tier-card{min-width:0;padding:14px;border:1px solid #465d72;border-radius:12px;background:linear-gradient(145deg,#132b40,#0b1c2c)}
+.yard-hub-tier-card.locked{border-color:#34495d}
+.yard-hub-tier-card-head{display:grid;gap:4px;margin-bottom:12px}
+.yard-hub-tier-card-head strong{color:#fff;font-size:17px;font-weight:950}
+.yard-hub-tier-card-head small{color:#8fa2b4;font-size:10px}
+.yard-hub-permission-table{display:grid;gap:0}
+.yard-hub-permission-row{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:45px;padding:8px 0;border-top:1px solid #2c4357}
+.yard-hub-permission-row>strong{min-width:0;color:#e9edf0;font-size:10px;letter-spacing:.35px}
+.yard-hub-permission-row.external{align-items:flex-start;flex-direction:column;justify-content:center;gap:5px}
+.yard-hub-external-tag{color:#8fa2b4;font-size:8px;font-weight:900;letter-spacing:.5px}
+.yard-hub-checks{display:flex;flex:0 0 auto;gap:12px}
+.yard-hub-check-option{display:inline-flex;align-items:center;gap:4px;color:#a9b8c5;font-size:9px;font-weight:900}
+.yard-hub-check-option input{width:16px;height:16px;margin:0;accent-color:#f5cb18}
+.yard-hub-check-option.edit{color:#f5d44a}
+.yard-hub-check-option.read{color:#a9c7df}
+.yard-hub-tier-lock-note{margin:-4px 0 8px;color:#899cac;font-size:9px}
+.yard-hub-note{margin:15px 0 0;padding:12px;border-left:3px solid #e4c222;background:#132a3c;color:#9fb0bf;font-size:11px;line-height:1.5}
+.yard-hub-empty{padding:18px;color:#9eafbe}
+.yard-hub-user-modal{position:fixed;z-index:10000;inset:0;display:grid;place-items:center;padding:16px;background:#020912d9;overflow:auto}
+.yard-hub-user-modal[hidden]{display:none}
+.yard-hub-user-form{display:grid;gap:13px;width:min(100%,480px);max-height:calc(100vh - 32px);overflow:auto;padding:20px;border:1px solid #5a6f83;border-radius:14px;background:#0c1e2e;box-shadow:0 24px 70px #0009}
+.yard-hub-user-modal-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.yard-hub-user-modal-head span{color:#f5cb18;font-size:9px;font-weight:950;letter-spacing:1.5px}
+.yard-hub-user-modal-head h2{margin:5px 0 0;color:#fff;font-size:23px}
+.yard-hub-modal-close{width:35px;height:35px;border:1px solid #50667a;border-radius:8px;background:#152d40;color:#fff;font-size:24px}
+.yard-hub-user-form>label{display:grid;gap:6px;color:#aab9c6;font-size:9px;font-weight:950;letter-spacing:.9px}
+.yard-hub-user-form input:not([type="checkbox"]),.yard-hub-user-form select{width:100%;min-height:42px;padding:10px;border:1px solid #465d72;border-radius:8px;background:#071725;color:#f8fafb;font-size:13px}
+.yard-hub-enabled-option{display:flex!important;align-items:center;grid-template-columns:auto 1fr}
+.yard-hub-enabled-option input{width:17px;height:17px;accent-color:#f5cb18}
+.yard-hub-protected-tier{display:grid;gap:4px;padding:11px;border:1px solid #465b70;border-radius:8px;background:#12293c}
+.yard-hub-protected-tier span{color:#f5cb18;font-size:9px;font-weight:950;letter-spacing:.8px}
+.yard-hub-protected-tier strong{color:#f7f8fa;font-size:13px}
+.yard-hub-protected-tier small{color:#91a5b6;font-size:10px;line-height:1.4}
+.yard-hub-user-modal-actions{display:flex;justify-content:flex-end;gap:9px;flex-wrap:wrap}
+@media(max-width:700px){
+  .yard-hub-settings-home,.yard-hub-tier-grid{grid-template-columns:1fr}
+  .yard-hub-settings-card{min-height:145px}
+  .yard-hub-view-toolbar{align-items:flex-start;flex-direction:column}
+  .yard-hub-user-columns{display:none}
+  .yard-hub-user-row{grid-template-columns:minmax(0,1fr) auto;gap:8px}
+  .yard-hub-user-identity{grid-column:1;grid-row:1}
+  .yard-hub-user-meta{grid-column:1;grid-row:2}
+  .yard-hub-user-actions{grid-column:2;grid-row:1 / span 2}
+}
+
+.yard-hub-tier-actions #yardHubCustomTierAdd{border-color:#e5c326;color:#f5cb18}
+
+
+.yard-hub-role-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}
+.yard-hub-role-card{min-width:0;padding:16px;border:1px solid #304b5e;border-radius:14px;background:linear-gradient(145deg,#142a39,#0c1b26)}
+.yard-hub-role-card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.yard-hub-role-card-head strong{display:block;color:#f4f7fa;font-size:15px;font-weight:900}
+.yard-hub-role-card-head small,.yard-hub-role-card p{color:#91a9b8;font-size:11px;line-height:1.5}
+.yard-hub-role-status{font-size:10px;font-weight:900;letter-spacing:.7px;padding:5px 8px;border-radius:999px;background:#243d4d;color:#d7e7f0}
+.yard-hub-role-actions{display:flex;justify-content:flex-end;margin-top:12px}
+.yard-hub-role-permission-head{display:flex;flex-direction:column;gap:4px;padding:12px 0 8px;border-top:1px solid #304b5e}
+.yard-hub-role-permission-head strong{font-size:12px;color:#ffd12a;letter-spacing:.8px}
+.yard-hub-role-permission-head span{font-size:11px;color:#91a9b8}
+.yard-hub-role-permissions{display:grid;gap:8px}
+.yard-hub-role-permission-row{display:grid;grid-template-columns:minmax(110px,1fr) minmax(150px,220px);align-items:center;gap:12px;padding:10px;border:1px solid #304b5e;border-radius:10px;background:#0c1b26}
+.yard-hub-role-permission-row>strong{font-size:11px;color:#dce7ed}
+.yard-hub-role-level{display:block;min-width:0}
+.yard-hub-role-level select{width:100%;min-height:38px;padding:8px 10px;border:1px solid #38576b;border-radius:8px;background:#102332;color:#f3f7fa;font-size:11px;font-weight:850}
+.yard-hub-role-form{max-width:760px}
+.yard-hub-role-form textarea{width:100%;min-height:64px;resize:vertical}
+@media(max-width:520px){.yard-hub-role-permission-row{grid-template-columns:1fr;gap:7px;padding:9px}}
+
+.yard-hub-roots-assignment,.yard-hub-roots-directory{margin-top:16px;padding:16px;border:1px solid #304b5e;border-radius:14px;background:linear-gradient(145deg,#132a39,#0b1924)}
+.yard-hub-roots-assignment h3,.yard-hub-roots-directory h3{margin:0 0 12px;color:#ffd12a;font-size:12px;font-weight:950;letter-spacing:1px}
+.yard-hub-roots-form{display:grid;grid-template-columns:minmax(180px,1.5fr) minmax(130px,1fr) auto;align-items:end;gap:10px}
+.yard-hub-roots-form label{display:grid;gap:6px;color:#a9bdc9;font-size:10px;font-weight:900;letter-spacing:.7px}
+.yard-hub-roots-form select,.yard-hub-root-actions select,.yard-hub-user-role-assignment select{min-width:0;min-height:40px;padding:8px 10px;border:1px solid #526b7e;border-radius:8px;background:#071723;color:#f2f6f9;font:inherit}
+.yard-hub-roots-list{display:grid;gap:9px}
+.yard-hub-root-card{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px;border:1px solid #304b5e;border-radius:10px;background:#0a1924}
+.yard-hub-root-identity{display:grid;gap:4px;min-width:0}
+.yard-hub-root-identity strong{color:#f2f6f9;font-size:13px}
+.yard-hub-root-identity small{color:#91a9b8;font-size:10px;overflow-wrap:anywhere}
+.yard-hub-root-actions,.yard-hub-user-role-assignment{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.yard-hub-user-role-assignment{grid-column:1/-1;padding-top:6px;border-top:1px solid #304b5e}
+.yard-hub-user-role-assignment select{flex:1 1 180px}
+@media(max-width:650px){
+ .yard-hub-roots-form{grid-template-columns:1fr}
+ .yard-hub-root-card{align-items:stretch;flex-direction:column}
+ .yard-hub-root-actions{display:grid;grid-template-columns:minmax(0,1fr) auto auto}
+ .yard-hub-roots-form button{width:100%}
+}
+
+.yard-hub-settings-card[hidden]{display:none!important}

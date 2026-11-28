@@ -1,0 +1,1171 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#07131d">
+<title>DOWNTIME · Master Configuration</title>
+<style>
+:root{color-scheme:dark;--bg:#07131d;--panel:#0e202c;--panel2:#132b39;--line:#294655;--line2:#38586b;--text:#eff4f7;--muted:#91a8b7;--yellow:#ffc928;--blue:#50a8f5;--green:#5bd69a;--red:#ff887a;--shadow:0 18px 45px #0004}
+*{box-sizing:border-box}
+body{margin:0;background:radial-gradient(ellipse at 52% -15%,#17394b 0,#07131d 55%);color:var(--text);font:14px/1.5 Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,sans-serif}
+button,input,select,textarea{font:inherit}
+button{cursor:pointer;border:1px solid var(--line2);border-radius:9px;padding:10px 14px;color:var(--text);background:linear-gradient(180deg,#244252,#152c39);font-weight:800}
+button:hover{border-color:#7795a6;filter:brightness(1.08)}
+button:disabled{opacity:.45;cursor:not-allowed;filter:none}
+button.primary{background:var(--yellow);border-color:var(--yellow);color:#111c23}
+button.quiet{background:transparent}
+button.danger{border-color:#76463f;color:#ffb1a7}
+input,select,textarea{width:100%;min-width:0;background:#081721;border:1px solid var(--line);border-radius:8px;color:var(--text);padding:11px}
+textarea{min-height:142px;resize:vertical;line-height:1.6}
+label{display:block;margin:0 0 6px;color:#adc0cc;font-size:11px;font-weight:850;letter-spacing:.65px;text-transform:uppercase}
+small,.muted{color:var(--muted)}
+#login{max-width:760px;margin:6vh auto;padding:22px}
+.login-card{background:linear-gradient(150deg,#132c3b,#0b1c27);border:1px solid var(--line2);border-radius:18px;padding:26px;box-shadow:var(--shadow)}
+.brandline{display:flex;gap:12px;align-items:center;margin-bottom:22px}
+.brandmark{width:44px;height:44px;border-radius:12px;display:grid;place-items:center;background:var(--yellow);color:#101c23;font-weight:1000;font-size:18px}
+.eyebrow{font-size:10px;color:var(--yellow);font-weight:950;letter-spacing:1.8px}
+.brandline h1{font-size:20px;margin:2px 0 0;letter-spacing:.1px}
+.formgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.field{min-width:0}
+.field.full{grid-column:1/-1}
+.actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:15px}
+#setup{display:none;margin-top:18px;padding:16px;border:1px solid var(--line);border-radius:12px;background:#091923}
+.status{min-height:22px;margin-top:10px;color:var(--yellow);font-size:12px}
+#workspace{display:none;min-height:100vh}
+.shell{display:grid;grid-template-columns:248px minmax(0,1fr);min-height:100vh}
+.sidebar{position:sticky;top:0;height:100vh;padding:19px 14px;background:linear-gradient(180deg,#06121a,#0a1b26);border-right:1px solid #203b4b;display:flex;flex-direction:column;gap:7px}
+.sidebrand{display:flex;align-items:center;gap:10px;padding:4px 7px 22px}
+.sidebrand .brandmark{width:38px;height:38px;font-size:15px}
+.sidebrand strong{display:block;font-size:13px;letter-spacing:.5px}
+.sidebrand small{font-size:10px;letter-spacing:1.2px}
+.navsearch{padding:4px 7px 8px}.navsearch input{font-size:11px;padding:9px}.navlabel{padding:11px 9px 4px;color:#688397;font-size:9px;font-weight:950;letter-spacing:1.5px;text-transform:uppercase}
+.nav{width:100%;display:flex;align-items:center;gap:11px;text-align:left;background:transparent;border:1px solid transparent;color:#a9bdc9;padding:11px 12px;font-size:12px}
+.nav .ico{width:22px;height:22px;display:grid;place-items:center;border:1px solid #355265;border-radius:7px;color:#83a1b5;font-size:12px}
+.nav.active{background:#263b36;color:#fff;border-color:#665b25}
+.nav.active .ico{background:var(--yellow);border-color:var(--yellow);color:#15212a}
+.sidefoot{margin-top:auto;border-top:1px solid #263f4e;padding:14px 8px 4px}
+.sidefoot strong{display:block;color:var(--green);font-size:11px}
+.sidefoot small{font-size:10px;line-height:1.5;display:block;margin-top:3px}
+.main{padding:22px 26px 40px;max-width:1600px;width:100%;margin:0 auto;min-width:0}
+.topbar{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;border-bottom:1px solid #203b4b;padding:0 0 16px;margin-bottom:21px}
+.path{font-size:10px;color:#7d98aa;letter-spacing:1.2px;font-weight:900}
+.path span{color:var(--yellow)}
+.account{display:flex;align-items:center;gap:9px;color:#dce6eb;font-size:12px}
+.account .avatar{display:grid;place-items:center;width:30px;height:30px;border-radius:50%;background:#2d4e60;color:#fff;font-weight:950}
+.topactions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.view{display:none}.view.active{display:block}
+.pagehead{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:19px;flex-wrap:wrap}
+.pagehead h1{font-size:25px;line-height:1.2;margin:2px 0 7px;letter-spacing:-.5px}
+.pagehead p{margin:0;color:var(--muted);max-width:760px;font-size:13px}
+.tag{display:inline-flex;align-items:center;gap:7px;border:1px solid #4c665d;background:#132b29;color:#aeecc9;padding:6px 9px;border-radius:30px;font-size:10px;font-weight:950;letter-spacing:.6px}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 12px #5bd69a66}
+.panel{background:linear-gradient(145deg,#122a38,#0b1c27);border:1px solid var(--line);border-radius:14px;padding:17px;box-shadow:0 9px 28px #0002;min-width:0}
+.panel h2{margin:0 0 6px;font-size:14px;letter-spacing:.2px}
+.panel p{color:var(--muted);font-size:12px;margin:5px 0 0}
+.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:11px;margin-bottom:14px}
+.kpi{padding:15px 16px;background:linear-gradient(145deg,#142c3b,#0c1d28);border:1px solid #304d5e;border-radius:12px;min-width:0}
+.kpi small{display:block;font-size:9px;font-weight:950;letter-spacing:1px;text-transform:uppercase}
+.kpi strong{display:block;font-size:27px;letter-spacing:-1px;margin:6px 0 1px}
+.kpi em{display:block;color:#839ba9;font-size:10px;font-style:normal}
+.callout{padding:14px 16px;border:1px solid #665723;background:linear-gradient(110deg,#332c16,#1c241e);border-radius:12px;margin:14px 0;color:#e7ddb7}
+.callout strong{display:block;color:#ffdb5e;font-size:11px;letter-spacing:.6px;margin-bottom:3px}
+.callout p{margin:0;color:#cabf99;font-size:12px}
+.twocol{display:grid;grid-template-columns:1.25fr .75fr;gap:13px}
+.cardlist{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:13px}
+.feature{padding:13px;border:1px solid #294555;border-radius:10px;background:#0b1b26}
+.feature strong{display:block;font-size:12px}.feature small{font-size:10px;display:block;margin-top:4px;line-height:1.45}
+.sectionhead{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px}
+.sectionhead .eyebrow{color:#80b9e7}
+.formgrid .field input,.formgrid .field select{margin-bottom:2px}
+.editor-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}
+.editor{background:#0a1b26;border:1px solid #263f4f;border-radius:11px;padding:13px;min-width:0}
+.editor textarea{min-height:145px;font-size:12px}
+.editor .hint{font-size:10px;line-height:1.45;margin-top:6px;color:#829cab}
+.daychecks{display:flex;gap:7px;flex-wrap:wrap;margin-top:8px}
+.daychecks label{display:flex;align-items:center;gap:5px;padding:7px 9px;border:1px solid #2b4859;border-radius:8px;background:#0a1a24;text-transform:none;letter-spacing:0;font-size:10px}
+.daychecks input{width:14px;height:14px;padding:0;margin:0;accent-color:var(--yellow)}
+.full{grid-column:1/-1}
+.history-list{display:grid;gap:8px}
+.history-item{display:grid;grid-template-columns:70px minmax(0,1fr) auto;gap:12px;align-items:center;padding:12px;border:1px solid #2b4656;border-radius:10px;background:#0a1b26}
+.versionno{font-size:14px;font-weight:950;color:var(--yellow)}
+.history-item strong{display:block;font-size:11px}.history-item small{font-size:10px;display:block;margin-top:3px}
+.pill{display:inline-block;border:1px solid #3b5969;border-radius:30px;padding:4px 7px;font-size:9px;font-weight:900;letter-spacing:.5px;color:#9cb6c5}
+.pill.live{border-color:#39765c;background:#122c24;color:#a7efc6}
+.pill.draft{border-color:#7c6b2b;background:#2b2816;color:#ffdf75}
+.empty{padding:24px;text-align:center;color:#8199a9;border:1px dashed #365264;border-radius:10px}
+.pagefoot{margin-top:22px;padding-top:13px;border-top:1px solid #243e4d;color:#718b9d;font-size:10px;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+[hidden]{display:none!important}
+@media(max-width:1050px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.twocol{grid-template-columns:1fr}}
+@media(max-width:760px){.shell{display:block}.sidebar{position:relative;width:100%;height:auto;padding:10px;display:flex;flex-direction:row;flex-wrap:wrap;align-items:center;gap:4px;border-right:0;border-bottom:1px solid #294352}.sidebrand{width:100%;padding:0 4px 7px}.navlabel,.sidefoot{display:none}.nav{width:auto;flex:1 1 30%;justify-content:center;padding:8px 7px;font-size:10px}.nav .ico{display:none}.main{padding:15px 12px 28px}.topbar{margin-bottom:15px}.pagehead h1{font-size:22px}.topactions{width:100%}.topactions button{flex:1}.history-item{grid-template-columns:52px minmax(0,1fr)}.history-item>button{grid-column:2}.editor-grid,.formgrid,.cardlist{grid-template-columns:1fr}.full{grid-column:auto}}
+@media(max-width:480px){#login{margin:2vh auto;padding:12px}.login-card{padding:17px}.kpis{gap:7px}.kpi{padding:12px}.kpi strong{font-size:22px}.nav{flex-basis:30%;font-size:9px}.account{width:100%;justify-content:space-between}}
+
+.cdb-department-config-list{display:grid;gap:13px}.cdb-department-config-card{padding:16px;border:1px solid #304d5e;border-radius:12px;background:linear-gradient(145deg,#122a38,#0b1c27)}.cdb-department-config-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}.cdb-department-config-head strong{font-size:14px;letter-spacing:.5px}.cdb-department-config-row{display:grid;grid-template-columns:minmax(180px,.7fr) minmax(220px,1fr);gap:12px;align-items:end}.cdb-department-config-row>label,.cdb-department-feature{display:flex;align-items:center;gap:8px;color:#dce7ed;font-size:11px;font-weight:800}.cdb-department-config-row input[type=checkbox],.cdb-department-feature input{width:16px;height:16px;accent-color:var(--yellow)}.cdb-department-config-group{margin-top:15px;padding-top:13px;border-top:1px solid #294655}.cdb-department-config-group>strong{display:block;color:#80b9e7;font-size:10px;letter-spacing:1px;margin-bottom:10px}.cdb-department-feature-grid,.cdb-department-display-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}.cdb-department-display-grid{grid-template-columns:repeat(4,minmax(0,1fr));align-items:end}.cdb-department-feature{padding:9px;border:1px solid #294655;border-radius:8px;background:#0a1b26;min-height:38px}.cdb-department-feature input{flex:0 0 auto}.cdb-department-display-grid .field{min-width:0}@media(max-width:760px){.cdb-department-config-row,.cdb-department-feature-grid,.cdb-department-display-grid{grid-template-columns:1fr 1fr}}@media(max-width:480px){.cdb-department-config-row,.cdb-department-feature-grid,.cdb-department-display-grid{grid-template-columns:1fr}.cdb-department-config-head{align-items:flex-start;flex-direction:column}}
+.audit-toolbar{display:grid;grid-template-columns:minmax(220px,2fr) minmax(180px,1fr);gap:12px;margin:0 0 16px}.audit-item{display:grid;grid-template-columns:76px minmax(0,1fr);gap:14px;align-items:start;padding:14px;border-bottom:1px solid var(--line)}.audit-id{font-size:12px;font-weight:900;color:var(--yellow);font-variant-numeric:tabular-nums}.audit-details{min-width:0}.audit-details strong{display:block;font-size:12px;letter-spacing:.4px}.audit-details small{display:block;margin-top:4px;overflow-wrap:anywhere}.audit-meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:7px}@media(max-width:600px){.audit-toolbar{grid-template-columns:1fr}.audit-item{grid-template-columns:48px minmax(0,1fr);gap:9px}}
+</style>
+<style id="central-data-bank-foundation">
+.cdb-dept-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:4px 2px 13px}
+.cdb-dept-heading strong{font-size:12px;font-weight:950;letter-spacing:1.8px;color:#ffd21a}
+.cdb-dept-heading span{font-size:10px;color:#91a4b5;letter-spacing:.7px}
+.cdb-dept-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px}
+.cdb-dept-card{position:relative;isolation:isolate;display:grid;grid-template-columns:105px minmax(0,1fr);align-items:center;gap:18px;min-width:0;min-height:174px;padding:23px 25px;text-align:left;overflow:hidden;border:1px solid #526a7e;border-radius:15px;background:linear-gradient(145deg,#10273d 0%,#0a1d30 74%,#0a1a2a 100%);box-shadow:0 12px 28px #0003}
+.cdb-dept-card:after{content:"";position:absolute;z-index:-1;right:-1px;bottom:-1px;width:82px;height:74px;background:#ffd21a;clip-path:polygon(100% 0,100% 100%,0 100%);opacity:.9}
+.cdb-dept-card:hover,.cdb-dept-card:focus-visible{border-color:#ffd21a;outline:none;box-shadow:0 0 0 2px #ffd21a35,0 16px 32px #0005}
+.cdb-dept-mark{display:grid;place-items:center;width:84px;height:84px;border:1px solid #63768a;border-radius:13px;background:linear-gradient(145deg,#1c3448,#0b1b2b);color:#f4f7fa;font-size:25px;font-weight:950;letter-spacing:-1px}
+.cdb-dept-copy{display:block;min-width:0;padding-left:13px;border-left:1px solid #718397}
+.cdb-dept-copy strong{display:block;color:#f7f8fa;font-size:clamp(17px,2vw,25px);line-height:1.08;font-weight:950;letter-spacing:.2px;overflow-wrap:anywhere}
+.cdb-dept-copy small{display:block;margin-top:8px;color:#9eafbe;font-size:10px;line-height:1.4;font-weight:750;letter-spacing:.45px}
+.cdb-dept-copy em{display:inline-block;margin-top:11px;font-size:9px;font-style:normal;font-weight:950;letter-spacing:.8px}
+.cdb-dept-copy em.live{color:#ffdf42}.cdb-dept-copy em.planned{color:#91a1b2}.cdb-dept-copy em.admin{color:#7fc1ff}
+.cdb-foundation-note{display:flex;flex-direction:column;gap:5px;margin-top:17px;padding:14px 16px;border:1px solid #665723;border-radius:11px;background:linear-gradient(110deg,#332c16,#1c241e)}
+.cdb-foundation-note strong{color:#ffdb5e;font-size:10px;letter-spacing:1px}
+.cdb-foundation-note span{color:#cabf99;font-size:11px;line-height:1.5}
+.cdb-detail-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-bottom:14px}
+@media(max-width:760px){.cdb-dept-grid{gap:10px}.cdb-dept-card{min-height:150px;padding:18px 16px;grid-template-columns:78px minmax(0,1fr);gap:12px}.cdb-dept-mark{width:66px;height:66px;font-size:21px}.cdb-dept-copy{padding-left:10px}.cdb-dept-copy strong{font-size:18px}}
+@media(max-width:540px){.cdb-dept-heading{align-items:flex-start;flex-direction:column;gap:4px}.cdb-dept-grid{grid-template-columns:1fr;gap:9px}.cdb-dept-card{min-height:126px;padding:16px}.cdb-dept-copy strong{font-size:21px}.cdb-detail-grid{grid-template-columns:1fr}}
+
+/* Phase 03 · structured master registry */
+.cdb-hierarchy-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:15px 17px;border:1px solid #3b5969;border-radius:12px;background:linear-gradient(120deg,#152f40,#0b1d29);margin-bottom:12px}
+.cdb-hierarchy-toolbar strong{display:block;color:#ffdb52;font-size:11px;letter-spacing:1px}
+.cdb-hierarchy-toolbar small{display:block;color:#8fa7b6;font-size:10px;margin-top:4px}
+.cdb-hierarchy-summary{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 13px}
+.cdb-hierarchy-stat{padding:7px 10px;border:1px solid #294655;border-radius:8px;background:#0a1b26;color:#a9bdc9;font-size:10px}
+.cdb-hierarchy-stat strong{color:#f5d65d;margin-right:4px}
+.cdb-hierarchy-tree{display:grid;gap:12px}
+.cdb-hierarchy-empty{padding:28px 18px;text-align:center;border:1px dashed #456174;border-radius:12px;color:#9db1bd;background:#091923}
+.cdb-hierarchy-site{border:1px solid #536a7b;border-radius:12px;background:linear-gradient(145deg,#112b3b,#0a1b26);overflow:hidden}
+.cdb-hierarchy-site-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:13px 15px;background:#173448;border-bottom:1px solid #35566a}
+.cdb-hierarchy-site-head strong{font-size:13px;letter-spacing:.4px}
+.cdb-hierarchy-children{padding:12px;display:grid;gap:9px}
+.cdb-hierarchy-node{border:1px solid #2e4b5c;border-radius:9px;background:#0a1b26;overflow:hidden}
+.cdb-hierarchy-node-head{display:flex;align-items:center;justify-content:space-between;gap:9px;padding:10px 12px}
+.cdb-hierarchy-node-head strong{font-size:11px;color:#e9f0f4}
+.cdb-hierarchy-node-head small{display:block;color:#829cab;font-size:9px;margin-top:2px}
+.cdb-hierarchy-node-body{padding:0 12px 11px 22px;display:grid;gap:8px}
+.cdb-hierarchy-actions{display:flex;gap:5px;flex-wrap:wrap}
+.cdb-hierarchy-actions button{padding:6px 8px;font-size:9px}
+.cdb-hierarchy-add{border-color:#426c58;color:#a9ebc3;background:#10291f}
+.cdb-hierarchy-delete{border-color:#70463f;color:#ffb1a7;background:#2a1718}
+.cdb-hierarchy-level{color:#ffdc54;font-size:9px;font-weight:950;letter-spacing:1px;text-transform:uppercase}
+.cdb-legacy-data{margin-top:15px;padding:12px 14px;border:1px solid #2b4656;border-radius:10px;background:#091923}
+.cdb-legacy-data summary{cursor:pointer;color:#a9bdc9;font-size:11px;font-weight:850}
+.cdb-legacy-data p{color:#829cab;font-size:10px;line-height:1.5}
+@media(max-width:600px){.cdb-hierarchy-site-head,.cdb-hierarchy-node-head{align-items:flex-start;flex-direction:column}.cdb-hierarchy-actions{width:100%}.cdb-hierarchy-actions button{flex:1}}
+/* Phase 02 · isolated department menu editor */
+.cdb-menu-layout{display:grid;gap:14px}
+.cdb-menu-toolbar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.cdb-menu-categories,.cdb-menu-entries{display:grid;gap:10px}
+.cdb-menu-category{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:end;padding:12px;border:1px solid #2b4859;border-radius:10px;background:#0a1b26}
+.cdb-menu-entry{padding:15px;border:1px solid #345163;border-radius:12px;background:linear-gradient(145deg,#112b3a,#0a1b26);display:grid;gap:12px}
+.cdb-menu-entry-head{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.cdb-menu-entry-head strong{font-size:12px;letter-spacing:.5px;color:#ffda52}
+.cdb-menu-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.cdb-menu-toggle{display:flex;align-items:center;gap:8px;padding:9px;border:1px solid #294757;border-radius:8px;color:#b7c9d4;font-size:11px;font-weight:800}
+.cdb-menu-toggle input{width:16px;height:16px;margin:0;accent-color:var(--yellow)}
+.cdb-menu-submenus{display:grid;gap:8px;padding:11px;border:1px solid #2b4859;border-radius:10px;background:#071821}
+.cdb-menu-submenu{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(120px,1fr) auto auto;gap:8px;align-items:center}
+.cdb-menu-submenu input,.cdb-menu-submenu select{padding:8px;font-size:11px}
+.cdb-menu-submenu .cdb-menu-toggle{padding:7px}
+.cdb-menu-actions{display:flex;gap:7px;align-items:center;flex-wrap:wrap}
+.cdb-menu-actions button{padding:7px 10px;font-size:10px}
+.cdb-menu-note{color:#829cab;font-size:10px;line-height:1.5}
+.cdb-dept-group{margin-bottom:18px}
+.cdb-dept-group-title{display:flex;align-items:center;gap:9px;margin:5px 2px 10px;color:#ffd21a;font-size:11px;font-weight:950;letter-spacing:1.5px;text-transform:uppercase}
+.cdb-dept-group-title:after{content:"";height:1px;flex:1;background:#294655}
+.cdb-launch-entry{display:grid;gap:8px;min-width:0}
+.cdb-dept-submenu{display:flex;gap:7px;flex-wrap:wrap;padding:0 5px 5px}
+.cdb-dept-submenu button{padding:7px 10px;font-size:10px;background:#102634;border-color:#35566a;color:#b9d0dd}
+.cdb-dept-submenu button:hover{border-color:var(--yellow);color:#fff}
+.cdb-menu-empty{padding:18px;border:1px dashed #365264;border-radius:10px;color:#91a8b7;text-align:center;font-size:12px}
+@media(max-width:760px){.cdb-menu-fields{grid-template-columns:1fr}.cdb-menu-submenu{grid-template-columns:1fr 1fr}.cdb-menu-submenu .cdb-menu-toggle{grid-column:1}.cdb-menu-submenu button{grid-column:2}.cdb-menu-category{grid-template-columns:1fr}.cdb-menu-category button{justify-self:start}}
+</style>
+
+<style id="phase-08-accessible-navigation">
+/* Phase 08: predictable, touch-friendly navigation for non-technical users. */
+.sidebar .sidebrand{padding-bottom:14px;border-bottom:1px solid #203b4b;margin-bottom:4px}
+.sidebar .nav{min-height:44px;border-radius:10px}
+.sidebar .nav:focus-visible{outline:3px solid #ffd21a;outline-offset:2px}
+.sidebar .nav.active{font-weight:950;box-shadow:inset 3px 0 0 #ffd21a}
+.navsearch input{min-height:46px;font-size:14px!important;padding:11px 13px!important}
+@media(max-width:760px){
+ #workspace .shell{display:block}
+ #workspace .sidebar{position:relative;top:auto;height:auto;max-height:none;overflow:visible;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:stretch;gap:7px;padding:12px;background:linear-gradient(180deg,#06121a,#0a1b26);border-bottom:1px solid #294352}
+ #workspace .sidebrand{grid-column:1/-1;width:100%;padding:3px 3px 12px;margin:0 0 2px;display:flex;align-items:center}
+ #workspace .sidebrand strong{font-size:14px}
+ #workspace .sidebrand small{font-size:10px}
+ #workspace .navlabel{display:block;grid-column:1/-1;padding:9px 3px 1px;font-size:10px;letter-spacing:1.2px;color:#91a8b7}
+ #workspace .navsearch{grid-column:1/-1;padding:0 0 3px}
+ #workspace .navsearch input{min-height:48px;font-size:15px!important}
+ #workspace .sidebar .nav{width:100%;min-width:0;min-height:56px;display:flex;flex:initial;justify-content:flex-start;align-items:center;gap:10px;padding:10px 11px;font-size:12px;line-height:1.25;text-align:left;white-space:normal;overflow-wrap:anywhere;border:1px solid #294655;background:linear-gradient(145deg,#112a39,#0b1c27);border-radius:11px}
+ #workspace .sidebar .nav .ico{display:grid;flex:0 0 26px;width:26px;height:26px;font-size:13px}
+ #workspace .sidebar .nav.active{background:#263b36;border-color:#8b782b;box-shadow:inset 3px 0 0 #ffd21a}
+ #workspace .sidefoot{display:none}
+ #workspace .main{padding:16px 12px 30px}
+}
+@media(max-width:380px){
+ #workspace .sidebar{gap:6px;padding:9px}
+ #workspace .sidebar .nav{min-height:54px;padding:9px 8px;font-size:11px;gap:7px}
+ #workspace .sidebar .nav .ico{flex-basis:23px;width:23px;height:23px}
+}
+@media(prefers-reduced-motion:reduce){#workspace .sidebar .nav{transition:none!important}}
+</style>
+<style id="cdb-section-page-navigation">
+#workspace.cdb-section-page .sidebar{display:none!important}
+#workspace.cdb-section-page .shell{grid-template-columns:minmax(0,1fr)!important}
+#cdbBackToMenu{display:none;min-height:46px;margin:0 0 16px;text-align:left}
+#workspace.cdb-section-page #cdbBackToMenu{display:inline-flex;align-items:center;gap:9px}
+@media(max-width:760px){#workspace.cdb-section-page .main{padding-top:12px}#workspace.cdb-section-page #cdbBackToMenu{width:100%;justify-content:flex-start}}
+</style><style id="yardhub-github-connect-style">
+body.yardhub-github-locked{overflow:hidden}
+body.yardhub-github-locked>:not(#yardhub-github-connect-overlay){visibility:hidden!important}
+#yardhub-github-connect-overlay{position:fixed;inset:0;z-index:999999;display:grid;place-items:center;padding:22px;background:#07111f;color:#e9eef5;font-family:Arial,sans-serif}
+#yardhub-github-connect-overlay[hidden]{display:none}
+.yardhub-github-connect-card{width:min(620px,100%);padding:30px;border:1px solid #344256;border-top:4px solid #f0c43b;border-radius:12px;background:#111d2c;box-shadow:0 24px 80px #0009}
+.yardhub-github-connect-kicker{font-size:11px;font-weight:700;letter-spacing:.16em;color:#f0c43b;margin-bottom:16px}
+.yardhub-github-connect-card h1{font-size:25px;margin:0 0 12px}
+.yardhub-github-connect-card p{font-size:14px;line-height:1.55;color:#b9c5d3}
+.yardhub-github-connect-note{padding:11px 13px;border-left:3px solid #f0c43b;background:#182638}
+#yardhub-github-connect-form{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:20px 0}
+#yardhub-github-connect-form label{display:grid;gap:6px;font-size:12px;color:#cbd5e1}
+#yardhub-github-connect-form label:nth-child(3),#yardhub-github-connect-form label:nth-child(4),#yardhub-github-connect-form button{grid-column:1/-1}
+#yardhub-github-connect-form input{width:100%;box-sizing:border-box;padding:12px;border:1px solid #40516a;border-radius:6px;background:#081321;color:#fff;font:inherit}
+#yardhub-github-connect-form button{padding:13px;border:0;border-radius:6px;background:#f0c43b;color:#111827;font-weight:800;letter-spacing:.08em;cursor:pointer}
+#yardhub-github-connect-form button:disabled{opacity:.55;cursor:wait}
+#yardhub-github-connect-form [data-create-private]{background:transparent;border:1px solid #f0c43b;color:#f0c43b}
+.yardhub-github-connect-status{min-height:22px;font-weight:700}
+.yardhub-github-connect-status[data-state=error]{color:#ff9c9c}
+@media(max-width:520px){.yardhub-github-connect-card{padding:20px}#yardhub-github-connect-form{grid-template-columns:1fr}#yardhub-github-connect-form label{grid-column:1/-1}}
+</style>
+</head>
+<body>
+<section id="login">
+ <div class="login-card">
+  <div class="brandline"><div class="brandmark">D</div><div><div class="eyebrow">SYSTEM CONTROL / RESTRICTED</div><h1>CENTRAL DATA BANK ADMIN</h1></div></div>
+  <p class="muted">Configuration control plane for organisation structure, master registries, operational libraries and approved system defaults.</p>
+  <p class="muted" style="font-size:11px">Connection settings are remembered on this device after you change them. PINs are never saved.</p>
+  <div class="formgrid" style="margin-top:20px">
+   <div class="field"><label for="projectUrl">GitHub-native service endpoint</label><input id="projectUrl" value="https://github-native.invalid" readonly autocomplete="off"></div>
+   <div class="field"><label for="pubKey">GitHub service adapter</label><input id="pubKey" value="github-native" readonly autocomplete="off"></div>
+   <div class="field"><label for="username">Username</label><input id="username" autocomplete="username"></div>
+   <div class="field"><label for="pin">PIN</label><input id="pin" type="password" inputmode="numeric" maxlength="8" autocomplete="current-password"></div>
+  </div>
+  <div class="actions"><button id="loginBtn" class="primary">AUTHENTICATE</button><button id="showSetup" class="quiet">FIRST OWNER SETUP</button></div>
+  <div id="setup">
+   <div class="eyebrow">INITIAL ROOT IDENTITY</div>
+   <div class="field"><label for="setupCode">Bootstrap setup code</label><input id="setupCode" type="password"></div>
+   <div class="field"><label for="setupName">Root account</label><input id="setupName" value="DEV" readonly></div>
+   <div class="field"><label for="setupPin">New root PIN · 4–8 digits</label><input id="setupPin" type="password" inputmode="numeric" maxlength="8"></div>
+   <button id="bootstrapBtn" class="primary">INITIALISE DEV OWNER</button>
+  </div>
+  <div id="authStatus" class="status" role="status" aria-live="polite"></div>
+  <div class="pagefoot"><span>AUTHORISED IDENTITY · IMMUTABLE DEV</span><span>Protected by central session validation</span></div>
+ </div>
+</section>
+
+<section id="workspace">
+ <div class="shell">
+  <aside class="sidebar">
+   <div class="sidebrand"><div class="brandmark">D</div><div><strong>CENTRAL DATA BANK</strong><small>CONFIGURATION CONTROL</small></div></div>
+   <div class="navlabel">START HERE</div><div class="navsearch"><input id="navSearch" type="search" placeholder="Search settings or areas…" aria-label="Search configuration areas"></div>
+   <button class="nav active" data-section="departments" data-default-label="Departments"><span class="ico">▦</span><span class="navtext">Departments</span></button>
+   <button class="nav" data-section="overview" data-default-label="Overview"><span class="ico">⌂</span><span class="navtext">Overview</span></button>
+   <div class="navlabel">COMPANY & PLANT</div>
+   <button class="nav" data-section="organisation" data-default-label="Organisation"><span class="ico">◎</span><span class="navtext">Organisation</span></button>
+   <button class="nav" data-section="structure" data-default-label="Plant & Areas"><span class="ico">▦</span><span class="navtext">Plant & Areas</span></button>
+   <div class="navlabel">OPERATIONAL SETTINGS</div>
+   <button class="nav" data-section="libraries" data-default-label="Operational Libraries"><span class="ico">▤</span><span class="navtext">Operational Libraries</span></button>
+   <button class="nav" data-section="defaults" data-default-label="System Defaults"><span class="ico">⚙</span><span class="navtext">System Defaults</span></button>
+   <div class="navlabel">HISTORY & APPROVALS</div>
+   <button class="nav" data-section="history" data-default-label="Version History"><span class="ico">◷</span><span class="navtext">Version History</span></button>
+   <button class="nav" data-section="release" data-default-label="Change Impact & Release"><span class="ico">⇧</span><span class="navtext">Change Impact & Release</span></button>
+   <button class="nav" data-section="audit" data-default-label="Audit Log"><span class="ico">▤</span><span class="navtext">Audit Log</span></button><div class="navlabel">ADVANCED SETTINGS</div><button class="nav" data-section="navigation" data-default-label="Menu & Labels"><span class="ico">✎</span><span class="navtext">Menu & Labels</span></button>
+   <button class="nav" data-section="department-menu-settings" data-default-label="Department Menu"><span class="ico">☷</span><span class="navtext">Department Menu</span></button>
+   <button class="nav" data-section="application-structure" data-default-label="Application Structure"><span class="ico">⌘</span><span class="navtext">Application Structure</span></button>
+   <button class="nav" data-section="department-configuration" data-default-label="Department Configuration"><span class="ico">⚙</span><span class="navtext">Department Configuration</span></button>
+   <button class="nav" data-section="modules" data-default-label="Module Registry"><span class="ico">▣</span><span class="navtext">Module Registry</span></button>
+   <button class="nav" data-section="controls" data-default-label="System Controls"><span class="ico">⚑</span><span class="navtext">System Controls</span></button>
+   <div class="navlabel">SECURITY & ACCESS</div>
+   <button class="nav" data-section="access-governance" data-default-label="Access & Governance"><span class="ico">⌑</span><span class="navtext">Access & Governance</span></button>
+   <button class="nav" data-section="information" data-default-label="System Information"><span class="ico">ⓘ</span><span class="navtext">System Information</span></button>
+   <div class="sidefoot"><strong>ROOT DEV AUTHORITY</strong><small>Draft, validate, publish and restore configuration versions. Other accounts are rejected server-side.</small></div>
+  </aside>
+  <main class="main">
+    <button id="cdbBackToMenu" class="quiet" type="button">← &nbsp; BACK TO CENTRAL DATA BANK MENU</button>
+   <div class="topbar">
+    <div><div class="path">DOWNTIME <span>/</span> CENTRAL DATA BANK <span>/</span> CONFIGURATION</div><div class="account" style="margin-top:6px"><span class="avatar" id="avatar">A</span><span id="identity">Authenticated administrator</span><span class="pill">RESTRICTED</span></div></div>
+    <div class="topactions"><button id="refreshBtn" class="quiet">REFRESH</button><button id="validateDraftBtn" class="quiet">VALIDATE DRAFT</button><button id="saveDraftBtn">SAVE DRAFT</button><button id="publishBtn" class="primary" disabled>PUBLISH VERSION</button><button id="logoutBtn" class="quiet">LOG OUT</button></div>
+   </div>
+
+   <section class="view active" id="view-departments">
+    <div class="pagehead"><div><div class="eyebrow">YARDHUB · COMPANY ADMINISTRATION</div><h1>Central Data Bank</h1><p>Choose a department to review its administration workspace. The layout follows the familiar YARDHUB application launcher.</p></div><span class="tag"><i class="dot"></i>ADMINISTRATOR SESSION ACTIVE</span></div>
+    <div class="cdb-dept-heading"><strong>DEPARTMENT CONTROLS</strong><span>SELECT A DEPARTMENT TO CONTINUE</span></div>
+    <div class="cdb-dept-grid" id="departmentLauncher">
+     <button class="cdb-dept-card" type="button" data-section="dept-downtime"><span class="cdb-dept-mark">D</span><span class="cdb-dept-copy"><strong>DOWNTIME</strong><small>PLANT DOWNTIME &amp; OPERATIONS</small><em class="live">PROTECTED LIVE APPLICATION</em></span></button>
+     <button class="cdb-dept-card" type="button" data-section="dept-floor"><span class="cdb-dept-mark">F</span><span class="cdb-dept-copy"><strong>FLOOR</strong><small>FLOOR &amp; YARD OPERATIONS</small><em class="planned">RESERVED MODULE</em></span></button>
+     <button class="cdb-dept-card" type="button" data-section="dept-checksheets"><span class="cdb-dept-mark">CS</span><span class="cdb-dept-copy"><strong>CHECK SHEETS</strong><small>INSPECTIONS &amp; COMPLIANCE</small><em class="planned">RESERVED MODULE</em></span></button>
+     <button class="cdb-dept-card" type="button" data-section="dept-rm"><span class="cdb-dept-mark">R&amp;M</span><span class="cdb-dept-copy"><strong>R&amp;M</strong><small>REPAIRS &amp; MAINTENANCE</small><em class="live">EXISTING APPLICATION</em></span></button>
+     <button class="cdb-dept-card" type="button" data-section="dept-yardhub"><span class="cdb-dept-mark">YH</span><span class="cdb-dept-copy"><strong>HUB SETTINGS</strong><small>YARD HUB &amp; APPLICATION ACCESS</small><em class="admin">ADMINISTRATION</em></span></button>
+    </div>
+    <div class="cdb-foundation-note"><strong>PHASE 01 · FOUNDATION ONLY</strong><span>This release establishes the administration navigation and department workspaces. Department settings are not yet editable from these pages. Existing operational applications and records remain separate.</span></div>
+   </section>
+
+   <section class="view" id="view-dept-downtime">
+    <div class="pagehead"><div><div class="eyebrow">DEPARTMENT CONTROLS / DOWNTIME</div><h1>DOWNTIME</h1><p>Plant downtime recording, shift operations, plant overview and reporting.</p></div><span class="pill live">PROTECTED APPLICATION</span></div>
+    <div class="cdb-detail-grid"><div class="editor"><strong>Operational application</strong><div class="hint">Existing DOWNTIME screens, workflows, user access and operational records remain under their current controls.</div></div><div class="editor"><strong>Administration boundary</strong><div class="hint">This Phase 01 workspace is informational only. It does not edit tracker data, permissions, shifts, reports or runtime navigation.</div></div></div>
+    <div class="callout"><strong>DOWNTIME OPERATIONAL INTEGRITY</strong><p>Any future DOWNTIME-facing change must pass the full regression suite and relevant staging checks before release. No control on this page changes the live application.</p></div>
+    <button type="button" class="quiet" data-section="departments">‹ BACK TO DEPARTMENTS</button>
+   </section>
+
+   <section class="view" id="view-dept-floor">
+    <div class="pagehead"><div><div class="eyebrow">DEPARTMENT CONTROLS / FLOOR</div><h1>FLOOR</h1><p>Reserved workspace for future floor and yard operations.</p></div><span class="pill">NOT RELEASED</span></div>
+    <div class="cdb-foundation-note"><strong>RESERVED MODULE</strong><span>FLOOR is not currently released. Phase 01 does not enable, install or expose this module to operational users.</span></div>
+    <button type="button" class="quiet" data-section="departments">‹ BACK TO DEPARTMENTS</button>
+   </section>
+
+   <section class="view" id="view-dept-checksheets">
+    <div class="pagehead"><div><div class="eyebrow">DEPARTMENT CONTROLS / CHECK SHEETS</div><h1>CHECK SHEETS</h1><p>Reserved workspace for inspections and compliance.</p></div><span class="pill">NOT RELEASED</span></div>
+    <div class="cdb-foundation-note"><strong>RESERVED MODULE</strong><span>CHECK SHEETS is not currently released. Phase 01 does not enable, install or expose this module to operational users.</span></div>
+    <button type="button" class="quiet" data-section="departments">‹ BACK TO DEPARTMENTS</button>
+   </section>
+
+   <section class="view" id="view-dept-rm">
+    <div class="pagehead"><div><div class="eyebrow">DEPARTMENT CONTROLS / R&amp;M</div><h1>REPAIRS &amp; MAINTENANCE</h1><p>Machinery register, fault and defect management, service records and maintenance workflows.</p></div><span class="pill live">EXISTING APPLICATION</span></div>
+    <div class="cdb-detail-grid"><div class="editor"><strong>Department workspace</strong><div class="hint">The existing R&amp;M application remains responsible for its machinery, fault history, service records and evidence.</div></div><div class="editor"><strong>Future administration scope</strong><div class="hint">Department menu labels and supported visibility settings can be added in later phases without changing operational fault or machinery records.</div></div></div>
+    <div class="cdb-foundation-note"><strong>NO OPERATIONAL CHANGES IN PHASE 01</strong><span>This page does not edit machinery, fault records, service history, permissions or R&amp;M runtime behaviour.</span></div>
+    <button type="button" class="quiet" data-section="departments">‹ BACK TO DEPARTMENTS</button>
+   </section>
+
+   <section class="view" id="view-dept-yardhub">
+    <div class="pagehead"><div><div class="eyebrow">DEPARTMENT CONTROLS / YARD HUB</div><h1>HUB SETTINGS</h1><p>YARD HUB launcher, central account directory and application-level access settings.</p></div><span class="pill">ADMINISTRATION</span></div>
+    <div class="cdb-detail-grid"><div class="editor"><strong>Existing HUB Settings</strong><div class="hint">Central user and YARD HUB tier management remain in the existing HUB Settings workflow.</div></div><div class="editor"><strong>Separation of permissions</strong><div class="hint">DOWNTIME Access &amp; Rights and operational permissions remain independently governed.</div></div></div>
+    <button type="button" class="quiet" data-section="departments">‹ BACK TO DEPARTMENTS</button>
+   </section>
+
+   <section class="view" id="view-overview">
+    <div class="pagehead"><div><div class="eyebrow">SYSTEM CONTROL ROOM</div><h1>Configuration overview</h1><p>Manage the data foundation of DOWNTIME. Changes are versioned independently of daily operational records.</p></div><span class="tag"><i class="dot"></i>ADMINISTRATOR SESSION ACTIVE</span></div>
+    <div class="kpis">
+     <div class="kpi"><small>Published version</small><strong id="publishedKpi">v1</strong><em id="publishedBy">Initial baseline</em></div>
+     <div class="kpi"><small>Current draft</small><strong id="draftKpi">v1</strong><em id="draftStatus">Synchronized with published</em></div>
+     <div class="kpi"><small>Registered items</small><strong id="itemsKpi">0</strong><em>Master data and catalogues</em></div>
+     <div class="kpi"><small>Version records</small><strong id="historyKpi">1</strong><em>Recoverable configuration snapshots</em></div>
+    </div>
+    <div class="callout"><strong>ISOLATED CONFIGURATION · LIVE TRACKER PROTECTED</strong><p>Saving a draft or publishing this registry does not write to the tracker’s operational data, users, staff, active shift records or reporting archive. The running application will only consume these settings after a separate, tested integration and release.</p></div>
+    <div class="twocol">
+     <div class="panel"><div class="sectionhead"><div><div class="eyebrow">WORKFLOW</div><h2>Controlled configuration lifecycle</h2></div><span class="pill">VALIDATE → APPROVE</span></div>
+      <div class="cardlist">
+       <div class="feature"><strong>01 · Configure</strong><small>Maintain site structure, area registries and standard operational libraries.</small></div>
+       <div class="feature"><strong>02 · Save draft</strong><small>Persist a new immutable snapshot without changing the published registry.</small></div>
+       <div class="feature"><strong>03 · Publish</strong><small>Activate a validated registry version through an explicit immutable DEV action.</small></div>
+       <div class="feature"><strong>04 · Restore</strong><small>Recover any historical snapshot as a new draft, then publish deliberately.</small></div>
+      </div>
+     </div>
+     <div class="panel"><div class="eyebrow">SEPARATION OF RESPONSIBILITIES</div><h2>YARD ROLE permissions stay separate</h2><p>User identities and ROOTS governance remain outside this control room. Legacy account-tier permission editing is retired; operational department permissions are governed by canonical YARD ROLE. This control room does not create users, edit PINs or duplicate the permission editor. Only the immutable DEV USER may access the Central Data Bank configuration control plane and manage global configuration. DEVACC retains locked root-equivalent operational permissions only; it is not a ROOTS identity and has no Central Data Bank or ROOTS governance authority. Only DEV may assign DEVACC. DEV1 may assign ADMIN ROOTS; ADMIN cannot assign ROOTS. ROOTS authority and ordinary YARD ROLE permissions are separate.</p><div style="margin-top:14px"><span class="pill live">IMMUTABLE DEV ONLY</span></div></div>
+    </div>
+   </section>
+
+   <section class="view" id="view-application-structure">
+    <div class="pagehead"><div><div class="eyebrow">APPLICATION ADMINISTRATION / STRUCTURE</div><h1>Application Structure Manager</h1><p>Manage the YARD HUB launcher hierarchy and R&amp;M machinery categories. Rename departments and machine categories, add or remove menu entries, and publish consistent generated navigation without changing permanent data identities.</p></div><span class="pill">VERSIONED CONFIGURATION</span></div>
+    <div class="callout"><strong>SAFE STRUCTURE MANAGEMENT</strong><p>Changes remain drafts until validated, impact-reviewed and published. Department IDs and existing application routes stay stable. The DOWNTIME launcher identity and label remain locked. R&amp;M and HUB SETTINGS cannot be deleted; R&amp;M can be hidden from the YARD HUB menu. Existing R&amp;M machine keys, records, permissions and API routes remain unchanged while category labels are managed here. Custom YARD HUB departments and R&amp;M categories can be removed from their menus without deleting operational records. New custom entries open generated placeholder workspaces until dedicated module functionality is assigned. YARD HUB and R&amp;M consume only the published structure through an authenticated read-only endpoint; DOWNTIME tracker logic, records, permissions and operational workflows remain untouched.</p></div>
+    <div class="panel">
+     <div class="cdb-menu-toolbar"><div><h2>Departments</h2><p>Each department becomes a standard YARD HUB menu tile. Drag-free ordering is controlled with MOVE UP / MOVE DOWN. Existing R&amp;M machine types such as Telehandler and 360 Excavators are managed in the dedicated R&amp;M category panel below so their permanent data keys and workflows stay intact.</p></div><div class="cdb-menu-actions"><input id="newYardHubDepartmentTitle" maxlength="48" placeholder="New department title" style="width:210px"><button id="addYardHubDepartmentBtn" type="button" class="primary">ADD DEPARTMENT</button></div></div>
+     <div id="yardHubStructureDepartments" class="cdb-menu-entries" style="margin-top:14px"></div>
+    </div>
+    <div class="panel" style="margin-top:14px">
+     <div class="cdb-menu-toolbar"><div><h2>R&amp;M machinery categories</h2><p>Rename existing machinery categories without changing their permanent data keys. Hide categories from the selector without deleting their records. New custom categories generate a standard placeholder tile until a dedicated R&amp;M data workflow is assigned.</p></div><div class="cdb-menu-actions"><input id="newRmsCategoryTitle" maxlength="48" placeholder="New machinery category" style="width:190px"><input id="newRmsCategoryDescription" maxlength="80" placeholder="Category description" style="width:190px"><button id="addRmsCategoryBtn" type="button" class="primary">ADD CATEGORY</button></div></div>
+     <div id="repairMaintenanceCategoryEntries" class="cdb-menu-entries" style="margin-top:14px"></div>
+    </div>
+    <div class="panel" style="margin-top:14px" id="applicationGeneratorPanel">
+     <div class="sectionhead"><div><div class="eyebrow">PHASE 10 / AUTOMATION</div><h2>Automatic Department &amp; Module Generator</h2><p>Generate standard department and module workspaces from reusable templates. Generated entries remain placeholders until separately implemented.</p></div><span class="pill">BLUEPRINT GENERATOR</span></div>
+     <div class="callout"><strong>SAFE GENERATION BOUNDARY</strong><p>This generator creates versioned application-structure blueprints and matching YARD HUB menu entries only. It does not create routes, operational tables, permissions, APIs, live functionality or DOWNTIME changes. Generated workspaces remain placeholders until a separately reviewed implementation is delivered.</p></div>
+     <div class="editor-grid">
+      <div class="editor"><strong>Generate a department</strong><div class="hint">Creates a standard YARD HUB department tile and placeholder workspace.</div><label for="generatorDepartmentTitle" style="margin-top:12px">Department title</label><input id="generatorDepartmentTitle" maxlength="48" placeholder="e.g. FLEET MANAGEMENT"><label for="generatorDepartmentDescription" style="margin-top:9px">Description</label><input id="generatorDepartmentDescription" maxlength="100" placeholder="Short department description"><div class="actions"><button id="generateDepartmentBtn" type="button" class="primary">GENERATE DEPARTMENT</button></div></div>
+      <div class="editor"><strong>Generate a module</strong><div class="hint">Adds a workspace to an eligible department. DOWNTIME, R&amp;M and HUB SETTINGS are protected.</div><label for="generatorModuleParent" style="margin-top:12px">Parent department</label><select id="generatorModuleParent"><option value="">No eligible departments</option></select><label for="generatorModuleTitle" style="margin-top:9px">Module title</label><input id="generatorModuleTitle" maxlength="48" placeholder="e.g. VEHICLE INSPECTIONS"><label for="generatorModuleDescription" style="margin-top:9px">Description</label><input id="generatorModuleDescription" maxlength="100" placeholder="Short module description"><label for="generatorModuleTemplate" style="margin-top:9px">Workspace template</label><select id="generatorModuleTemplate"><option value="standard-workspace">Standard workspace</option><option value="register-workspace">Register workspace</option><option value="checklist-workspace">Checklist workspace</option><option value="reports-workspace">Reports workspace</option></select><div class="actions"><button id="generateModuleBtn" type="button" class="primary">GENERATE MODULE</button></div></div>
+     </div>
+     <div class="panel" style="margin-top:14px;background:#091923"><div class="sectionhead"><div><div class="eyebrow">GENERATED OUTPUT</div><h2>Application blueprints</h2></div><span class="pill">DRAFT ONLY</span></div><div id="generatorBlueprintList" class="history-list"><div class="empty">No generated blueprints yet.</div></div><textarea id="applicationGeneratorData" hidden aria-hidden="true">{"items":[]}</textarea></div>
+    </div>
+    <div class="panel" style="margin-top:14px"><div class="sectionhead"><div><div class="eyebrow">LIVE STRUCTURE PREVIEW</div><h2>YARD HUB launcher</h2></div><span class="pill">CURRENT DRAFT</span></div><div id="yardHubStructurePreview"></div></div>
+    <div class="panel" style="margin-top:14px"><div class="sectionhead"><div><div class="eyebrow">LIVE STRUCTURE PREVIEW</div><h2>R&amp;M machinery selector</h2></div><span class="pill">CURRENT DRAFT</span></div><div id="repairMaintenanceCategoryPreview"></div></div>
+   </section>
+
+   <section class="view" id="view-modules"><div class="pagehead"><div><div class="eyebrow">MASTER CONTROLS / MODULES</div><h1>Module registry</h1><p>Maintain a DEV-only catalogue of modules and planned components. This registry is descriptive metadata only; it does not enable, disable, install or change any live DOWNTIME module.</p></div><span class="pill">ISOLATED METADATA</span></div><div class="callout"><strong>NO RUNTIME EFFECT</strong><p>Entries are stored in the isolated configuration registry. They do not change application routes, permissions, feature availability, data or deployed code.</p></div><div class="panel"><label for="moduleRegistry">Registered modules</label><textarea id="moduleRegistry" placeholder="One module name per line"></textarea><div class="hint">Use one canonical module name per line. This list is an administrative inventory, not a feature switch.</div></div></section>
+
+   <section class="view" id="view-access-governance">
+    <div class="pagehead"><div><div class="eyebrow">SECURITY / APPLICATION ADMINISTRATION</div><h1>Access & Governance</h1><p>Central oversight of the application's access-control domains, their authoritative systems and the existing management surfaces.</p></div><span class="pill">GOVERNANCE OVERVIEW</span></div>
+    <div class="callout"><strong>ONE AUTHORITY PER ACCESS DOMAIN</strong><p>This page is an administrative map, not a second permission editor. DOWNTIME and YARD HUB maintain separate tier models. Changes must be made through their existing server-authorized management workflows.</p></div>
+    <div class="editor-grid">
+     <div class="editor"><div class="eyebrow">DOMAIN 01 · DOWNTIME</div><h2>Accounts & operational permissions</h2><p>The existing Central Bank owns user identities, PIN authentication, operational tier assignments and the live permission matrix.</p><div class="hint">System of record: downtime_central_bank · Enforcement: central-bank Edge Function · Management surface: DOWNTIME ACCESS AND RIGHTS.</div><p><a href="./index.html">Open DOWNTIME application →</a></p></div>
+     <div class="editor"><div class="eyebrow">DOMAIN 02 · YARD HUB</div><h2>YARD HUB users & tier permissions</h2><p>YARD HUB maintains its own tier assignment and permission profiles. These do not replace or overwrite a user's DOWNTIME operational tier.</p><div class="hint">System of record: yard_hub_tier_config · Enforcement: yard-hub-settings-api · Management surface: YARD HUB SETTINGS.</div><p><a href="./index.html">Open DOWNTIME / YARD HUB →</a></p></div>
+     <div class="editor"><div class="eyebrow">DOMAIN 03 · CENTRAL DATA BANK</div><h2>Configuration administrator access</h2><p>The CDB control plane has a separate server-side access gate. Only the immutable DEV USER identity may enter this workspace.</p><div class="hint">System of record: central configuration state · Enforcement: central-config-admin · DEV remains the immutable root OWNER.</div><span class="pill live">IMMUTABLE DEV ONLY</span></div>
+     <div class="editor"><div class="eyebrow">PROTECTED BOUNDARIES</div><h2>Security invariants</h2><ul><li>Protected ROOTS authority is separate from ordinary YARD ROLE operational permissions.</li><li>DEV is the only OWNER identity.</li><li>DEV1 may assign ADMIN only. ADMIN cannot assign ROOTS or interfere with DEV/DEV1.</li><li>Browser visibility never grants permission.</li><li>This CDB page does not edit users, PINs or permission profiles.</li></ul></div>
+    </div>
+    <div class="panel" style="margin-top:14px"><div class="eyebrow">ADMINISTRATOR WORKFLOW</div><h2>Where to make changes</h2><p>Use the DOWNTIME application to reach its existing ACCESS AND RIGHTS and YARD HUB SETTINGS workflows. This overview intentionally does not create a duplicate editor or bypass the APIs that enforce those permissions.</p></div>
+   </section>
+
+   <section class="view" id="view-controls"><div class="pagehead"><div><div class="eyebrow">GOVERNANCE / CONTROL PLANE</div><h1>System controls</h1><p>Review the safeguards governing this isolated configuration workspace.</p></div><span class="pill">READ ONLY</span></div><div class="editor-grid"><div class="editor"><strong>Authentication boundary</strong><div class="hint">Server-side access is restricted to the immutable DEV bootstrap identity with OWNER tier. DEVACC and all other tiers are denied regardless of client visibility; DEVACC operational permissions do not confer ROOTS authority.</div></div><div class="editor"><strong>Draft and publish separation</strong><div class="hint">Draft saves create versioned snapshots. Publishing requires an explicit action and a matching version check.</div></div><div class="editor"><strong>Recovery controls</strong><div class="hint">Historical snapshots can be restored as a new draft. Restore does not publish automatically.</div></div><div class="editor"><strong>Operational isolation</strong><div class="hint">This control plane does not write to tracker operational records, user accounts, active shifts, reports or live application settings.</div></div></div></section>
+
+   <section class="view" id="view-information"><div class="pagehead"><div><div class="eyebrow">SYSTEM / DIAGNOSTICS</div><h1>System information</h1><p>Static environment and integration status for the DEV configuration workspace.</p></div><span class="pill">READ ONLY</span></div><div class="editor-grid"><div class="editor"><label>Workspace</label><strong>Central Data Bank · Master Configuration</strong></div><div class="editor"><label>Environment</label><strong>DEV administration workspace</strong></div><div class="editor"><label>Configuration schema</label><strong>Version 1 · Backward-compatible extension</strong></div><div class="editor"><label>Published structure integration</label><strong>YARD HUB + R&amp;M · Read-only</strong><div class="hint">Authenticated clients read the published YARD HUB menu and R&amp;M category labels only. DOWNTIME operational data and the R&amp;M API remain separate and unchanged.</div></div><div class="editor"><label>Configuration storage</label><strong>Separate central configuration tables</strong></div><div class="editor"><label>Access model</label><strong>IMMUTABLE DEV</strong></div></div></section>
+
+   <section class="view" id="view-navigation"><div class="pagehead"><div><div class="eyebrow">MASTER CONTROLS / NAVIGATION</div><h1>Menu & label management</h1><p>Rename visible labels in this DEV configuration workspace. Stable section IDs and routes remain unchanged. These labels do not alter the live application.</p></div><span class="pill">DEV WORKSPACE ONLY</span></div><div class="callout"><strong>DISPLAY LABELS ONLY</strong><p>Changes affect this administration interface only. Internal identifiers, API actions, URLs, the DOWNTIME application and its navigation are not editable here.</p></div><div class="editor-grid"><div class="editor"><label for="navLabelOverview">Overview menu title</label><input id="navLabelOverview" maxlength="40"></div><div class="editor"><label for="navLabelOrganisation">Organisation menu title</label><input id="navLabelOrganisation" maxlength="40"></div><div class="editor"><label for="navLabelStructure">Plant & Areas menu title</label><input id="navLabelStructure" maxlength="40"></div><div class="editor"><label for="navLabelLibraries">Operational Libraries menu title</label><input id="navLabelLibraries" maxlength="40"></div><div class="editor"><label for="navLabelDefaults">System Defaults menu title</label><input id="navLabelDefaults" maxlength="40"></div><div class="editor"><label for="navLabelHistory">Version History menu title</label><input id="navLabelHistory" maxlength="40"></div><div class="editor"><label for="navLabelNavigation">Menu & Labels menu title</label><input id="navLabelNavigation" maxlength="40"></div><div class="editor"><label for="navLabelModules">Module Registry menu title</label><input id="navLabelModules" maxlength="40"></div><div class="editor"><label for="navLabelControls">System Controls menu title</label><input id="navLabelControls" maxlength="40"></div><div class="editor"><label for="navLabelInformation">System Information menu title</label><input id="navLabelInformation" maxlength="40"></div></div></section>
+
+
+   <section class="view" id="view-department-menu-settings">
+    <div class="pagehead"><div><div class="eyebrow">MASTER CONTROLS / DEPARTMENT NAVIGATION</div><h1>Department Menu Controls</h1><p>Configure the Central Data Bank's own department launcher, supported menu categories, visibility, ordering and internal department submenus.</p></div><span class="pill">CENTRAL DATA BANK ONLY</span></div>
+    <div class="callout"><strong>ISOLATED ADMINISTRATIVE CONFIGURATION</strong><p>Department Menu settings are isolated from the YARD HUB launcher and every operational application. These controls affect the Central Data Bank launcher only. YARD HUB's live application menu is managed separately under Application Structure.</p></div>
+    <div class="cdb-menu-layout">
+     <div class="panel">
+      <div class="cdb-menu-toolbar"><div><h2>Menu categories</h2><p>Create, rename or remove unused categories. A category in use cannot be removed until its departments are reassigned.</p></div><div class="cdb-menu-actions"><input id="newDepartmentCategory" maxlength="40" placeholder="New category name" style="width:190px"><button id="addDepartmentCategoryBtn" type="button">ADD CATEGORY</button></div></div>
+      <div id="departmentCategories" class="cdb-menu-categories" style="margin-top:12px"></div>
+     </div>
+     <div class="panel">
+      <div class="cdb-menu-toolbar"><div><h2>Department entries</h2><p>Rename titles, edit descriptions, assign categories, control visibility and change the order within each category.</p></div><button id="restoreDepartmentMenuBtn" type="button" class="danger">RESTORE ORIGINAL SETTINGS</button></div>
+      <div id="departmentEntries" class="cdb-menu-entries" style="margin-top:12px"></div>
+      <div class="cdb-menu-note" style="margin-top:12px">Department identities and route IDs remain system-defined. This editor changes only the Central Data Bank launcher presentation.</div>
+     </div>
+     <div class="panel"><div class="sectionhead"><div><div class="eyebrow">LIVE PREVIEW</div><h2>Department launcher preview</h2></div><span class="pill">UNPUBLISHED DRAFT</span></div><div id="departmentMenuPreview"></div></div>
+    </div>
+   </section>
+
+
+   <section class="view" id="view-department-configuration">
+    <div class="pagehead"><div><div class="eyebrow">DEPARTMENT CONTROLS / PHASE 04</div><h1>Department Configuration</h1><p>Configure module availability, supported functionality, default landing pages and display preferences independently for each department.</p></div><span class="pill">VERSIONED CDB SETTINGS</span></div>
+    <div class="callout"><strong>AVAILABILITY IS NOT VISIBILITY</strong><p>Module availability controls whether a department is registered as available in the configuration model. Launcher visibility remains a separate Department Menu setting. These controls are CDB metadata only and do not activate, disable or alter any live application.</p></div>
+    <div id="departmentConfigurationEditors" class="cdb-department-config-list"></div>
+   </section>
+
+   <section class="view" id="view-organisation">
+    <div class="pagehead"><div><div class="eyebrow">MASTER REGISTRY / 01</div><h1>Organisation</h1><p>Define the organisation identity and regional conventions used by the configuration registry.</p></div><span class="pill">DRAFT EDITABLE</span></div>
+    <div class="panel"><div class="sectionhead"><div><h2>Organisation identity</h2><p>Leave the company name and site code blank until the application is installed for a company.</p></div></div>
+     <div class="formgrid">
+      <div class="field"><label for="companyName">Company / organisation name</label><input id="companyName" maxlength="120" placeholder="Not configured"></div>
+      <div class="field"><label for="siteCode">Primary site code</label><input id="siteCode" maxlength="32" placeholder="Optional identifier"></div>
+      <div class="field"><label for="timezone">IANA time zone</label><input id="timezone" value="Europe/London" placeholder="Europe/London"></div>
+      <div class="field"><label for="locale">Locale</label><input id="locale" value="en-GB" placeholder="en-GB"></div>
+     </div>
+    </div>
+   </section>
+
+   <section class="view" id="view-structure">
+    <div class="pagehead"><div><div class="eyebrow">MASTER REGISTRY / 02</div><h1>Plant & Areas</h1><p>Build the organisation's physical hierarchy. Every plant belongs to a site, every area belongs to a plant, and every station belongs to an area.</p></div><span class="pill">REFERENCE DATA</span></div>
+    <div class="cdb-hierarchy-toolbar"><div><strong>MASTER LOCATION HIERARCHY</strong><small>Changes remain in the CDB draft until saved and published.</small></div><button id="addSiteBtn" type="button" class="primary">＋ ADD SITE</button></div>
+    <div id="hierarchySummary" class="cdb-hierarchy-summary" aria-live="polite"></div>
+    <div id="hierarchyTree" class="cdb-hierarchy-tree"></div>
+    <details class="cdb-legacy-data"><summary>Legacy flat reference lists · compatibility only</summary><p>These lists are retained for compatibility with earlier configuration snapshots. New master records should be created in the hierarchy above. Existing values are preserved and are not automatically assigned to a parent.</p>
+     <div class="editor-grid">
+      <div class="editor"><label for="sites">Legacy sites</label><textarea id="sites" placeholder="One site per line"></textarea></div>
+      <div class="editor"><label for="plants">Legacy plants / facilities</label><textarea id="plants" placeholder="One plant per line"></textarea></div>
+      <div class="editor"><label for="areas">Legacy plant areas</label><textarea id="areas" placeholder="One area per line"></textarea></div>
+      <div class="editor"><label for="stations">Legacy stations / work positions</label><textarea id="stations" placeholder="One station per line"></textarea></div>
+     </div>
+    </details>
+   </section>
+
+   <section class="view" id="view-libraries">
+    <div class="pagehead"><div><div class="eyebrow">SYSTEM CONFIGURATION / 03</div><h1>Operational Libraries</h1><p>Standardise reusable operational values. These are master lists; they do not rewrite existing downtime records.</p></div><span class="pill">CONTROLLED VOCABULARY</span></div>
+    <div class="editor-grid">
+     <div class="editor"><label for="areaPresets">Area presets</label><textarea id="areaPresets" placeholder="One preset per line"></textarea><div class="hint">Quick-select area choices used when recording downtime.</div></div>
+     <div class="editor"><label for="downtimeReasons">Downtime reasons</label><textarea id="downtimeReasons" placeholder="One reason per line"></textarea><div class="hint">Standard reason catalogue. Existing records remain unchanged.</div></div>
+     <div class="editor"><label for="dailyTaskPresets">Daily task templates</label><textarea id="dailyTaskPresets" placeholder="One task per line"></textarea><div class="hint">Reusable checklist item definitions for daily operations.</div></div>
+     <div class="editor"><label for="equipmentCategories">Equipment categories</label><textarea id="equipmentCategories" placeholder="One category per line"></textarea><div class="hint">Common equipment or asset groupings for future data integrations.</div></div>
+     <div class="editor"><label for="eventCategories">Event categories</label><textarea id="eventCategories" placeholder="One category per line"></textarea><div class="hint">Standard event classifications for future reporting and integrations.</div></div>
+     <div class="editor"><label for="statusCategories">Status categories</label><textarea id="statusCategories" placeholder="One status per line"></textarea><div class="hint">Controlled operational status vocabulary.</div></div>
+    </div>
+   </section>
+
+   <section class="view" id="view-defaults">
+    <div class="pagehead"><div><div class="eyebrow">SYSTEM CONFIGURATION / 04</div><h1>System Defaults</h1><p>Set the default operating calendar, break allowance and shift definitions for the configuration registry.</p></div><span class="pill">GLOBAL DEFAULTS</span></div>
+    <div class="panel">
+     <div class="formgrid">
+      <div class="field"><label for="weekStartsOn">Week starts on</label><select id="weekStartsOn"><option>MONDAY</option><option>SUNDAY</option><option>TUESDAY</option><option>WEDNESDAY</option><option>THURSDAY</option><option>FRIDAY</option><option>SATURDAY</option></select></div>
+      <div class="field"><label for="breakDeductionMinutes">Default break deduction · minutes</label><input id="breakDeductionMinutes" type="number" min="0" max="240" step="1"></div>
+      <div class="field full"><label>Operating days</label><div id="operatingDays" class="daychecks"></div></div>
+     </div>
+    </div>
+    <div class="editor-grid" style="margin-top:13px">
+     <div class="editor"><label for="shiftSchedule">Shift schedule JSON</label><textarea id="shiftSchedule" spellcheck="false" style="min-height:250px"></textarea><div class="hint">Structured by day. Must be valid JSON. The current application schedule is copied into the initial baseline.</div></div>
+     <div class="editor"><label for="shiftPresets">Saved shift presets JSON</label><textarea id="shiftPresets" spellcheck="false" style="min-height:250px"></textarea><div class="hint">Array of objects containing a preset name and its shift configuration.</div></div>
+    </div>
+   </section>
+
+   <section class="view" id="view-history">
+    <div class="pagehead"><div><div class="eyebrow">GOVERNANCE / 05</div><h1>Version History</h1><p>Every saved draft creates a new immutable configuration snapshot. Restore a snapshot as a draft; publishing remains a separate action.</p></div><span class="pill">AUDITABLE VERSIONS</span></div>
+    <div class="panel"><div class="sectionhead"><div><h2>Configuration snapshots</h2><p id="historySummary">Latest versions appear first.</p></div><button id="historyRefreshBtn" class="quiet">REFRESH HISTORY</button></div><div id="historyList" class="history-list"></div></div>
+   </section>
+
+   <section class="view" id="view-release">
+    <div class="pagehead"><div><div class="eyebrow">GOVERNANCE / PHASE 07</div><h1>Change Impact & Release</h1><p>Compare the current draft with the published registry. Review every classified change before authorising publication.</p></div><span class="pill">RELEASE GATE · CDB ONLY</span></div>
+    <div class="callout"><strong>CONTROLLED RELEASE BOUNDARY</strong><p>This release updates only the Central Data Bank configuration registry. It does not deploy code, alter DOWNTIME operational records, change user permissions or integrate configuration into the live tracker.</p></div>
+    <div class="panel">
+     <div class="sectionhead"><div><div class="eyebrow">RELEASE CANDIDATE</div><h2>Draft v<span id="releaseDraftVersion">—</span> → Published v<span id="releasePublishedVersion">—</span></h2><p id="releaseState">Run an impact analysis to prepare the release report.</p></div><button id="runImpactBtn" class="primary">RUN IMPACT ANALYSIS</button></div>
+     <div class="kpis" id="impactKpis"><div class="kpi"><small>Additions</small><strong id="impactAdded">—</strong><em>New registry entries</em></div><div class="kpi"><small>Modifications</small><strong id="impactModified">—</strong><em>Changed values</em></div><div class="kpi"><small>Removals</small><strong id="impactRemoved">—</strong><em>Entries removed</em></div><div class="kpi"><small>High impact</small><strong id="impactHigh">—</strong><em>Structural or destructive</em></div></div>
+     <div id="impactClassification" class="cardlist"><div class="empty full">No impact report generated yet.</div></div>
+     <div class="sectionhead" style="margin-top:18px"><div><h2>Detailed change register</h2><p id="impactDetailSummary">The report will list each changed configuration path.</p></div><span id="impactReviewPill" class="pill">NOT REVIEWED</span></div>
+     <div id="impactChangeList" class="history-list"><div class="empty">Run impact analysis to inspect the release candidate.</div></div>
+     <div class="actions"><button id="approveImpactBtn" class="primary" disabled>CONFIRM REVIEW & AUTHORISE PUBLISH</button><span class="muted" id="impactApprovalNote">Review the complete report before authorising publication.</span></div>
+    </div>
+   </section>
+
+   <section class="view" id="view-audit">
+    <div class="pagehead"><div><div class="eyebrow">GOVERNANCE / PHASE 05</div><h1>Audit Log</h1><p>Read-only record of Central Data Bank configuration actions, actors and timestamps. This log does not expose operational activity records.</p></div><span class="pill">READ ONLY · CDB</span></div>
+    <div class="panel"><div class="sectionhead"><div><h2>Configuration activity</h2><p id="auditSummary">Latest 200 events · newest first</p></div><button id="auditRefreshBtn" class="quiet">REFRESH AUDIT LOG</button></div>
+     <div class="audit-toolbar"><div class="field"><label for="auditSearch">Search activity</label><input id="auditSearch" type="search" placeholder="Search actor, action or details"></div><div class="field"><label for="auditActionFilter">Action</label><select id="auditActionFilter"><option value="">All actions</option><option value="central-config-draft-save">Draft saved</option><option value="central-config-publish">Configuration published</option><option value="central-config-restore-draft">Draft restored</option></select></div></div>
+     <div id="auditList" class="history-list"></div>
+    </div>
+   </section>
+
+   <div id="status" class="status" role="status" aria-live="polite"></div>
+   <div class="pagefoot"><span>DOWNTIME · CENTRAL DATA BANK CONFIGURATION CONTROL</span><span id="footVersion">Draft v1 · Published v1</span></div>
+  </main>
+ </div>
+</section>
+
+<script>
+(()=>{
+ const $=id=>document.getElementById(id);
+ const rememberedConnectionKey="downtime-central-bank-connection-v2";
+ function restoreRememberedConnection(){
+  $("projectUrl").value="https://github-native.invalid";
+  $("pubKey").value="github-native";
+ }
+ function rememberConnection(){}
+ restoreRememberedConnection();
+ let token=null,me=null,model=null,draftVersion=0,publishedVersion=0,nextVersion=0,versions=[],baseline="",auditEvents=[],auditLoaded=false,impactReport=null,impactReviewedToken="";
+ const DAYS=["MONDAY","TUESDAY","WEDNESDAY","THURSDAY","FRIDAY","SATURDAY","SUNDAY"];
+ const endpoint=()=> $("projectUrl").value.trim().replace(/\/$/,"")+"/functions/v1/central-bank";
+ function status(message,error=false){$("status").textContent=message;$("status").style.color=error?"#ff9a8e":"#ffd45d"}
+ async function call(action,payload={},auth=true){
+  const headers={"Content-Type":"application/json","apikey":$("pubKey").value.trim()};
+  if(auth&&token)headers["x-downtime-session"]=token;
+  const response=await fetch(endpoint(),{method:"POST",headers,body:JSON.stringify({action,...payload})});
+  const data=await response.json().catch(()=>({error:"Invalid server response"}));
+  if(!response.ok){const error=new Error(data.error||"Central configuration request failed");error.status=response.status;throw error}
+  return data;
+ }
+
+ const SUPPORTED_MENU_TARGETS=["overview","organisation","structure","libraries","defaults","history","navigation","department-menu-settings","modules","controls","information","dept-downtime","dept-floor","dept-checksheets","dept-rm","dept-yardhub"];
+ function defaultDepartmentMenu(){return {categories:[{id:"operations",label:"Operations",order:0},{id:"administration",label:"Administration",order:1}],entries:[{id:"downtime",route:"dept-downtime",mark:"D",title:"DOWNTIME",description:"PLANT DOWNTIME & OPERATIONS",categoryId:"operations",enabled:true,order:0,status:"PROTECTED LIVE APPLICATION",statusTone:"live",submenu:[]},{id:"floor",route:"dept-floor",mark:"F",title:"FLOOR",description:"FLOOR & YARD OPERATIONS",categoryId:"operations",enabled:true,order:1,status:"RESERVED MODULE",statusTone:"planned",submenu:[]},{id:"check-sheets",route:"dept-checksheets",mark:"CS",title:"CHECK SHEETS",description:"INSPECTIONS & COMPLIANCE",categoryId:"operations",enabled:true,order:2,status:"RESERVED MODULE",statusTone:"planned",submenu:[]},{id:"repairs-maintenance",route:"dept-rm",mark:"R&M",title:"R&M",description:"REPAIRS & MAINTENANCE",categoryId:"operations",enabled:true,order:3,status:"EXISTING APPLICATION",statusTone:"live",submenu:[]},{id:"hub-settings",route:"dept-yardhub",mark:"YH",title:"HUB SETTINGS",description:"YARD HUB & APPLICATION ACCESS",categoryId:"administration",enabled:true,order:0,status:"ADMINISTRATION",statusTone:"admin",submenu:[]}]};}
+function defaultDepartmentSettings(){
+  return {
+   downtime:{moduleAvailable:true,defaultLandingPage:"dept-downtime",availableFeatures:["weekly-tracker","weekly-reports","daily-tasks","operator-on-duty","plant-overview","crew-switchboard","plant-power","settings"],displayPreferences:{density:"comfortable",showDescriptions:true,showStatusBadges:true,showQuickLinks:true}},
+   floor:{moduleAvailable:false,defaultLandingPage:"dept-floor",availableFeatures:[],displayPreferences:{density:"comfortable",showDescriptions:true,showStatusBadges:true,showQuickLinks:true}},
+   "check-sheets":{moduleAvailable:false,defaultLandingPage:"dept-checksheets",availableFeatures:[],displayPreferences:{density:"comfortable",showDescriptions:true,showStatusBadges:true,showQuickLinks:true}},
+   "repairs-maintenance":{moduleAvailable:true,defaultLandingPage:"dept-rm",availableFeatures:["faults-defects","machinery-register","service-records","equipment-catalogue","report-export"],displayPreferences:{density:"comfortable",showDescriptions:true,showStatusBadges:true,showQuickLinks:true}},
+   "hub-settings":{moduleAvailable:true,defaultLandingPage:"dept-yardhub",availableFeatures:["user-management","staff-management","access-rights","department-menu","central-data-bank"],displayPreferences:{density:"comfortable",showDescriptions:true,showStatusBadges:true,showQuickLinks:true}}
+  };
+ }
+ const DEPARTMENT_FEATURES={
+  downtime:[["weekly-tracker","Weekly tracker"],["weekly-reports","Weekly reports"],["daily-tasks","Daily tasks"],["operator-on-duty","Operator on Duty"],["plant-overview","Plant Overview"],["crew-switchboard","Crew Switchboard"],["plant-power","Plant power controls"],["settings","Settings"]],
+  floor:[],
+  "check-sheets":[],
+  "repairs-maintenance":[["faults-defects","Faults & defects"],["machinery-register","Machinery register"],["service-records","Service records"],["equipment-catalogue","Equipment catalogue"],["report-export","Report export"]],
+  "hub-settings":[["user-management","User management"],["staff-management","Staff management"],["access-rights","Access & Rights"],["department-menu","Department menu"],["central-data-bank","Central Data Bank"]]
+ };
+ function renderDepartmentConfiguration(config){
+  const defaults=defaultDepartmentSettings(),source=config&&typeof config==="object"?config:{},host=$("departmentConfigurationEditors");if(!host)return;host.replaceChildren();
+  const departments=[["downtime","DOWNTIME","dept-downtime"],["floor","FLOOR","dept-floor"],["check-sheets","CHECK SHEETS","dept-checksheets"],["repairs-maintenance","R&M","dept-rm"],["hub-settings","HUB SETTINGS","dept-yardhub"]];
+  departments.forEach(([id,title,route])=>{
+   const value={...defaults[id],...(source[id]||{}),displayPreferences:{...defaults[id].displayPreferences,...((source[id]||{}).displayPreferences||{})}};
+   const card=menuNode("section","cdb-department-config-card"),head=menuNode("div","cdb-department-config-head"),name=menuNode("strong","",title),state=menuNode("span","pill",value.moduleAvailable?"MODULE AVAILABLE":"MODULE UNAVAILABLE");head.append(name,state);card.append(head);card.dataset.departmentConfig=id;
+   const availability=menuNode("div","cdb-department-config-row"),available=menuNode("input");available.type="checkbox";available.checked=value.moduleAvailable!==false;available.dataset.deptModuleAvailable="true";const availableLabel=menuNode("label","","Module available");availableLabel.prepend(available);availability.append(availableLabel);
+   const landingField=menuNode("div","field"),landingLabel=menuNode("label","","Default landing page"),landing=menuNode("select");landing.dataset.deptLanding="true";
+   [[route,"Department home"],["overview","System overview"]].forEach(([v,label])=>{const option=menuNode("option","",label);option.value=v;landing.append(option);});landing.value=value.defaultLandingPage=== "overview"?"overview":route;landingLabel.append(landing);landingField.append(landingLabel);availability.append(landingField);card.append(availability);
+   const features=menuNode("div","cdb-department-config-group"),featureTitle=menuNode("strong","","SUPPORTED FUNCTIONALITY");features.append(featureTitle);
+   const featureGrid=menuNode("div","cdb-department-feature-grid");
+   DEPARTMENT_FEATURES[id].forEach(([feature,label])=>{const wrap=menuNode("label","cdb-department-feature"),input=menuNode("input");input.type="checkbox";input.dataset.deptFeature=feature;input.checked=(value.availableFeatures||[]).includes(feature);wrap.append(input,document.createTextNode(label));featureGrid.append(wrap);});
+   if(!DEPARTMENT_FEATURES[id].length)featureGrid.append(menuNode("small","muted","No functionality is registered yet. This reserved department remains unavailable until its feature set is defined."));
+   features.append(featureGrid);card.append(features);
+   const display=menuNode("div","cdb-department-config-group"),displayTitle=menuNode("strong","","DISPLAY PREFERENCES"),displayGrid=menuNode("div","cdb-department-display-grid");display.append(displayTitle);
+   const densityField=menuNode("div","field"),densityLabel=menuNode("label","","Display density"),density=menuNode("select");density.dataset.deptDensity="true";[["comfortable","Comfortable"],["compact","Compact"]].forEach(([v,label])=>{const option=menuNode("option","",label);option.value=v;density.append(option);});density.value=value.displayPreferences.density==="compact"?"compact":"comfortable";densityLabel.append(density);densityField.append(densityLabel);displayGrid.append(densityField);
+   [["showDescriptions","Show descriptions"],["showStatusBadges","Show status badges"],["showQuickLinks","Show quick links"]].forEach(([key,label])=>{const wrap=menuNode("label","cdb-department-feature"),input=menuNode("input");input.type="checkbox";input.dataset["dept"+key.charAt(0).toUpperCase()+key.slice(1)]="true";input.checked=value.displayPreferences[key]!==false;wrap.append(input,document.createTextNode(label));displayGrid.append(wrap);});
+   display.append(displayGrid);card.append(display);host.append(card);
+  });
+  host.querySelectorAll("input,select").forEach(input=>{input.addEventListener("input",updateButtons);input.addEventListener("change",updateButtons);});
+ }
+ function collectDepartmentConfiguration(){
+  const result={};
+  document.querySelectorAll("[data-department-config]").forEach(card=>{
+   const id=card.dataset.departmentConfig,features=Array.from(card.querySelectorAll("[data-dept-feature]:checked")).map(input=>input.dataset.deptFeature),get=(key)=>card.querySelector("[data-"+key+"]");
+   result[id]={moduleAvailable:card.querySelector("[data-dept-module-available]").checked,defaultLandingPage:card.querySelector("[data-dept-landing]").value,availableFeatures:features,displayPreferences:{density:card.querySelector("[data-dept-density]").value,showDescriptions:card.querySelector("[data-dept-show-descriptions]").checked,showStatusBadges:card.querySelector("[data-dept-show-status-badges]").checked,showQuickLinks:card.querySelector("[data-dept-show-quick-links]").checked}};
+  });
+  return result;
+ }
+ 
+ function configEndpoint(){return $("projectUrl").value.trim().replace(/\/$/,"")+"/functions/v1/central-config-admin";}
+ async function callConfig(action,payload={}) {
+  const headers={"Content-Type":"application/json","apikey":$("pubKey").value.trim()};
+  if(token)headers["x-downtime-session"]=token;
+  const response=await fetch(configEndpoint(),{method:"POST",headers,body:JSON.stringify({action,...payload})});
+  const data=await response.json().catch(()=>({error:"Invalid CDB configuration response"}));
+  if(!response.ok){const error=new Error(data.error||"CDB configuration request failed");error.status=response.status;throw error;}
+  return data;
+ }
+ function menuNode(tag,className,text){const node=document.createElement(tag);if(className)node.className=className;if(text!==undefined)node.textContent=text;return node;}
+ function menuInput(labelText,value,maxLength,datasetKey,host){
+  const field=menuNode("div","field"),label=menuNode("label","",labelText),input=menuNode("input");
+  input.value=value??"";input.maxLength=maxLength;input.dataset[datasetKey]="true";label.append(input);field.append(label);host.append(field);return input;
+ }
+ function menuToggle(text,checked,datasetKey,host){
+  const label=menuNode("label","cdb-menu-toggle"),input=menuNode("input");input.type="checkbox";input.checked=checked!==false;input.dataset[datasetKey]="true";label.append(input,document.createTextNode(text));host.append(label);return input;
+ }
+ function renderDepartmentMenu(config){
+  const fallback=defaultDepartmentMenu(),source=config&&typeof config==="object"?config:fallback;
+  const categories=Array.isArray(source.categories)&&source.categories.length?source.categories:fallback.categories;
+  const categoryIndex=id=>categories.findIndex(item=>item.id===id);const entries=fallback.entries.map(base=>{const found=(source.entries||[]).find(item=>item.id===base.id)||{};return {...base,...found,submenu:Array.isArray(found.submenu)?found.submenu:[]};}).sort((a,b)=>categoryIndex(a.categoryId)-categoryIndex(b.categoryId)||Number(a.order)-Number(b.order));
+  const categoryHost=$("departmentCategories"),entryHost=$("departmentEntries");if(!categoryHost||!entryHost)return;
+  categoryHost.replaceChildren();entryHost.replaceChildren();
+  categories.slice().sort((a,b)=>Number(a.order)-Number(b.order)).forEach((category,index)=>{
+   const card=menuNode("div","cdb-menu-category");card.dataset.menuCategory="true";card.dataset.categoryId=category.id;
+   menuInput("Category name",category.label,40,"menuCategoryLabel",card);
+   const remove=menuNode("button","danger","REMOVE");remove.type="button";remove.addEventListener("click",()=>{
+    const menu=collectDepartmentMenu(),used=menu.entries.some(entry=>entry.categoryId===category.id);
+    if(used){status("Reassign departments before removing a category.",true);return;}
+    if(menu.categories.length<=1){status("At least one category must remain.",true);return;}
+    renderDepartmentMenu({...menu,categories:menu.categories.filter(item=>item.id!==category.id)});updateButtons();
+   });
+   card.append(remove);categoryHost.append(card);
+  });
+  entries.forEach(entry=>{
+   const card=menuNode("div","cdb-menu-entry");card.dataset.menuEntry="true";card.dataset.menuEntryId=entry.id;card.dataset.entryOrder=String(entry.order);card.dataset.menuEntryRoute=entry.route;card.dataset.menuEntryMark=entry.mark;card.dataset.menuEntryStatus=entry.status;card.dataset.menuEntryTone=entry.statusTone;
+   const head=menuNode("div","cdb-menu-entry-head"),heading=menuNode("strong","",entry.title+" · "+entry.id.toUpperCase()),state=menuNode("span","pill",entry.enabled===false?"HIDDEN FROM LAUNCHER":"VISIBLE IN LAUNCHER");head.append(heading,state);card.append(head);
+   const fields=menuNode("div","cdb-menu-fields");
+   menuInput("Department title",entry.title,48,"menuEntryTitle",fields);
+   menuInput("Description",entry.description,100,"menuEntryDescription",fields);
+   const catField=menuNode("div","field"),catLabel=menuNode("label","","Menu category"),catSelect=menuNode("select");catSelect.dataset.menuEntryCategory="true";
+   categories.forEach(category=>{const option=menuNode("option","",category.label);option.value=category.id;catSelect.append(option);});
+   catSelect.value=entry.categoryId;catLabel.append(catSelect);catField.append(catLabel);fields.append(catField);
+   const enabledWrap=menuNode("div","field");menuToggle("Show in department launcher",entry.enabled,"menuEntryEnabled",enabledWrap);fields.append(enabledWrap);card.append(fields);
+   const actions=menuNode("div","cdb-menu-actions"),up=menuNode("button","quiet","MOVE UP"),down=menuNode("button","quiet","MOVE DOWN"),add=menuNode("button","quiet","ADD SUBMENU ITEM");
+   up.type=down.type=add.type="button";up.dataset.menuEntryMoveUp=entry.id;down.dataset.menuEntryMoveDown=entry.id;up.addEventListener("click",()=>moveDepartmentEntry(entry.id,-1));down.addEventListener("click",()=>moveDepartmentEntry(entry.id,1));add.addEventListener("click",()=>addDepartmentSubmenu(entry.id));actions.append(up,down,add);card.append(actions);
+   const submenuHost=menuNode("div","cdb-menu-submenus");submenuHost.dataset.menuSubmenus=entry.id;submenuHost.append(menuNode("strong","","SUBMENU ITEMS"));
+   (entry.submenu||[]).forEach((item,index)=>submenuHost.append(makeSubmenuEditor(entry.id,item,index)));
+   card.append(submenuHost);entryHost.append(card);
+  });
+  categoryHost.querySelectorAll("input").forEach(input=>input.addEventListener("input",()=>{renderDepartmentLauncher(collectDepartmentMenu());updateButtons();}));
+  entryHost.querySelectorAll("input,select").forEach(input=>input.addEventListener("input",()=>{renderDepartmentLauncher(collectDepartmentMenu());updateButtons();}));
+  entryHost.querySelectorAll('input[type="checkbox"]').forEach(input=>input.addEventListener("change",()=>{renderDepartmentLauncher(collectDepartmentMenu());updateButtons();}));
+  renderDepartmentLauncher(collectDepartmentMenu());
+ }
+ function makeSubmenuEditor(entryId,item,index){
+  const row=menuNode("div","cdb-menu-submenu");row.dataset.menuSubmenu="true";row.dataset.menuSubmenuId=item.id||("item-"+index);
+  const label=menuNode("input");label.value=item.label||"";label.maxLength=40;label.placeholder="Menu label";label.dataset.menuSubmenuLabel="true";
+  const target=menuNode("select");target.dataset.menuSubmenuTarget="true";SUPPORTED_MENU_TARGETS.forEach(value=>{const option=menuNode("option","",value.replace(/-/g," ").toUpperCase());option.value=value;target.append(option);});target.value=item.target||"overview";
+  const enabledWrap=menuNode("div");menuToggle("ON",item.enabled,"menuSubmenuEnabled",enabledWrap);
+  const remove=menuNode("button","danger","REMOVE");remove.type="button";remove.dataset.removeSubmenu="true";remove.addEventListener("click",()=>{const menu=collectDepartmentMenu(),entry=menu.entries.find(value=>value.id===entryId);entry.submenu=entry.submenu.filter(value=>value.id!==row.dataset.menuSubmenuId);renderDepartmentMenu(menu);updateButtons();});
+  row.append(label,target,enabledWrap,remove);
+  [label,target].forEach(input=>input.addEventListener("input",()=>{renderDepartmentLauncher(collectDepartmentMenu());updateButtons();}));
+  enabledWrap.querySelector("input").addEventListener("change",()=>{renderDepartmentLauncher(collectDepartmentMenu());updateButtons();});
+  return row;
+ }
+ function collectDepartmentMenu(){
+  const categories=Array.from(document.querySelectorAll("[data-menu-category]")).map((card,index)=>({id:card.dataset.categoryId,label:card.querySelector("[data-menu-category-label]")?.value.trim()||"",order:index}));
+  const entries=Array.from(document.querySelectorAll("[data-menu-entry]")).map((card,index)=>{
+   const base=defaultDepartmentMenu().entries.find(item=>item.id===card.dataset.menuEntryId);
+   const submenu=Array.from(card.querySelectorAll("[data-menu-submenu]")).map((row,childIndex)=>({id:row.dataset.menuSubmenuId||("submenu-"+childIndex),label:row.querySelector("[data-menu-submenu-label]")?.value.trim()||"",target:row.querySelector("[data-menu-submenu-target]")?.value||"overview",enabled:row.querySelector("[data-menu-submenu-enabled]")?.checked!==false,order:childIndex}));
+   return {id:base.id,route:base.route,mark:base.mark,title:card.querySelector("[data-menu-entry-title]")?.value.trim()||"",description:card.querySelector("[data-menu-entry-description]")?.value.trim()||"",categoryId:card.querySelector("[data-menu-entry-category]")?.value||base.categoryId,enabled:card.querySelector("[data-menu-entry-enabled]")?.checked!==false,order:Number(card.dataset.entryOrder??index),status:base.status,statusTone:base.statusTone,submenu};
+  });
+  for(const category of categories){entries.filter(entry=>entry.categoryId===category.id).sort((a,b)=>a.order-b.order).forEach((entry,index)=>entry.order=index);}
+  return {categories,entries};
+ }
+ function moveDepartmentEntry(id,delta){
+  const menu=collectDepartmentMenu(),entry=menu.entries.find(item=>item.id===id);if(!entry)return;
+  const peers=menu.entries.filter(item=>item.categoryId===entry.categoryId).sort((a,b)=>a.order-b.order),index=peers.findIndex(item=>item.id===id),target=index+delta;
+  if(target<0||target>=peers.length)return;[peers[index],peers[target]]=[peers[target],peers[index]];peers.forEach((item,index)=>item.order=index);
+  const updated=menu.entries.map(item=>peers.find(peer=>peer.id===item.id)||item);renderDepartmentMenu({...menu,entries:updated});updateButtons();
+ }
+ function addDepartmentSubmenu(id){
+  const menu=collectDepartmentMenu(),entry=menu.entries.find(item=>item.id===id);if(!entry)return;
+  if(entry.submenu.length>=12){status("A department can have no more than 12 submenu items.",true);return;}
+  let serial=1;while(entry.submenu.some(item=>item.id==="menu-link-"+serial))serial++;entry.submenu.push({id:"menu-link-"+serial,label:"New link",target:"overview",enabled:true,order:entry.submenu.length});renderDepartmentMenu(menu);updateButtons();
+ }
+ function addDepartmentCategory(){
+  const value=$("newDepartmentCategory").value.trim();if(!value){status("Enter a category name first.",true);return;}
+  const menu=collectDepartmentMenu(),id=value.toLocaleLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
+  if(!id||menu.categories.some(item=>item.id===id||item.label.toLocaleLowerCase()===value.toLocaleLowerCase())){status("That category already exists or has an invalid name.",true);return;}
+  if(menu.categories.length>=20){status("A maximum of 20 categories is supported.",true);return;}
+  menu.categories.push({id,label:value,order:menu.categories.length});$("newDepartmentCategory").value="";renderDepartmentMenu(menu);updateButtons();
+ }
+ function renderDepartmentLauncher(config){
+  const host=$("departmentLauncher"),preview=$("departmentMenuPreview");if(!host)return;
+  const menu=config&&Array.isArray(config.entries)?config:defaultDepartmentMenu();host.replaceChildren();if(preview)preview.replaceChildren();
+  const categories=(menu.categories||[]).slice().sort((a,b)=>Number(a.order)-Number(b.order));let visible=0;
+  categories.forEach(category=>{
+   const entries=(menu.entries||[]).filter(entry=>entry.categoryId===category.id&&entry.enabled!==false).slice().sort((a,b)=>Number(a.order)-Number(b.order));if(!entries.length)return;visible+=entries.length;
+   const group=menuNode("section","cdb-dept-group"),heading=menuNode("div","cdb-dept-group-title",category.label),grid=menuNode("div","cdb-dept-grid");group.append(heading,grid);
+   entries.forEach(entry=>{
+    const wrap=menuNode("div","cdb-launch-entry"),button=menuNode("button","cdb-dept-card"),mark=menuNode("span","cdb-dept-mark",entry.mark),copy=menuNode("span","cdb-dept-copy"),title=menuNode("strong","",entry.title),description=menuNode("small","",entry.description),statusMark=menuNode("em",entry.statusTone,entry.status);
+    button.type="button";button.dataset.section=entry.route;copy.append(title,description,statusMark);button.append(mark,copy);wrap.append(button);
+    const submenu=(entry.submenu||[]).filter(item=>item.enabled!==false);
+    if(submenu.length){const links=menuNode("div","cdb-dept-submenu");submenu.slice().sort((a,b)=>a.order-b.order).forEach(item=>{const link=menuNode("button","",item.label);link.type="button";link.dataset.section=item.target;links.append(link);});wrap.append(links);}
+    grid.append(wrap);
+   });
+   host.append(group);
+   if(preview){const previewGroup=menuNode("section","cdb-dept-group"),previewHeading=menuNode("div","cdb-dept-group-title",category.label),previewGrid=menuNode("div","cdb-dept-grid");previewGroup.append(previewHeading,previewGrid);entries.forEach(entry=>{const card=menuNode("div","feature");card.append(menuNode("strong","",entry.title),menuNode("small","",entry.description));(entry.submenu||[]).filter(item=>item.enabled!==false).forEach(item=>card.append(menuNode("small","",item.label+" → "+item.target)));previewGrid.append(card);});preview.append(previewGroup);}
+  });
+  if(!visible){host.append(menuNode("div","cdb-menu-empty","All department entries are currently hidden. Enable at least one entry to display the launcher."));if(preview)preview.append(menuNode("div","cdb-menu-empty","No visible departments."));}
+  host.querySelectorAll("button[data-section]").forEach(button=>button.addEventListener("click",()=>showSection(button.dataset.section)));
+ }
+
+ function defaultYardHubMenu(){return {departments:[
+  {id:"downtime",kind:"downtime",title:"DOWNTIME",description:"PLANT DOWNTIME & OPERATIONS",enabled:true,order:0,protected:true,submenus:[]},
+  {id:"gatelog",kind:"gatelog",title:"GATELOG",description:"CUSTOMER & SITE ENTRY MANAGEMENT",enabled:true,order:5,protected:true,submenus:[]},
+  {id:"floor",kind:"floor",title:"FLOOR",description:"FLOOR & YARD OPERATIONS",enabled:true,order:1,protected:false,submenus:[]},
+  {id:"check-sheets",kind:"check-sheets",title:"CHECK SHEETS",description:"INSPECTIONS & COMPLIANCE",enabled:true,order:2,protected:false,submenus:[]},
+  {id:"repairs-maintenance",kind:"repairs-maintenance",title:"R&M",description:"REPAIRS & MAINTENANCE",enabled:true,order:3,protected:false,submenus:[]},
+  {id:"hub-settings",kind:"hub-settings",title:"HUB SETTINGS",description:"YARD HUB CONFIGURATION & ACCESS CONTROL",enabled:true,order:4,protected:true,submenus:[]}
+ ]};}
+ function structureSlug(value){return String(value||"").toLocaleLowerCase().normalize("NFKD").replace(/[\\u0300-\\u036f]/g,"").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,32)||"department";}
+ function renderYardHubStructure(config){
+  const source=config&&Array.isArray(config.departments)?config:defaultYardHubMenu(),host=$("yardHubStructureDepartments"),preview=$("yardHubStructurePreview");
+  if(!host)return;host.replaceChildren();if(preview)preview.replaceChildren();
+  const departments=source.departments.slice().sort((a,b)=>Number(a.order)-Number(b.order));
+  const grid=menuNode("div","yard-hub-structure-preview-grid");
+  departments.forEach((entry,index)=>{
+   const card=menuNode("div","cdb-menu-entry");card.dataset.yardDepartment="true";card.dataset.yardDepartmentId=entry.id;card.dataset.yardDepartmentKind=entry.kind||"custom";card.dataset.yardDepartmentProtected=entry.protected?"true":"false";
+   const head=menuNode("div","cdb-menu-entry-head"),heading=menuNode("strong","",entry.title+" · "+entry.id.toUpperCase()),state=menuNode("span","pill",entry.enabled===false?"HIDDEN FROM YARD HUB":"VISIBLE IN YARD HUB");head.append(heading,state);card.append(head);
+   const fields=menuNode("div","cdb-menu-fields");
+   const titleInput=menuInput("Department title",entry.title,48,"yardDepartmentTitle",fields),descriptionInput=menuInput("Description",entry.description,100,"yardDepartmentDescription",fields);
+   if(entry.kind==="downtime"){titleInput.disabled=true;descriptionInput.disabled=true;titleInput.title="DOWNTIME is protected from YARD HUB structure edits";descriptionInput.title=titleInput.title;}
+   const enabledField=menuNode("div","field"),enabledLabel=menuNode("label",""),enabledInput=menuNode("input");enabledInput.type="checkbox";enabledInput.checked=entry.enabled!==false;enabledInput.dataset.yardDepartmentEnabled="true";enabledLabel.append(enabledInput,document.createTextNode("Show department in YARD HUB"));enabledField.append(enabledLabel);fields.append(enabledField);card.append(fields);
+   const actions=menuNode("div","cdb-menu-actions");
+   const up=menuNode("button","quiet","MOVE UP"),down=menuNode("button","quiet","MOVE DOWN"),add=menuNode("button","quiet","ADD SUB-MENU");
+   up.type=down.type=add.type="button";up.disabled=index===0;down.disabled=index===departments.length-1;
+   up.addEventListener("click",()=>moveYardHubDepartment(entry.id,-1));down.addEventListener("click",()=>moveYardHubDepartment(entry.id,1));add.disabled=entry.kind==="downtime"||entry.kind==="gatelog"||entry.kind==="repairs-maintenance"||entry.kind==="hub-settings";add.title=add.disabled?"This core application does not support configurable sub-menus.":"";add.addEventListener("click",()=>addYardHubSubmenu(entry.id));
+   actions.append(up,down,add);
+   const remove=menuNode("button",entry.protected?"quiet":"danger",entry.protected?"CORE DEPARTMENT":entry.kind==="custom"?"REMOVE":"HIDE FROM MENU");
+   remove.type="button";remove.disabled=entry.protected===true;
+   remove.addEventListener("click",()=>removeYardHubDepartment(entry.id));
+   actions.append(remove);card.append(actions);
+   const submenuHost=menuNode("div","cdb-menu-submenus");submenuHost.append(menuNode("strong","","SUB-MENU ITEMS"));
+   (entry.submenus||[]).slice().sort((a,b)=>Number(a.order)-Number(b.order)).forEach((child,childIndex)=>{
+    const row=menuNode("div","cdb-menu-submenu");row.dataset.yardSubmenu="true";row.dataset.yardSubmenuId=child.id;
+    const label=menuNode("input");label.value=child.label||"";label.maxLength=48;label.placeholder="Sub-menu title";label.dataset.yardSubmenuLabel="true";
+    const toggleWrap=menuNode("div"),toggleLabel=menuNode("label","cdb-menu-toggle"),toggle=menuNode("input");toggle.type="checkbox";toggle.checked=child.enabled!==false;toggle.dataset.yardSubmenuEnabled="true";toggleLabel.append(toggle,document.createTextNode("VISIBLE"));toggleWrap.append(toggleLabel);
+    const childOrder=menuNode("small","muted","ORDER "+(childIndex+1));
+    const removeChild=menuNode("button","danger","REMOVE");removeChild.type="button";removeChild.addEventListener("click",()=>removeYardHubSubmenu(entry.id,child.id));
+    row.append(label,toggleWrap,childOrder,removeChild);submenuHost.append(row);
+   });
+   if(!(entry.submenus||[]).length)submenuHost.append(menuNode("small","muted","No sub-menu items. Add one for equipment types, sub-departments or dedicated workspace links."));
+   card.append(submenuHost);host.append(card);
+   const previewCard=menuNode("div","yard-hub-structure-preview-card"),mark=menuNode("span","yard-hub-structure-preview-mark",entry.title.split(/\\s+/).map(word=>word[0]).join("").slice(0,2).toUpperCase()),copy=menuNode("span","yard-hub-structure-preview-copy");
+   copy.append(menuNode("strong","",entry.title),menuNode("small","",entry.description),menuNode("em",entry.enabled===false?"planned":"live",entry.enabled===false?"HIDDEN":"YARD HUB TILE"));
+   previewCard.append(mark,copy);grid.append(previewCard);
+   (entry.submenus||[]).filter(item=>item.enabled!==false).forEach(child=>grid.append(menuNode("small","muted",entry.title+" → "+child.label)));
+  });
+  if(preview){preview.append(grid);preview.append(menuNode("p","yard-hub-structure-preview-note","Preview reflects the department and sub-menu order in this draft. Changes reach the live YARD HUB launcher only after publish."));}
+  host.querySelectorAll("input").forEach(input=>{input.addEventListener("input",()=>{renderYardHubStructurePreview(collectYardHubStructure());updateButtons();});input.addEventListener("change",()=>{renderYardHubStructurePreview(collectYardHubStructure());updateButtons();});});
+ }
+ function renderYardHubStructurePreview(config){
+  const preview=$("yardHubStructurePreview");if(!preview)return;preview.replaceChildren();const grid=menuNode("div","yard-hub-structure-preview-grid");
+  (config.departments||[]).forEach(entry=>{if(entry.enabled===false)return;const card=menuNode("div","yard-hub-structure-preview-card"),mark=menuNode("span","yard-hub-structure-preview-mark",entry.title.split(/\\s+/).map(word=>word[0]).join("").slice(0,2).toUpperCase()),copy=menuNode("span","yard-hub-structure-preview-copy");copy.append(menuNode("strong","",entry.title),menuNode("small","",entry.description),menuNode("em","live",(entry.submenus||[]).filter(item=>item.enabled!==false).length+" SUB-MENU ITEMS"));card.append(mark,copy);grid.append(card);});preview.append(grid);
+ }
+ function collectYardHubStructure(){
+  const departments=Array.from(document.querySelectorAll("[data-yard-department]")).map((card,index)=>{
+   const id=card.dataset.yardDepartmentId,base=defaultYardHubMenu().departments.find(item=>item.id===id),submenus=Array.from(card.querySelectorAll("[data-yard-submenu]")).map((row,childIndex)=>({id:row.dataset.yardSubmenuId,label:row.querySelector("[data-yard-submenu-label]")?.value.trim()||"",enabled:row.querySelector("[data-yard-submenu-enabled]")?.checked!==false,order:childIndex}));
+   return {id,kind:base?.kind||"custom",title:card.querySelector("[data-yard-department-title]")?.value.trim()||"",description:card.querySelector("[data-yard-department-description]")?.value.trim()||"",enabled:card.querySelector("[data-yard-department-enabled]")?.checked!==false,order:index,protected:base?.protected===true,submenus};
+  });
+  return {departments};
+ }
+ function addYardHubDepartment(){
+  const title=$("newYardHubDepartmentTitle").value.trim();if(!title){status("Enter a department title first.",true);return;}
+  const menu=collectYardHubStructure();let id=structureSlug(title),serial=2;while(menu.departments.some(item=>item.id===id))id=structureSlug(title)+"-"+serial++;
+  if(menu.departments.some(item=>item.title.toLocaleLowerCase()===title.toLocaleLowerCase())){status("A department with that title already exists.",true);return;}
+  menu.departments.push({id,kind:"custom",title,description:"",enabled:true,order:menu.departments.length,protected:false,submenus:[]});
+  $("newYardHubDepartmentTitle").value="";renderYardHubStructure(menu);updateButtons();status("Department added to the draft. Save, validate and publish to make it appear in YARD HUB.");
+ }
+ function addYardHubSubmenu(id){
+  const menu=collectYardHubStructure(),entry=menu.departments.find(item=>item.id===id);if(!entry)return;
+  if(entry.submenus.length>=30){status("A department can contain no more than 30 sub-menu items.",true);return;}
+  let label="New sub-menu",base=structureSlug(label),childId=base,n=2;while(entry.submenus.some(item=>item.id===childId))childId=base+"-"+n++;
+  entry.submenus.push({id:childId,label,enabled:true,order:entry.submenus.length});renderYardHubStructure(menu);updateButtons();
+ }
+ function removeYardHubSubmenu(departmentId,submenuId){const menu=collectYardHubStructure(),entry=menu.departments.find(item=>item.id===departmentId);if(!entry)return;entry.submenus=entry.submenus.filter(item=>item.id!==submenuId);renderYardHubStructure(menu);updateButtons();}
+ function removeYardHubDepartment(id){
+  const menu=collectYardHubStructure(),entry=menu.departments.find(item=>item.id===id);if(!entry||entry.protected)return;
+  if(entry.kind!=="custom"){entry.enabled=false;status(entry.title+" has been hidden from YARD HUB. Its application identity remains reserved.");}
+  else {if(!window.confirm("Remove "+entry.title+" from the YARD HUB menu draft? This does not delete any application data."))return;menu.departments=menu.departments.filter(item=>item.id!==id);status(entry.title+" removed from the draft menu.");}
+  renderYardHubStructure(menu);updateButtons();
+ }
+ function moveYardHubDepartment(id,delta){const menu=collectYardHubStructure(),index=menu.departments.findIndex(item=>item.id===id),target=index+delta;if(index<0||target<0||target>=menu.departments.length)return;[menu.departments[index],menu.departments[target]]=[menu.departments[target],menu.departments[index]];menu.departments.forEach((item,index)=>item.order=index);renderYardHubStructure(menu);updateButtons();}
+ function defaultRepairMaintenanceCategories(){return {categories:[
+  {key:"KIVERCO_PICKING_LINE",kind:"native",label:"KIVERCO — PICKING LINE",sub:"CONVEYORS & SORTING SYSTEM",icon:"assets/rm-icons/kiverco.svg",enabled:true,order:0},
+  {key:"TANNA_SHREDDER",kind:"native",label:"TANNA — SHREDDER",sub:"SHREDDING EQUIPMENT",icon:"assets/rm-icons/tanna.svg",enabled:true,order:1},
+  {key:"FORKLIFT",kind:"native",label:"FORKLIFT",sub:"FORKLIFT FLEET",icon:"assets/rm-icons/forklift.svg",enabled:true,order:2},
+  {key:"TELEHANDLER",kind:"native",label:"TELEHANDLER",sub:"TELEHANDLER FLEET",icon:"assets/rm-icons/telehandler.svg",enabled:true,order:3},
+  {key:"EXCAVATORS_360",kind:"native",label:"360 EXCAVATORS",sub:"EXCAVATOR FLEET",icon:"assets/rm-icons/excavators_360.svg",enabled:true,order:4},
+  {key:"OTHER_EQUIPMENT",kind:"native",label:"OTHER EQUIPMENT",sub:"ADDITIONAL MACHINERY",icon:"assets/rm-icons/other_equipment.svg",enabled:true,order:5}
+ ]};}
+ function renderRepairMaintenanceCategories(config){
+  const source=config&&Array.isArray(config.categories)?config:defaultRepairMaintenanceCategories(),host=$("repairMaintenanceCategoryEntries");
+  if(!host)return;host.replaceChildren();const preview=$("repairMaintenanceCategoryPreview");if(preview)preview.replaceChildren();
+  const categories=source.categories.slice().sort((a,b)=>Number(a.order)-Number(b.order)),grid=menuNode("div","rm-category-preview-grid");
+  categories.forEach((entry,index)=>{
+   const card=menuNode("div","rm-category-entry");card.dataset.rmCategory="true";card.dataset.rmCategoryKey=entry.key;card.dataset.rmCategoryKind=entry.kind||"native";
+   const head=menuNode("div","cdb-menu-entry-head"),title=menuNode("strong","",entry.label+" · "+entry.key),state=menuNode("span","pill",entry.enabled===false?"HIDDEN FROM R&M":"VISIBLE IN R&M");head.append(title,state);card.append(head);
+   const fields=menuNode("div","cdb-menu-fields");
+   menuInput("Category title",entry.label,48,"rmCategoryLabel",fields);
+   menuInput("Category description",entry.sub,80,"rmCategorySub",fields);
+   const enabledField=menuNode("div","field"),enabledLabel=menuNode("label",""),enabled=menuNode("input");enabled.type="checkbox";enabled.checked=entry.enabled!==false;enabled.dataset.rmCategoryEnabled="true";enabledLabel.append(enabled,document.createTextNode("Show category in R&M"));enabledField.append(enabledLabel);fields.append(enabledField);card.append(fields);
+   const actions=menuNode("div","cdb-menu-actions"),up=menuNode("button","quiet","MOVE UP"),down=menuNode("button","quiet","MOVE DOWN"),remove=menuNode("button",entry.kind==="custom"?"danger":"quiet",entry.kind==="custom"?"REMOVE":"HIDE FROM R&M");
+   up.type=down.type=remove.type="button";up.disabled=index===0;down.disabled=index===categories.length-1;
+   up.addEventListener("click",()=>moveRmsCategory(entry.key,-1));down.addEventListener("click",()=>moveRmsCategory(entry.key,1));remove.addEventListener("click",()=>removeRmsCategory(entry.key));
+   actions.append(up,down,remove);card.append(actions);host.append(card);
+   const tile=menuNode("div","rm-category-preview-card"),mark=menuNode("span","rm-category-preview-mark",entry.label.split(/\\s+/).map(word=>word[0]).join("").slice(0,2).toUpperCase()),copy=menuNode("span","rm-category-preview-copy");
+   copy.append(menuNode("strong","",entry.label),menuNode("small","",entry.sub),menuNode("em",entry.enabled===false?"muted":"live",entry.enabled===false?"HIDDEN":entry.kind==="custom"?"PLACEHOLDER CATEGORY":"EXISTING R&M CATEGORY"));
+   tile.append(mark,copy);grid.append(tile);
+  });
+  if(preview){preview.append(grid);preview.append(menuNode("p","rm-category-preview-note","Existing category keys, machine records, reports and permissions remain unchanged. Custom categories are menu-only placeholders until a dedicated R&M workflow is implemented."));}
+  host.querySelectorAll("input").forEach(input=>{input.addEventListener("input",()=>{renderRepairMaintenanceCategoryPreview(collectRepairMaintenanceCategories());updateButtons();});input.addEventListener("change",()=>{renderRepairMaintenanceCategoryPreview(collectRepairMaintenanceCategories());updateButtons();});});
+ }
+ function renderRepairMaintenanceCategoryPreview(config){
+  const preview=$("repairMaintenanceCategoryPreview");if(!preview)return;preview.replaceChildren();const grid=menuNode("div","rm-category-preview-grid");
+  (config.categories||[]).forEach(entry=>{if(entry.enabled===false)return;const tile=menuNode("div","rm-category-preview-card"),mark=menuNode("span","rm-category-preview-mark",entry.label.split(/\\s+/).map(word=>word[0]).join("").slice(0,2).toUpperCase()),copy=menuNode("span","rm-category-preview-copy");copy.append(menuNode("strong","",entry.label),menuNode("small","",entry.sub),menuNode("em",entry.kind==="custom"?"muted":"live",entry.kind==="custom"?"PLACEHOLDER":"EXISTING CATEGORY"));tile.append(mark,copy);grid.append(tile);});preview.append(grid);
+ }
+ function collectRepairMaintenanceCategories(){
+  return {categories:Array.from(document.querySelectorAll("[data-rm-category]")).map((card,index)=>({key:card.dataset.rmCategoryKey,kind:card.dataset.rmCategoryKind||"custom",label:card.querySelector("[data-rm-category-label]")?.value.trim()||"",sub:card.querySelector("[data-rm-category-sub]")?.value.trim()||"",enabled:card.querySelector("[data-rm-category-enabled]")?.checked!==false,order:index}))};
+ }
+ function addRmsCategory(){
+  const label=$("newRmsCategoryTitle").value.trim(),sub=$("newRmsCategoryDescription").value.trim();if(!label){status("Enter a machinery category title first.",true);return;}
+  const config=collectRepairMaintenanceCategories();let key="CUSTOM_"+structureSlug(label).replace(/-/g,"_").toUpperCase(),serial=2;while(config.categories.some(item=>item.key===key))key="CUSTOM_"+structureSlug(label).replace(/-/g,"_").toUpperCase()+"_"+serial++;
+  if(config.categories.some(item=>item.label.toLocaleLowerCase()===label.toLocaleLowerCase())){status("A machinery category with that title already exists.",true);return;}
+  config.categories.push({key,kind:"custom",label,sub,enabled:true,order:config.categories.length});$("newRmsCategoryTitle").value="";$("newRmsCategoryDescription").value="";renderRepairMaintenanceCategories(config);updateButtons();status("R&M category added as a menu-only placeholder. Save, validate and publish to make it available.");
+ }
+ function removeRmsCategory(key){
+  const config=collectRepairMaintenanceCategories(),entry=config.categories.find(item=>item.key===key);if(!entry)return;
+  if(entry.kind==="custom"){if(!window.confirm("Remove "+entry.label+" from the R&M category menu draft?"))return;config.categories=config.categories.filter(item=>item.key!==key);}
+  else entry.enabled=false;
+  renderRepairMaintenanceCategories(config);updateButtons();
+ }
+ function moveRmsCategory(key,delta){const config=collectRepairMaintenanceCategories(),index=config.categories.findIndex(item=>item.key===key),target=index+delta;if(index<0||target<0||target>=config.categories.length)return;[config.categories[index],config.categories[target]]=[config.categories[target],config.categories[index]];config.categories.forEach((item,index)=>item.order=index);renderRepairMaintenanceCategories(config);updateButtons();}
+ function defaultApplicationGenerator(){return {items:[]}}
+ function readApplicationGenerator(){try{const value=JSON.parse($("applicationGeneratorData").value||'{"items":[]}');return value&&Array.isArray(value.items)?value:{items:[]}}catch{return {items:[]}}}
+ function collectApplicationGenerator(){const data=readApplicationGenerator(),menu=collectYardHubStructure(),departments=new Map(menu.departments.map(item=>[item.id,item]));return {items:data.items.filter(item=>item.type==="department"?departments.get(item.departmentId)?.kind==="custom":item.type==="module"?Boolean(departments.get(item.parentDepartmentId)?.submenus.some(child=>child.id===item.submenuId)):false)}}
+ function renderApplicationGenerator(value){const data=value&&Array.isArray(value.items)?value:defaultApplicationGenerator(),field=$("applicationGeneratorData"),host=$("generatorBlueprintList"),parent=$("generatorModuleParent");if(field)field.value=JSON.stringify(data);if(parent){const selected=parent.value,menu=collectYardHubStructure();parent.replaceChildren();const eligible=menu.departments.filter(item=>!["downtime","repairs-maintenance","hub-settings"].includes(item.kind));eligible.forEach(item=>{const option=document.createElement("option");option.value=item.id;option.textContent=item.title;parent.append(option)});if(eligible.some(item=>item.id===selected))parent.value=selected;if(!eligible.length){const option=document.createElement("option");option.value="";option.textContent="No eligible departments";parent.append(option)}}if(!host)return;host.replaceChildren();if(!data.items.length){const empty=document.createElement("div");empty.className="empty";empty.textContent="No generated blueprints yet.";host.append(empty);return}data.items.forEach(item=>{const row=document.createElement("div");row.className="history-item";const type=document.createElement("div");type.className="versionno";type.textContent=item.type==="department"?"DEPT":"MODULE";const details=document.createElement("div"),title=document.createElement("strong"),meta=document.createElement("small"),pill=document.createElement("span");title.textContent=item.title;meta.textContent=(item.type==="department"?"Standard department workspace":"Module in "+(item.parentTitle||item.parentDepartmentId))+" · "+item.template.replace(/-/g," ");pill.className="pill draft";pill.textContent="PLACEHOLDER · DRAFT";details.append(title,meta,pill);row.append(type,details);host.append(row)})}
+ function generatorSlug(value){return structureSlug(value).slice(0,32)||"workspace"}
+ function generateDepartment(){const title=$("generatorDepartmentTitle").value.trim(),description=$("generatorDepartmentDescription").value.trim();if(!title){status("Enter a department title first.",true);return}const menu=collectYardHubStructure();if(menu.departments.length>=100){status("The YARD HUB department limit has been reached.",true);return}if(menu.departments.some(item=>item.title.toLocaleLowerCase()===title.toLocaleLowerCase())){status("A department with that title already exists.",true);return}let id=generatorSlug(title),serial=2;while(menu.departments.some(item=>item.id===id))id=generatorSlug(title)+"-"+serial++;menu.departments.push({id,kind:"custom",title,description,enabled:true,order:menu.departments.length,protected:false,submenus:[]});renderYardHubStructure(menu);const data=readApplicationGenerator();data.items.push({id:"department-"+id,type:"department",title,description,departmentId:id,template:"standard-workspace",status:"placeholder",order:data.items.length});$("generatorDepartmentTitle").value="";$("generatorDepartmentDescription").value="";renderApplicationGenerator(data);updateButtons();status("Department workspace generated in the draft. Save, validate, impact-review and publish to make it available.")}
+ function generateModule(){const parentId=$("generatorModuleParent").value,title=$("generatorModuleTitle").value.trim(),description=$("generatorModuleDescription").value.trim(),template=$("generatorModuleTemplate").value;if(!parentId||!title){status("Select a parent department and enter a module title.",true);return}const menu=collectYardHubStructure(),parent=menu.departments.find(item=>item.id===parentId);if(!parent||["downtime","repairs-maintenance","hub-settings"].includes(parent.kind)){status("That department cannot receive generated modules.",true);return}if(parent.submenus.length>=30){status("The selected department has reached its module limit.",true);return}if(parent.submenus.some(item=>item.label.toLocaleLowerCase()===title.toLocaleLowerCase())){status("A module with that title already exists in this department.",true);return}let submenuId=generatorSlug(title),serial=2;while(parent.submenus.some(item=>item.id===submenuId))submenuId=generatorSlug(title)+"-"+serial++;parent.submenus.push({id:submenuId,label:title,enabled:true,order:parent.submenus.length});renderYardHubStructure(menu);const data=readApplicationGenerator();data.items.push({id:"module-"+parentId+"-"+submenuId,type:"module",title,description,parentDepartmentId:parentId,parentTitle:parent.title,submenuId,template,status:"placeholder",order:data.items.length});$("generatorModuleTitle").value="";$("generatorModuleDescription").value="";renderApplicationGenerator(data);updateButtons();status("Module workspace generated in the draft. No operational functionality or data model was created.")}
+ function blankConfig(){return {schemaVersion:1,departmentMenu:defaultDepartmentMenu(),yardHubMenu:defaultYardHubMenu(),repairMaintenanceCategories:defaultRepairMaintenanceCategories(),applicationGenerator:defaultApplicationGenerator(),navigation:{overview:"Overview",organisation:"Organisation",structure:"Plant & Areas",libraries:"Operational Libraries",defaults:"System Defaults",history:"Version History",navigation:"Menu & Labels",modules:"Module Registry",controls:"System Controls",information:"System Information"},modules:[],organization:{companyName:"",siteCode:"",timezone:"Europe/London",locale:"en-GB"},structure:{sites:[],plants:[],areas:[],stations:[],hierarchy:[]},libraries:{areaPresets:[],downtimeReasons:[],dailyTaskPresets:[],equipmentCategories:[],eventCategories:[],statusCategories:["Running","Stopped","Maintenance","Unavailable"]},defaults:{shiftSchedule:{},shiftPresets:[],weekStartsOn:"MONDAY",operatingDays:DAYS.slice(0,6),breakDeductionMinutes:75}}}
+ const lines=value=>Array.isArray(value)?value.join("\n"):"";
+ function list(id){return $(id).value.split(/\r?\n/).map(value=>value.trim()).filter(Boolean)}
+ function setValue(id,value){$(id).value=value??""}
+ function buildDayChecks(){
+  $("operatingDays").replaceChildren();
+  DAYS.forEach(day=>{
+   const label=document.createElement("label"),input=document.createElement("input"),span=document.createElement("span");
+   input.type="checkbox";input.value=day;input.dataset.operatingDay="true";span.textContent=day.slice(0,3);label.append(input,span);$("operatingDays").append(label);
+  });
+ }
+ function renderForm(config){
+  const c=config||blankConfig(),org=c.organization||{},structure=c.structure||{},libraries=c.libraries||{},defaults=c.defaults||{},navigation=c.navigation||blankConfig().navigation;setValue("moduleRegistry",lines(c.modules));renderDepartmentMenu(c.departmentMenu||defaultDepartmentMenu());renderYardHubStructure(c.yardHubMenu||defaultYardHubMenu());renderRepairMaintenanceCategories(c.repairMaintenanceCategories||defaultRepairMaintenanceCategories());renderApplicationGenerator(c.applicationGenerator||defaultApplicationGenerator());renderDepartmentConfiguration(c.departmentSettings||defaultDepartmentSettings());
+  Object.keys(navigation).forEach(key=>setValue("navLabel"+key.charAt(0).toUpperCase()+key.slice(1),navigation[key]));renderNavigation(navigation);
+  setValue("companyName",org.companyName);setValue("siteCode",org.siteCode);setValue("timezone",org.timezone||"Europe/London");setValue("locale",org.locale||"en-GB");
+  ["sites","plants","areas","stations"].forEach(key=>setValue(key,lines(structure[key])));hierarchyDraft=cloneHierarchy(structure.hierarchy||[]);renderHierarchy(hierarchyDraft);
+  ["areaPresets","downtimeReasons","dailyTaskPresets","equipmentCategories","eventCategories","statusCategories"].forEach(key=>setValue(key,lines(libraries[key])));
+  setValue("weekStartsOn",defaults.weekStartsOn||"MONDAY");setValue("breakDeductionMinutes",Number.isInteger(Number(defaults.breakDeductionMinutes))?defaults.breakDeductionMinutes:75);
+  document.querySelectorAll("[data-operating-day]").forEach(input=>input.checked=(defaults.operatingDays||DAYS.slice(0,6)).includes(input.value));
+  setValue("shiftSchedule",JSON.stringify(defaults.shiftSchedule||{},null,2));setValue("shiftPresets",JSON.stringify(defaults.shiftPresets||[],null,2));
+ }
+ const cloneHierarchy=value=>JSON.parse(JSON.stringify(Array.isArray(value)?value:[]));
+ function hierarchyId(name){const ids=new Set();const walk=sites=>sites.forEach(site=>{ids.add(site.id);(site.plants||[]).forEach(plant=>{ids.add(plant.id);(plant.areas||[]).forEach(area=>{ids.add(area.id);(area.stations||[]).forEach(station=>ids.add(station.id));});});});walk(hierarchyDraft);const base=String(name).toLocaleLowerCase().normalize("NFKD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,32)||"item";let id=base,n=2;while(ids.has(id)){id=base+"-"+n++;}return id;}
+ function hierarchyButton(label,action,kind=""){const button=document.createElement("button");button.type="button";button.textContent=label;button.dataset.hierarchyAction=action;if(kind)button.className=kind;return button;}
+ function renderHierarchy(value){
+  const sites=cloneHierarchy(value),host=$("hierarchyTree"),summary=$("hierarchySummary");host.replaceChildren();summary.replaceChildren();
+  const counts={sites:sites.length,plants:0,areas:0,stations:0};sites.forEach(site=>(site.plants||[]).forEach(plant=>{counts.plants++;(plant.areas||[]).forEach(area=>{counts.areas++;counts.stations+=(area.stations||[]).length;});}));
+  [["SITES",counts.sites],["PLANTS",counts.plants],["AREAS",counts.areas],["STATIONS",counts.stations]].forEach(([label,count])=>{const item=document.createElement("span");item.className="cdb-hierarchy-stat";const strong=document.createElement("strong");strong.textContent=String(count);item.append(strong,document.createTextNode(label));summary.append(item);});
+  if(!sites.length){const empty=document.createElement("div");empty.className="cdb-hierarchy-empty";empty.textContent="No sites have been registered. Add a site to begin building the master hierarchy.";host.append(empty);}
+  const actions=(node,level)=>{const wrap=document.createElement("div");wrap.className="cdb-hierarchy-actions";wrap.append(hierarchyButton("RENAME","rename"),hierarchyButton("DELETE","delete","cdb-hierarchy-delete"));if(level!=="station")wrap.append(hierarchyButton("＋ ADD "+({site:"PLANT",plant:"AREA",area:"STATION"}[level]),"add-"+({site:"plant",plant:"area",area:"station"}[level]),"cdb-hierarchy-add"));node.append(wrap);};
+  sites.forEach(site=>{
+   const card=document.createElement("section");card.className="cdb-hierarchy-site";card.dataset.nodeId=site.id;card.dataset.nodeLevel="site";
+   const head=document.createElement("div");head.className="cdb-hierarchy-site-head";const name=document.createElement("strong");name.textContent=site.name;const level=document.createElement("span");level.className="cdb-hierarchy-level";level.textContent="SITE";head.append(name,level);actions(head,"site");card.append(head);
+   const children=document.createElement("div");children.className="cdb-hierarchy-children";
+   (site.plants||[]).forEach(plant=>{
+    const p=document.createElement("div");p.className="cdb-hierarchy-node";p.dataset.nodeId=plant.id;p.dataset.nodeLevel="plant";const ph=document.createElement("div");ph.className="cdb-hierarchy-node-head";const pc=document.createElement("div"),pn=document.createElement("strong"),pl=document.createElement("small");pn.textContent=plant.name;pl.textContent="PLANT / FACILITY";pc.append(pn,pl);ph.append(pc);actions(ph,"plant");p.append(ph);
+    const pbody=document.createElement("div");pbody.className="cdb-hierarchy-node-body";
+    (plant.areas||[]).forEach(area=>{
+     const a=document.createElement("div");a.className="cdb-hierarchy-node";a.dataset.nodeId=area.id;a.dataset.nodeLevel="area";const ah=document.createElement("div");ah.className="cdb-hierarchy-node-head";const ac=document.createElement("div"),an=document.createElement("strong"),al=document.createElement("small");an.textContent=area.name;al.textContent="OPERATIONAL AREA";ac.append(an,al);ah.append(ac);actions(ah,"area");a.append(ah);
+     const abody=document.createElement("div");abody.className="cdb-hierarchy-node-body";
+     (area.stations||[]).forEach(station=>{const s=document.createElement("div");s.className="cdb-hierarchy-node";s.dataset.nodeId=station.id;s.dataset.nodeLevel="station";const sh=document.createElement("div");sh.className="cdb-hierarchy-node-head";const sc=document.createElement("div"),sn=document.createElement("strong"),sl=document.createElement("small");sn.textContent=station.name;sl.textContent="WORK STATION";sc.append(sn,sl);sh.append(sc);actions(sh,"station");s.append(sh);abody.append(s);});
+     if(!(area.stations||[]).length){const hint=document.createElement("small");hint.className="muted";hint.textContent="No stations assigned.";abody.append(hint);}
+     a.append(abody);pbody.append(a);
+    });
+    if(!(plant.areas||[]).length){const hint=document.createElement("small");hint.className="muted";hint.textContent="No areas assigned.";pbody.append(hint);}
+    p.append(pbody);children.append(p);
+   });
+   if(!(site.plants||[]).length){const hint=document.createElement("small");hint.className="muted";hint.textContent="No plants assigned.";children.append(hint);}
+   card.append(children);host.append(card);
+  });
+ }
+ function collectHierarchy(){return cloneHierarchy(hierarchyDraft);}
+ let hierarchyDraft=[];
+ function findHierarchyNode(id,level){for(const site of hierarchyDraft){if(level==="site"&&site.id===id)return {node:site,parent:null};for(const plant of site.plants||[]){if(level==="plant"&&plant.id===id)return {node:plant,parent:site};for(const area of plant.areas||[]){if(level==="area"&&area.id===id)return {node:area,parent:plant};for(const station of area.stations||[])if(level==="station"&&station.id===id)return {node:station,parent:area};}}}return null;}
+ function hierarchySiblings(level,parent){if(level==="site")return hierarchyDraft;if(level==="plant")return parent.plants;if(level==="area")return parent.areas;return parent.stations;}
+ function hierarchyPromptName(label,current=""){const value=window.prompt(label,current);if(value===null)return null;const name=value.trim();if(!name)throw new Error("Names cannot be blank.");if(name.length>80)throw new Error("Names must be 80 characters or fewer.");return name;}
+ function addHierarchyNode(level,parentId){const parent=level==="site"?null:findHierarchyNode(parentId,({plant:"site",area:"plant",station:"area"})[level])?.node;if(level!=="site"&&!parent)throw new Error("The selected parent record could not be found.");const label=({site:"Site name",plant:"Plant / facility name",area:"Operational area name",station:"Station name"})[level];const name=hierarchyPromptName("Enter "+label);if(name===null)return;const siblings=hierarchySiblings(level,parent);if(siblings.some(item=>item.name.toLocaleLowerCase()===name.toLocaleLowerCase()))throw new Error("A record with this name already exists at this level.");const node={id:hierarchyId(name),name};if(level==="site")node.plants=[];if(level==="plant")node.areas=[];if(level==="area")node.stations=[];siblings.push(node);renderHierarchy(hierarchyDraft);updateButtons();}
+ function renameHierarchyNode(id,level){const found=findHierarchyNode(id,level);if(!found)return;const name=hierarchyPromptName("Rename "+level,found.node.name);if(name===null)return;const siblings=hierarchySiblings(level,found.parent);if(siblings.some(item=>item.id!==id&&item.name.toLocaleLowerCase()===name.toLocaleLowerCase()))throw new Error("A record with this name already exists at this level.");found.node.name=name;renderHierarchy(hierarchyDraft);updateButtons();}
+ function deleteHierarchyNode(id,level){const found=findHierarchyNode(id,level);if(!found)return;const children=level==="site"?(found.node.plants||[]):level==="plant"?(found.node.areas||[]):level==="area"?(found.node.stations||[]):[];if(children.length)throw new Error("This record has child records. Remove or reassign them before deleting the parent.");if(!window.confirm("Delete "+level+" '"+found.node.name+"' from the draft hierarchy?"))return;const siblings=hierarchySiblings(level,found.parent);const index=siblings.findIndex(item=>item.id===id);if(index>=0)siblings.splice(index,1);renderHierarchy(hierarchyDraft);updateButtons();}
+ function handleHierarchyAction(event){const button=event.target.closest("button[data-hierarchy-action]");if(!button)return;const card=button.closest("[data-node-id]");const id=card?.dataset.nodeId,level=card?.dataset.nodeLevel,action=button.dataset.hierarchyAction;try{if(action==="add-site")addHierarchyNode("site");else if(action.startsWith("add-"))addHierarchyNode(action.slice(4),id);else if(action==="rename")renameHierarchyNode(id,level);else if(action==="delete")deleteHierarchyNode(id,level);}catch(error){status(error.message,true);}}
+ function collectConfig(){
+  let shiftSchedule,shiftPresets;
+  try{shiftSchedule=JSON.parse($("shiftSchedule").value||"{}")}catch{throw new Error("Shift schedule must be valid JSON")}
+  try{shiftPresets=JSON.parse($("shiftPresets").value||"[]")}catch{throw new Error("Shift presets must be valid JSON")}
+  if(!shiftSchedule||typeof shiftSchedule!=="object"||Array.isArray(shiftSchedule))throw new Error("Shift schedule must be a JSON object");
+  if(!Array.isArray(shiftPresets))throw new Error("Shift presets must be a JSON array");
+  return {
+   schemaVersion:1,
+   modules:list("moduleRegistry"),
+   departmentMenu:collectDepartmentMenu(),
+   yardHubMenu:collectYardHubStructure(),
+   repairMaintenanceCategories:collectRepairMaintenanceCategories(),
+   applicationGenerator:collectApplicationGenerator(),
+   departmentSettings:collectDepartmentConfiguration(),
+   navigation:{overview:$("navLabelOverview").value.trim()||"Overview",organisation:$("navLabelOrganisation").value.trim()||"Organisation",structure:$("navLabelStructure").value.trim()||"Plant & Areas",libraries:$("navLabelLibraries").value.trim()||"Operational Libraries",defaults:$("navLabelDefaults").value.trim()||"System Defaults",history:$("navLabelHistory").value.trim()||"Version History",navigation:$("navLabelNavigation").value.trim()||"Menu & Labels",modules:$("navLabelModules").value.trim()||"Module Registry",controls:$("navLabelControls").value.trim()||"System Controls",information:$("navLabelInformation").value.trim()||"System Information"},
+   organization:{companyName:$("companyName").value.trim(),siteCode:$("siteCode").value.trim(),timezone:$("timezone").value.trim(),locale:$("locale").value.trim()},
+   structure:{sites:list("sites"),plants:list("plants"),areas:list("areas"),stations:list("stations"),hierarchy:collectHierarchy()},
+   libraries:{areaPresets:list("areaPresets"),downtimeReasons:list("downtimeReasons"),dailyTaskPresets:list("dailyTaskPresets"),equipmentCategories:list("equipmentCategories"),eventCategories:list("eventCategories"),statusCategories:list("statusCategories")},
+   defaults:{shiftSchedule,shiftPresets,weekStartsOn:$("weekStartsOn").value,operatingDays:Array.from(document.querySelectorAll("[data-operating-day]:checked")).map(input=>input.value),breakDeductionMinutes:Number($("breakDeductionMinutes").value)}
+  };
+ }
+ function stable(value){return JSON.stringify(value)}
+ function isDirty(){try{return stable(collectConfig())!==baseline}catch{return true}}
+ function updateButtons(){
+  const dirty=isDirty(),pending=draftVersion!==publishedVersion;
+  $("saveDraftBtn").disabled=!dirty;
+  $("publishBtn").disabled=dirty||!pending||!impactReviewedToken;
+  $("draftStatus").textContent=dirty?"Unsaved local edits":pending?"Unpublished draft ready":"Synchronized with published";
+  $("draftStatus").style.color=dirty||pending?"#ffdf75":"#83d9aa";
+ }
+ function countItems(c){
+  const s=c.structure||{},l=c.libraries||{};
+  const tree=(s.hierarchy||[]).reduce((n,site)=>n+1+(site.plants||[]).reduce((p,plant)=>p+1+(plant.areas||[]).reduce((a,area)=>a+1+(area.stations||[]).length,0),0),0);const hubMenu=c.yardHubMenu?.departments||[];const hubItems=hubMenu.length+hubMenu.reduce((n,item)=>n+(item.submenus||[]).length,0);const rmsCategories=c.repairMaintenanceCategories?.categories||[],generated=c.applicationGenerator?.items||[];return (c.modules||[]).length+generated.length+tree+hubItems+rmsCategories.length+["sites","plants","areas","stations"].reduce((n,k)=>n+(s[k]||[]).length,0)+["areaPresets","downtimeReasons","dailyTaskPresets","equipmentCategories","eventCategories","statusCategories"].reduce((n,k)=>n+(l[k]||[]).length,0);
+ }
+ function renderOverview(){
+  $("releaseDraftVersion").textContent=String(draftVersion);$("releasePublishedVersion").textContent=String(publishedVersion);
+  $("publishedKpi").textContent="v"+publishedVersion;$("draftKpi").textContent="v"+draftVersion;
+  $("publishedBy").textContent="Published by "+(model.publishedBy||"SYSTEM");
+  $("itemsKpi").textContent=countItems(model.draft||blankConfig());
+  $("historyKpi").textContent=versions.length;
+  $("historySummary").textContent=versions.length+" version records · latest first";
+  $("footVersion").textContent="Draft v"+draftVersion+" · Published v"+publishedVersion;
+ }
+ function renderHistory(){
+  const host=$("historyList");host.replaceChildren();
+  if(!versions.length){const empty=document.createElement("div");empty.className="empty";empty.textContent="No configuration history is available.";host.append(empty);return}
+  versions.forEach(item=>{
+   const row=document.createElement("div");row.className="history-item";
+   const number=document.createElement("div");number.className="versionno";number.textContent="v"+item.version;
+   const details=document.createElement("div"),title=document.createElement("strong"),meta=document.createElement("small"),pill=document.createElement("span");
+   title.textContent=(item.action||"snapshot").replace(/-/g," ").toUpperCase()+" · "+(item.actor||"SYSTEM");
+   meta.textContent=(item.note||"No change note")+" · "+(item.created_at?new Date(item.created_at).toLocaleString():"date unavailable");
+   pill.className="pill"+(item.status==="PUBLISHED"?" live":item.status==="CURRENT DRAFT"?" draft":"");pill.textContent=item.status||"HISTORICAL";
+   details.append(title,meta,pill);row.append(number,details);
+   if(Number(item.version)!==draftVersion){
+    const restore=document.createElement("button");restore.className="quiet";restore.textContent="RESTORE AS DRAFT";restore.dataset.restoreVersion=String(item.version);row.append(restore);
+   }
+   host.append(row);
+  });
+  host.querySelectorAll("[data-restore-version]").forEach(button=>button.addEventListener("click",()=>restoreVersion(Number(button.dataset.restoreVersion))));
+ }
+ function auditDetailsText(details){
+  if(!details||typeof details!=="object"||Array.isArray(details))return "No additional details";
+  const allowed=["version","sourceVersion","newVersion","scope"];
+  const parts=allowed.filter(key=>details[key]!==undefined&&details[key]!==null).map(key=>key.replace(/[A-Z]/g,letter=>" "+letter.toLowerCase())+": "+String(details[key]));
+  return parts.length?parts.join(" · "):"No additional details";
+ }
+ function renderAuditLog(){
+  const host=$("auditList"),query=$("auditSearch").value.trim().toLocaleLowerCase(),action=$("auditActionFilter").value;
+  host.replaceChildren();
+  const filtered=auditEvents.filter(item=>{
+   if(action&&item.action!==action)return false;
+   const haystack=[item.username,item.action,auditDetailsText(item.details)].join(" ").toLocaleLowerCase();
+   return !query||haystack.includes(query);
+  });
+  $("auditSummary").textContent=filtered.length+" of "+auditEvents.length+" events shown · latest 200 loaded";
+  if(!filtered.length){const empty=document.createElement("div");empty.className="empty";empty.textContent=auditEvents.length?"No audit events match these filters.":"No Central Data Bank audit events are available.";host.append(empty);return;}
+  filtered.forEach(item=>{
+   const row=document.createElement("div");row.className="audit-item";
+   const id=document.createElement("div");id.className="audit-id";id.textContent="#"+item.id;
+   const details=document.createElement("div");details.className="audit-details";
+   const title=document.createElement("strong");title.textContent=(item.action||"unknown action").replace(/^central-config-/,"").replace(/-/g," ").toUpperCase()+" · "+(item.username||"SYSTEM");
+   const meta=document.createElement("small");meta.textContent=(item.created_at?new Date(item.created_at).toLocaleString():"Timestamp unavailable")+" · "+auditDetailsText(item.details);
+   details.append(title,meta);row.append(id,details);host.append(row);
+  });
+ }
+ async function loadAuditLog(){
+  $("auditRefreshBtn").disabled=true;
+  try{
+   const data=await callConfig("central-config-audit",{limit:200});
+   auditEvents=Array.isArray(data.events)?data.events:[];
+   auditLoaded=true;renderAuditLog();
+  }catch(error){status("Audit log unavailable: "+error.message,true);}
+  finally{$("auditRefreshBtn").disabled=false;}
+ }
+ async function loadState(){
+  impactReport=null;impactReviewedToken="";$("approveImpactBtn").disabled=true;$("impactReviewPill").textContent="NOT REVIEWED";$("impactReviewPill").className="pill";
+  const data=await callConfig("central-config-state");
+  model=data;draftVersion=Number(data.draftVersion);publishedVersion=Number(data.publishedVersion);nextVersion=Number(data.nextVersion);versions=data.versions||[];
+  renderForm(model.draft);baseline=stable(collectConfig());$("avatar").textContent=(data.user?.displayName||data.user?.username||"A").slice(0,1).toUpperCase();
+  $("identity").textContent=(data.user?.displayName||data.user?.username||"ADMIN")+" · "+data.user?.tier;
+  renderOverview();renderHistory();updateButtons();
+  $("workspace").style.display="block";$("login").style.display="none";
+ }
+ function renderNavigation(navigation){document.querySelectorAll("[data-section]").forEach(button=>{const key=button.dataset.section,target=button.querySelector(".navtext");if(target)target.textContent=navigation[key]||button.dataset.defaultLabel||key;});}
+ function showSection(section){
+  if(section==="release"){$("releaseDraftVersion").textContent=String(draftVersion);$("releasePublishedVersion").textContent=String(publishedVersion);}
+  document.querySelectorAll(".view").forEach(view=>view.classList.toggle("active",view.id==="view-"+section));
+  document.querySelectorAll("[data-section]").forEach(button=>button.classList.toggle("active",button.dataset.section===section));
+  const workspace=$("workspace");if(workspace)workspace.classList.toggle("cdb-section-page",section!=="departments");
+ }
+ $("cdbBackToMenu").addEventListener("click",function(){
+  showSection("departments");
+  window.scrollTo({top:0,behavior:window.matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth"});
+ });
+ async function login(){
+  $("loginBtn").disabled=true;status("Authenticating administrator...");
+  try{
+   const result=await call("login",{username:$("username").value.trim(),pin:$("pin").value},false);token=result.token;me=result.user;
+   await loadState();$("pin").value="";status("");
+  }catch(error){
+   if(token){try{await call("logout")}catch{}}
+   token=null;me=null;model=null;$("workspace").style.display="none";$("login").style.display="block";$("authStatus").textContent=error.message;
+  }finally{$("loginBtn").disabled=false}
+ }
+ async function runImpactAnalysis(){
+  $("runImpactBtn").disabled=true;impactReviewedToken="";impactReport=null;updateButtons();status("Comparing draft and published registry...");
+  $("impactReviewPill").textContent="ANALYSIS RUNNING";$("impactReviewPill").className="pill";
+  try{
+   const report=await callConfig("central-config-impact",{draftVersion,publishedVersion});
+   impactReport=report;$("impactAdded").textContent=String(report.summary?.added||0);$("impactModified").textContent=String(report.summary?.modified||0);$("impactRemoved").textContent=String(report.summary?.removed||0);$("impactHigh").textContent=String(report.summary?.highImpact||0);
+   $("releaseState").textContent="Impact analysis complete · "+(report.changes?.length||0)+" detailed changes · "+(report.truncated?"display capped":"complete register");
+   $("impactDetailSummary").textContent="Compared draft v"+draftVersion+" against published v"+publishedVersion+".";
+   const groups=report.classifications||{};const host=$("impactClassification");host.replaceChildren();
+   [["STRUCTURAL","structural"],["DESTRUCTIVE","destructive"],["CONFIGURATION","configuration"]].forEach(([label,key])=>{const card=document.createElement("div");card.className="feature";const title=document.createElement("strong");title.textContent=label;const detail=document.createElement("small");detail.textContent=String(groups[key]||0)+" classified change(s)";card.append(title,detail);host.append(card);});
+   const list=$("impactChangeList");list.replaceChildren();
+   (report.changes||[]).forEach(change=>{const row=document.createElement("div");row.className="history-item";const type=document.createElement("div");type.className="versionno";type.textContent=String(change.type||"CHANGE").toUpperCase();const details=document.createElement("div");const path=document.createElement("strong");path.textContent=change.path;const meta=document.createElement("small");meta.textContent=String(change.classification||"configuration").toUpperCase()+" · BEFORE: "+JSON.stringify(change.before??null)+" · AFTER: "+JSON.stringify(change.after??null);details.append(path,meta);row.append(type,details);list.append(row);});
+   if(!(report.changes||[]).length){const empty=document.createElement("div");empty.className="empty";empty.textContent="No configuration differences. There is nothing to release.";list.append(empty);}
+   $("impactReviewPill").textContent="REPORT READY · REVIEW REQUIRED";$("impactReviewPill").className="pill draft";
+   $("approveImpactBtn").disabled=!(report.impactToken&&report.summary&&report.summary.total>0);$("impactApprovalNote").textContent=report.summary?.total?"Confirm review to enable the publish action.":"No changes detected; publication is not available.";
+   status("Impact analysis complete. Inspect the change register before confirming review.");
+  }catch(error){$("releaseState").textContent="Impact analysis failed";$("impactReviewPill").textContent="ANALYSIS FAILED";status("Impact analysis failed: "+error.message,true);}
+  finally{$("runImpactBtn").disabled=false;}
+ }
+ function confirmImpactReview(){
+  if(!impactReport?.impactToken||!impactReport.summary?.total){status("A complete impact report with changes is required.",true);return}
+  impactReviewedToken=impactReport.impactToken;$("impactReviewPill").textContent="REVIEW CONFIRMED";$("impactReviewPill").className="pill live";$("impactApprovalNote").textContent="Review confirmed for draft v"+draftVersion+". Publish is now enabled.";
+  updateButtons();status("Impact review confirmed. The publish action is enabled.");
+ }
+ async function validateDraft(){
+  let config;try{config=collectConfig()}catch(error){status(error.message,true);return}
+  $("validateDraftBtn").disabled=true;status("Running Central Data Bank integrity checks...");
+  try{
+   const result=await callConfig("central-config-validate",{config});
+   const counts=result.counts||{};
+   const summary=["sites","plants","areas","stations","modules","yardHubDepartments","yardHubSubmenus","repairMaintenanceCategories","generatedDepartments","generatedModules","libraryEntries"].map(key=>key.replace(/[A-Z]/g,letter=>" "+letter.toLowerCase())+": "+Number(counts[key]||0)).join(" · ");
+   const warnings=Array.isArray(result.warnings)?result.warnings:[];
+   status("Validation passed · "+summary+(warnings.length?" · "+warnings.length+" warning(s): "+warnings.join("; "):" · No warnings."),warnings.length>0);
+  }catch(error){status("Validation failed: "+error.message,true)}
+  finally{$("validateDraftBtn").disabled=false}
+ }
+ async function saveDraft(){
+  let config;try{config=collectConfig()}catch(error){status(error.message,true);return}
+  $("saveDraftBtn").disabled=true;status("Validating and saving draft snapshot...");
+  try{
+   const saved=await callConfig("central-config-save-draft",{config,draftVersion,nextVersion,note:"Saved from Central Data Bank Admin"});
+   await loadState();status("Draft saved as version v"+saved.draftVersion+". The published configuration and live tracker are unchanged.");
+  }catch(error){status(error.message,true);$("saveDraftBtn").disabled=false}
+ }
+ async function publish(){
+  if(isDirty()){status("Save the current edits as a draft before publishing.",true);return}
+  if(draftVersion===publishedVersion){status("There are no unpublished changes.");return}
+  if(!impactReviewedToken){showSection("release");status("Run and confirm the change impact review before publishing.",true);return}
+  const counts=impactReport?.summary||{};
+  const approved=window.confirm("AUTHORISE RELEASE v"+draftVersion+"?\n\n"+Number(counts.added||0)+" additions · "+Number(counts.modified||0)+" modifications · "+Number(counts.removed||0)+" removals.\n\nYou have reviewed the impact report. This publishes the reviewed configuration registry. The YARD HUB launcher structure will update for authenticated users; operational records and DOWNTIME module behaviour are not changed.");
+  if(!approved)return;
+  $("publishBtn").disabled=true;status("Publishing reviewed configuration release...");
+  try{const saved=await callConfig("central-config-publish",{draftVersion,publishedVersion,impactToken:impactReviewedToken});impactReviewedToken="";impactReport=null;await loadState();status("Configuration v"+saved.publishedVersion+" published. YARD HUB menu changes are now available to authenticated users after the launcher refreshes. DOWNTIME operational records remain unchanged.");}
+  catch(error){status(error.message,true);$("publishBtn").disabled=false}
+ }
+ async function restoreVersion(sourceVersion){
+  if(!window.confirm("Restore version v"+sourceVersion+" as a new draft? The current published version will remain active until a separate publish action."))return;
+  status("Restoring historical snapshot as a new draft...");
+  try{const result=await callConfig("central-config-restore-draft",{sourceVersion,draftVersion,nextVersion});await loadState();showSection("overview");status("Version v"+sourceVersion+" restored as new draft v"+result.draftVersion+". Review and publish when ready.");}
+  catch(error){status(error.message,true)}
+ }
+ async function refresh(){
+  status("Refreshing configuration state...");
+  try{await loadState();status("Configuration state refreshed.");}
+  catch(error){status(error.message,true)}
+ }
+ $("loginBtn").addEventListener("click",login);$("pin").addEventListener("keydown",event=>{if(event.key==="Enter")login()});
+ $("showSetup").addEventListener("click",()=>$("setup").style.display=$("setup").style.display==="block"?"none":"block");
+ $("bootstrapBtn").addEventListener("click",async()=>{
+  try{const result=await call("bootstrap",{bootstrapCode:$("setupCode").value,username:"DEV",pin:$("setupPin").value},false);$("authStatus").textContent=result.message||"Root owner initialised. Sign in as DEV."}
+  catch(error){$("authStatus").textContent=error.message}
+ });
+ $("runImpactBtn").addEventListener("click",runImpactAnalysis);$("approveImpactBtn").addEventListener("click",confirmImpactReview);
+ $("validateDraftBtn").addEventListener("click",validateDraft);$("saveDraftBtn").addEventListener("click",saveDraft);$("publishBtn").addEventListener("click",publish);$("refreshBtn").addEventListener("click",refresh);$("historyRefreshBtn").addEventListener("click",refresh);$("auditRefreshBtn").addEventListener("click",loadAuditLog);$("auditSearch").addEventListener("input",renderAuditLog);$("auditActionFilter").addEventListener("change",renderAuditLog);
+ $("logoutBtn").addEventListener("click",async()=>{try{await call("logout")}catch{}finally{token=null;me=null;model=null;auditEvents=[];auditLoaded=false;$("workspace").style.display="none";$("login").style.display="block";$("pin").value="";$("authStatus").textContent="Administrator session closed."}});
+ document.querySelectorAll("[data-section]").forEach(button=>button.addEventListener("click",()=>{const section=button.dataset.section;showSection(section);if(section==="audit"&&!auditLoaded)loadAuditLog();}));
+ $("navSearch").addEventListener("input",()=>{const query=$("navSearch").value.trim().toLocaleLowerCase();document.querySelectorAll(".nav[data-section]").forEach(button=>{button.hidden=!!query&&!((button.textContent+" "+button.dataset.section).toLocaleLowerCase().includes(query));});});
+ document.querySelectorAll("#workspace input,#workspace textarea,#workspace select").forEach(input=>input.addEventListener("input",updateButtons));
+ $("projectUrl").addEventListener("change",rememberConnection);$("pubKey").addEventListener("change",rememberConnection);
+ buildDayChecks();renderForm(blankConfig());updateButtons();
+ $("addSiteBtn").addEventListener("click",()=>{try{addHierarchyNode("site");}catch(error){status(error.message,true);}});$("hierarchyTree").addEventListener("click",handleHierarchyAction);
+ $("addDepartmentCategoryBtn").addEventListener("click",addDepartmentCategory);
+ $("addYardHubDepartmentBtn").addEventListener("click",addYardHubDepartment);
+ $("generateDepartmentBtn").addEventListener("click",generateDepartment);
+ $("generateModuleBtn").addEventListener("click",generateModule);
+ $("generatorDepartmentTitle").addEventListener("keydown",event=>{if(event.key==="Enter"){event.preventDefault();generateDepartment()}});
+ $("generatorModuleTitle").addEventListener("keydown",event=>{if(event.key==="Enter"){event.preventDefault();generateModule()}});
+ $("addRmsCategoryBtn").addEventListener("click",addRmsCategory);
+ $("newRmsCategoryTitle").addEventListener("keydown",event=>{if(event.key==="Enter"){event.preventDefault();addRmsCategory();}});
+ $("newRmsCategoryDescription").addEventListener("keydown",event=>{if(event.key==="Enter"){event.preventDefault();addRmsCategory();}});
+ $("newYardHubDepartmentTitle").addEventListener("keydown",event=>{if(event.key==="Enter"){event.preventDefault();addYardHubDepartment();}});
+ $("newDepartmentCategory").addEventListener("keydown",event=>{if(event.key==="Enter"){event.preventDefault();addDepartmentCategory();}});
+ $("restoreDepartmentMenuBtn").addEventListener("click",()=>{if(!window.confirm("Restore the original five department entries and two default categories? Save Draft is required to persist this reset."))return;renderDepartmentMenu(defaultDepartmentMenu());updateButtons();status("Original department menu restored locally. Save Draft to persist this reset.");});
+ $("workspace").addEventListener("input",event=>{if(event.target instanceof Element&&event.target.matches("input,select,textarea"))updateButtons();});
+ $("workspace").addEventListener("change",event=>{if(event.target instanceof Element&&event.target.matches("input,select,textarea"))updateButtons();});
+})();
+</script>
+<style>
+.yard-hub-structure-preview-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px}
+.yard-hub-structure-preview-card{position:relative;isolation:isolate;display:grid;grid-template-columns:72px minmax(0,1fr);align-items:center;gap:14px;min-width:0;min-height:112px;padding:16px 18px;text-align:left;overflow:hidden;border:1px solid #526a7e;border-radius:13px;background:linear-gradient(145deg,#10273d 0%,#0a1d30 74%,#0a1a2a 100%);box-shadow:0 12px 28px #0003}
+.yard-hub-structure-preview-mark{display:grid;place-items:center;width:62px;height:62px;border:1px solid #63768a;border-radius:11px;background:linear-gradient(145deg,#1c3448,#0b1b2b);color:#f4f7fa;font-size:22px;font-weight:950;letter-spacing:-1px}
+.yard-hub-structure-preview-copy{display:block;min-width:0;padding-left:12px;border-left:1px solid #718397}
+.yard-hub-structure-preview-copy strong{display:block;color:#f7f8fa;font-size:clamp(14px,1.8vw,20px);line-height:1.08;font-weight:950;overflow-wrap:anywhere}
+.yard-hub-structure-preview-copy small{display:block;margin-top:7px;color:#9eafbe;font-size:9px;line-height:1.4;font-weight:750;letter-spacing:.45px}
+.yard-hub-structure-preview-copy em{display:inline-block;margin-top:8px;color:#ffdf42;font-size:8px;font-style:normal;font-weight:950;letter-spacing:.8px}
+.yard-hub-structure-preview-note{margin:12px 0 0;color:#9eafbe;font-size:10px;line-height:1.5}
+@media(max-width:620px){.yard-hub-structure-preview-grid{grid-template-columns:1fr}}
+</style>
+<style>
+.rm-category-preview-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.rm-category-preview-card{display:grid;grid-template-columns:66px minmax(0,1fr);align-items:center;gap:13px;min-height:104px;padding:14px 16px;border:1px solid #526a7e;border-radius:12px;background:linear-gradient(145deg,#10273d,#0a1d30);box-shadow:0 10px 24px #0003}
+.rm-category-preview-mark{display:grid;place-items:center;width:58px;height:58px;border:1px solid #63768a;border-radius:10px;background:linear-gradient(145deg,#1c3448,#0b1b2b);color:#f4f7fa;font-size:21px;font-weight:950}
+.rm-category-preview-copy{display:block;min-width:0;padding-left:11px;border-left:1px solid #718397}
+.rm-category-preview-copy strong{display:block;color:#f7f8fa;font-size:clamp(13px,1.8vw,19px);font-weight:950;overflow-wrap:anywhere}
+.rm-category-preview-copy small{display:block;margin-top:6px;color:#9eafbe;font-size:9px;line-height:1.4;font-weight:750}
+.rm-category-preview-copy em{display:inline-block;margin-top:7px;color:#ffdf42;font-size:8px;font-style:normal;font-weight:950;letter-spacing:.7px}
+.rm-category-preview-copy em.muted{color:#91a1b2}
+.rm-category-preview-note{margin:12px 0 0;color:#9eafbe;font-size:10px;line-height:1.5}
+@media(max-width:620px){.rm-category-preview-grid{grid-template-columns:1fr}}
+</style>
+<div id="yardhub-github-connect-overlay" role="dialog" aria-modal="true" aria-labelledby="yardhub-github-connect-title">
+  <div class="yardhub-github-connect-card">
+    <div class="yardhub-github-connect-kicker">DOWNTIMEUI · INDEPENDENT DATA INFRASTRUCTURE</div>
+    <h1 id="yardhub-github-connect-title">Connect YARDHUB to GitHub</h1>
+    <p>Connect a dedicated <strong>private</strong> GitHub repository for operational data. Do not use the DOWNTIME or DOWNTIMEUI application-source repositories.</p>
+    <p class="yardhub-github-connect-note">Create a new private repository here using a one-time token with Repository creation (write) or Administration (write). This token is used only for repository creation.</p>
+    <p class="yardhub-github-connect-note">After creation, use a separate fine-grained token limited to this one private repository with Contents read/write and Metadata read. It stays in memory only.</p>
+    <form id="yardhub-github-connect-form">
+      <label>GitHub owner<input name="owner" value="aka30art" autocomplete="username" required></label>
+      <label>Private data repository<input name="repo" placeholder="e.g. YARDHUB-DATA" autocomplete="off" required></label>
+      <label>Data branch<input name="branch" value="main" autocomplete="off" required></label>
+      <label>Fine-grained GitHub token<input name="token" type="password" autocomplete="off" required></label>
+      <button type="submit">CONNECT & INITIALISE</button>
+      <button type="button" data-create-private>CREATE PRIVATE DATA REPOSITORY</button>
+    </form>
+    <p class="yardhub-github-connect-status" data-yardhub-github-status>Waiting for a private GitHub data repository.</p>
+    <p class="yardhub-github-connect-note">The one-time DEV bootstrap code is automatically inserted into the first-owner setup field after connection. It expires after 15 minutes and is invalidated after DEV is created.</p>
+  </div>
+</div>
+<script type="module" src="github-bootstrap.js"></script>
+</body>
+</html>
