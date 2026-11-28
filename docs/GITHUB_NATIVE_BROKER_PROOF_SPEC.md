@@ -199,3 +199,42 @@ This section supersedes earlier statements that the broker has no concrete ident
 **Production proof is still incomplete.** No dedicated private broker repository or private data repository is provisioned; no Inbox/Data GitHub Apps or secrets are configured; no default-branch `issue_comment` workflow exists; no real GitHub event, App permission, two-account isolation, load/queue, latency, private-storage, or disaster-recovery proof has passed. The local tests remain mock-based and do not prove the actual GitHub trust boundary.
 
 The broker must remain fail-closed while YARDHUB is primary. PR #3 remains open/draft; no merge, deployment, production data migration or authority transfer is authorised. `aka30art/DOWNTIME` remains untouched.
+
+
+## Implementation update — 28 November 2026
+
+The broker is now an implemented integration path in the PR branch, not only an interface sketch. The following code paths exist:
+
+- `github-app-broker-client.js`: encrypted ECDH request/response envelopes, per-user inbox issue context, PKCE/OAuth client flow, and rejection of caller-supplied session/authorization credentials.
+- `github-broker-authority.js`: GitHub actor to canonical USER/STAFF resolution, per-user issue binding, immutable DEV-only identity link/revoke, and service/action-to-YARD ROLE permission checks.
+- `github-central-service-session.js`: short-lived Central Bank-compatible sessions; only SHA-256 token hashes are persisted and the broker revokes sessions after each action.
+- `github-actions-broker-store.js`: durable request claims, lease recovery, actor-bound replay prevention, encrypted response replay and active-primary epoch lookup.
+- `github-actions-broker-runtime.js`: composes the authority resolver, broker, private data store, preserved Edge handlers, encrypted response channel and durable ledger.
+- `github-actions-broker-runtime.test.js`: local encrypted request-to-handler integration coverage with a memory-backed data store and YARD ROLE fixture.
+- `github-edge-runtime.js`: commits the idempotency state in the same transaction as a successful action and rejects a changed authority epoch before handler execution/commit.
+- `scripts/run-github-actions-broker.mjs`: Actions entrypoint; mints a GitHub App installation token scoped to the configured private data repository, imports the broker ECDH key, loads the authenticated event and posts only encrypted responses to the broker inbox.
+- `scripts/yardhub-backup-to-github.mjs`: source replication now preserves GitHub-only broker tables rather than treating them as stale source paths.
+
+### Data contract
+
+The GitHub-native store has 42 tables: the 39 source YARDHUB tables plus three GitHub-only extension tables:
+
+- `downtime_github_identities` — canonical USER/STAFF to GitHub actor and dedicated inbox issue mapping.
+- `downtime_github_broker_requests` — actor-bound request idempotency, lease and encrypted response ledger.
+- `downtime_github_broker_identity_audit` — append-only identity link/revoke audit.
+
+The source backup manifest remains a 39-table contract. A source restore initializes broker extensions empty; source replication preserves already-present extension rows. This prevents source backup cleanup from deleting identity or idempotency state.
+
+### Latest validation evidence
+
+- CI run #613 on `603c15ac873cf850fd12ba9040df8e9ef8100b8c` passed `npm run check`, including the broker runtime, identity, idempotency and backup-preservation tests. Chromium installation/browser QA was still running at the time this note was written.
+- The current PR head is newer than that tested commit and has its own CI run in progress. No pass is claimed for the newer head until that run completes.
+- Browser tests and local integration tests use in-memory stores and mock GitHub calls. They prove deterministic code paths, not the real GitHub trust boundary.
+
+### Production proof still blocked
+
+No dedicated private broker repository or private YARDHUB data repository has been provisioned. The Inbox and Data GitHub Apps, installation, protected secrets, broker ECDH keys and default-branch `issue_comment` workflow have not been configured or exercised. There is no real GitHub event, two-account isolation, production queue/backpressure, latency, or private binary-storage proof.
+
+The three broker extension tables are preserved during source replication, but a separate private backup repository and full recovery rehearsal for the entire GitHub twin—including broker identities, audit and idempotency state—remain outstanding. Initial immutable DEV provisioning in the private data repository also remains an out-of-band setup gate.
+
+**Release position is unchanged:** YARDHUB remains primary; the broker must fail closed until the GitHub twin is explicitly active primary. No production records have been copied, no authority transfer has occurred, and PR #3 remains open/draft.
