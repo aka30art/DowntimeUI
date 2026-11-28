@@ -46,7 +46,7 @@ Never put these secrets, plaintext operational data, session tokens or decrypted
 
 ## Workflow installation
 
-Copy `docs/templates/yardhub-private-broker.workflow.yml` to the **default branch** of the dedicated private broker repository at `.github/workflows/yardhub-broker.yml`.
+Copy `docs/templates/yardhub-private-broker.workflow.yml` to the **default branch** of the dedicated private broker repository at `.github/workflows/yardhub-broker.yml`. This caller template invokes the reusable workflow at `.github/workflows/yardhub-github-broker.yml` in the public source repository. Replace the `<PINNED_40_CHARACTER_COMMIT_SHA>` placeholder in its `uses:` line with the exact reviewed DOWNTIMEUI commit SHA, and set `DOWNTIMEUI_REF` to that same SHA.
 
 GitHub's `issue_comment` workflow is loaded from the broker repository's default branch. A copy that exists only on a PR branch will not process comments. Pin `DOWNTIMEUI_REF` to the exact reviewed commit after the source PR has been accepted and merged under the separate release process.
 
