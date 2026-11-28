@@ -392,12 +392,12 @@ test("two independent device clients share GitHub records and reject stale revis
 
   await deviceB.transactDatabase({
     expectedRevision: 1, actorId: "DEV-device-B",
-    mutate(tables) { tables.repair_maintenance_machines = [{ id: "machine-1", name: "Shared Machine" }]; }
+    mutate(tables) { tables.repair_maintenance_assets = [{ id: "machine-1", name: "Shared Machine" }]; }
   });
   const refreshedA = await deviceA.readDatabase();
   assert.equal(refreshedA.revision, 2);
   assert.equal(refreshedA.tables.gatelog_customers[0].id, "customer-1");
-  assert.equal(refreshedA.tables.repair_maintenance_machines[0].id, "machine-1");
+  assert.equal(refreshedA.tables.repair_maintenance_assets[0].id, "machine-1");
 
   await assert.rejects(
     deviceA.transactDatabase({
