@@ -374,6 +374,43 @@ test("multi-table GitHub database transaction commits all tables at one revision
   assert.equal(db.manifest.tables.gatelog_customers.version, 1);
 });
 
+test("two independent device clients share GitHub records and reject stale revisions", async () => {
+  const server = createMockGitHub();
+  const deviceA = makeStore(server, "YARDHUB-PRIMARY");
+  const deviceB = makeStore(server, "YARDHUB-PRIMARY");
+  const [initialA, initialB] = await Promise.all([deviceA.readDatabase(), deviceB.readDatabase()]);
+  assert.equal(initialA.revision, 0);
+  assert.equal(initialB.revision, 0);
+
+  await deviceA.transactDatabase({
+    expectedRevision: 0, actorId: "DEV-device-A",
+    mutate(tables) { tables.gatelog_customers = [{ id: "customer-1", customer_name: "Shared Customer" }]; }
+  });
+  const refreshedB = await deviceB.readDatabase();
+  assert.equal(refreshedB.revision, 1);
+  assert.equal(refreshedB.tables.gatelog_customers[0].customer_name, "Shared Customer");
+
+  await deviceB.transactDatabase({
+    expectedRevision: 1, actorId: "DEV-device-B",
+    mutate(tables) { tables.repair_maintenance_machines = [{ id: "machine-1", name: "Shared Machine" }]; }
+  });
+  const refreshedA = await deviceA.readDatabase();
+  assert.equal(refreshedA.revision, 2);
+  assert.equal(refreshedA.tables.gatelog_customers[0].id, "customer-1");
+  assert.equal(refreshedA.tables.repair_maintenance_machines[0].id, "machine-1");
+
+  await assert.rejects(
+    deviceA.transactDatabase({
+      expectedRevision: 1, actorId: "DEV-device-A",
+      mutate(tables) { tables.gatelog_customers[0].customer_name = "Stale overwrite"; }
+    }),
+    error => error instanceof GitHubStoreError && error.status === 409
+  );
+  const finalB = await deviceB.readDatabase();
+  assert.equal(finalB.revision, 2);
+  assert.equal(finalB.tables.gatelog_customers[0].customer_name, "Shared Customer");
+});
+
 test("GitHub database transaction rejects a stale revision without changing records", async () => {
   const server = createMockGitHub();
   const store = makeStore(server);
