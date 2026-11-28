@@ -351,6 +351,32 @@ try{
   await offlinePage.screenshot({path:"artifacts/yardhub-offline-readonly.png",fullPage:true});
   await offlinePage.close();
 
+  const invalidAuthPage=await browser.newPage({viewport:{width:1440,height:900},deviceScaleFactor:1});
+  let invalidRepoChecks=0,invalidRefChecks=0;
+  await invalidAuthPage.addInitScript(()=>{
+    const user={username:"DEV",displayName:"DEV ROOT",tier:"DEV",role:"DEV",userId:"dev-user-1"};
+    const payload={users:[{username:"DEV",displayName:"DEV ROOT",tier:"DEV",enabled:true}],appData:{},staff:[],tiers:[]};
+    const tables={downtime_central_bank:[{id:1,version:1,updated_at:"2026-11-28T00:00:00.000Z",payload}],downtime_central_sessions:[],downtime_daily_operator_assignments:[]};
+    const manifest={schemaVersion:1,revision:1,systemId:"YARDHUB-PRIMARY",tables:{}};
+    localStorage.setItem("yardhub:github-data-connection:v1",JSON.stringify({owner:"demo",repo:"yardhub-data",branch:"main",token:"invalid-token"}));
+    localStorage.setItem("yardhub:central-session:v1",JSON.stringify({authenticated:true,token:"cached-session-token",expiresAt:"2026-11-28T01:00:00.000Z",user}));
+    localStorage.setItem("yardhub:github-cache:v1:demo:yardhub-data:YARDHUB-PRIMARY",JSON.stringify({revision:1,manifest,tables,authority:null,headSha:"cached-head",cachedAt:"2026-11-28T00:00:00.000Z"}));
+  });
+  await invalidAuthPage.route("https://api.github.com/**",route=>{
+    const path=new URL(route.request().url()).pathname;
+    if(path==="/repos/demo/yardhub-data"){invalidRepoChecks++;return route.fulfill({status:401,contentType:"application/json",body:JSON.stringify({message:"Bad credentials"})})}
+    invalidRefChecks++;return route.abort("internetdisconnected");
+  });
+  await invalidAuthPage.route("https://github-native.invalid/**",route=>route.fulfill({status:503,contentType:"application/json",body:JSON.stringify({error:"Invalid credential must not use offline compatibility"})}));
+  await invalidAuthPage.goto("http://127.0.0.1:"+address.port+"/yardhub/runtime/index.html",{waitUntil:"networkidle"});
+  await invalidAuthPage.locator("[data-yardhub-github-status]").waitFor({state:"visible"});
+  await invalidAuthPage.waitForTimeout(250);
+  assert.equal(invalidRepoChecks,1,"Saved repository credentials must be checked against GitHub.");
+  assert.equal(invalidRefChecks,0,"An HTTP 401 must not be reclassified as a network outage and fall back to cached data.");
+  assert.equal(await invalidAuthPage.locator("#yardhub-github-connect-overlay").isVisible(),true,"Invalid credentials must leave YARDHUB locked behind its connection gate.");
+  assert.equal(await invalidAuthPage.locator("#yardHubOfflineBanner").isVisible(),false,"Invalid credentials must not be presented as genuine offline mode.");
+  await invalidAuthPage.close();
+
   const rmPage=await browser.newPage({viewport:{width:390,height:844},deviceScaleFactor:1});
   const rmRequests=[];
   const rmFailures=[];
