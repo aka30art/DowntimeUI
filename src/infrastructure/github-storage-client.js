@@ -47,11 +47,15 @@ export function createGitHubStorageClient({ store, now = () => new Date(), ticke
         }
       },
 
-      async createSignedUploadUrl() {
-        return {
-          data: null,
-          error: new Error("Browser-to-GitHub private binary upload transport is not implemented; signed upload URLs are unavailable.")
-        };
+      async createSignedUploadUrl(path, options = {}) {
+        try {
+          const ticket = createUploadTicket({ bucket: bucketName, path, mimeType: "" });
+          const encodedPath = String(path).split("/").map(encodeURIComponent).join("/");
+          const signedUrl = "https://github-native.invalid/storage-upload/" + encodeURIComponent(bucketName) + "/" + encodedPath + "?token=" + encodeURIComponent(ticket.token);
+          return { data: { path: ticket.path, token: ticket.token, signedUrl }, error: null };
+        } catch (error) {
+          return { data: null, error };
+        }
       },
 
       async uploadToSignedUrl(path, token, file, options = {}) {
@@ -117,18 +121,45 @@ export function createGitHubStorageClient({ store, now = () => new Date(), ticke
         }
       },
 
-      async createSignedUrl() {
-        return {
-          data: null,
-          error: new Error("Browser-accessible private binary download transport is not implemented; runner-local blob URLs are never returned.")
-        };
+      async createSignedUrl(path, expiresIn = 300) {
+        try {
+          const result = await store.downloadObject({ bucket: bucketName, path });
+          const bytes = result.bytes instanceof Uint8Array ? result.bytes : new Uint8Array(result.bytes);
+          let binary = "";
+          for (let offset = 0; offset < bytes.length; offset += 0x8000) {
+            binary += String.fromCharCode(...bytes.subarray(offset, offset + 0x8000));
+          }
+          const mimeType = result.mimeType || "application/octet-stream";
+          return { data: { signedUrl: "data:" + mimeType + ";base64," + btoa(binary), path, expiresIn }, error: null };
+        } catch (error) {
+          return { data: null, error };
+        }
       }
     });
   }
 
+  async function handleSignedUploadRequest(request) {
+    try {
+      const url = new URL(request.url);
+      const match = /^\\/storage-upload\\/([^/]+)\\/(.+)$/.exec(url.pathname);
+      if (!match) return new Response(JSON.stringify({ error: "Invalid GitHub storage upload route." }), { status: 404, headers: { "Content-Type": "application/json" } });
+      const bucket = decodeURIComponent(match[1]);
+      const path = match[2].split("/").map(decodeURIComponent).join("/");
+      const token = url.searchParams.get("token") || "";
+      const bytes = new Uint8Array(await request.arrayBuffer());
+      const result = await from(bucket).uploadToSignedUrl(path, token, bytes, { contentType: request.headers.get("content-type") || "application/octet-stream" });
+      if (result.error) return new Response(JSON.stringify({ error: result.error.message || "GitHub storage upload failed." }), { status: 400, headers: { "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ ok: true, path: result.data.path }), { status: 200, headers: { "Content-Type": "application/json" } });
+    } catch (error) {
+      return new Response(JSON.stringify({ error: error?.message || "GitHub storage upload failed." }), { status: 400, headers: { "Content-Type": "application/json" } });
+    }
+  }
+
   return Object.freeze({
     from,
-    createUploadTicket,    clearExpiredTickets() {
+    createUploadTicket,
+    handleSignedUploadRequest,
+    clearExpiredTickets() {
       const timestamp = now().getTime();
       for (const [token, ticket] of tickets) if (ticket.expiresAt <= timestamp) tickets.delete(token);
       return tickets.size;
