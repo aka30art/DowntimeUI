@@ -331,6 +331,12 @@ try{
   assert.equal(publishedRequests.some(url=>url.includes("/src/installer.js")),false,"The published YARDHUB root must not load the generic installer.");
   assert.deepEqual(publishedErrors,[],"The promoted root YARDHUB runtime must load without browser errors: "+publishedErrors.join(" | "));
   await publishedPage.setViewportSize({width:390,height:844});
+  const connectionOverlay=publishedPage.locator("#yardhub-github-connect-overlay");
+  const overlayScroll=await connectionOverlay.evaluate(el=>{el.scrollTop=el.scrollHeight;const button=el.querySelector('#yardhub-github-connect-form button');const r=button.getBoundingClientRect();return {scrollTop:el.scrollTop,scrollHeight:el.scrollHeight,clientHeight:el.clientHeight,buttonTop:r.top,buttonBottom:r.bottom,viewportHeight:innerHeight}});
+  assert.ok(overlayScroll.scrollHeight>overlayScroll.clientHeight,"Mobile connection overlay must become internally scrollable when its form exceeds the viewport: "+JSON.stringify(overlayScroll));
+  assert.ok(overlayScroll.scrollTop>0,"Mobile users must be able to scroll the connection overlay to the submit button.");
+  assert.ok(overlayScroll.buttonBottom<=overlayScroll.viewportHeight+1,"Connection submit button must be reachable at the bottom of the overlay: "+JSON.stringify(overlayScroll));
+  await connectionOverlay.evaluate(el=>{el.scrollTop=0});
   const publishedMobile=await publishedPage.evaluate(()=>({viewport:innerWidth,document:document.documentElement.scrollWidth,card:(()=>{const r=document.querySelector(".yardhub-github-connect-card").getBoundingClientRect();return {left:r.left,right:r.right}})()}));
   assert.ok(publishedMobile.document<=publishedMobile.viewport+1,"Published YARDHUB connection gate must not overflow mobile width: "+JSON.stringify(publishedMobile));
   assert.ok(publishedMobile.card.left>=0&&publishedMobile.card.right<=publishedMobile.viewport+1,"Published YARDHUB connection card must fit the mobile viewport: "+JSON.stringify(publishedMobile));
