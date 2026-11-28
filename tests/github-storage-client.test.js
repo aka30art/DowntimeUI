@@ -76,17 +76,13 @@ test("GitHub storage adapter removes only requested objects", async () => {
 });
 
 
-test("Edge-style signed uploads infer the actual image MIME type at upload time", async () => {
+test("GitHub storage adapter fails closed when asked for browser upload or download URLs", async () => {
   const client = createGitHubStorageClient({ store: makeStore() });
   const storage = client.from("downtime-evidence");
-  const ticket = await storage.createSignedUploadUrl("entry/photo.jpg");
-  assert.equal(ticket.error, null);
-  const image = new Blob([new Uint8Array([255, 216, 255])], { type: "image/jpeg" });
-  const uploaded = await storage.uploadToSignedUrl(
-    ticket.data.path, ticket.data.token, image, { contentType: "image/jpeg" }
-  );
-  assert.equal(uploaded.error, null);
-  const downloaded = await storage.download("entry/photo.jpg");
-  assert.equal(downloaded.error, null);
-  assert.equal(downloaded.data.type, "image/jpeg");
+  const upload = await storage.createSignedUploadUrl("entry/photo.jpg");
+  assert.equal(upload.data, null);
+  assert.match(upload.error.message, /binary upload transport is not implemented/);
+  const download = await storage.createSignedUrl("entry/photo.jpg");
+  assert.equal(download.data, null);
+  assert.match(download.error.message, /binary download transport is not implemented/);
 });
