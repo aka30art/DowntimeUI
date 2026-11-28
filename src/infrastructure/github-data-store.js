@@ -85,7 +85,7 @@ export function createGitHubDataStore({
   maxShardBytes = DEFAULT_MAX_SHARD_BYTES,
   now = () => new Date(),
   sleep = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds)),
-  cacheStorage = globalThis.localStorage,
+  cacheStorage = null,
   cacheKey = null
 } = {}) {
   owner = requiredString(owner, "GitHub owner", /^[A-Za-z0-9-]+$/);
@@ -101,18 +101,19 @@ export function createGitHubDataStore({
 
   const root = apiBase.replace(/\/$/, "") + "/repos/" + encodeURIComponent(owner) + "/" + encodeURIComponent(repo);
   const localCacheKey = cacheKey || ("yardhub:github-cache:v1:" + owner.toLowerCase() + ":" + repo.toLowerCase() + ":" + systemId);
+  const localCacheStorage = cacheStorage || (() => { try { return globalThis.localStorage; } catch { return null; } })();
   function readLocalCache() {
-    if (!cacheStorage || typeof cacheStorage.getItem !== "function") return null;
+    if (!localCacheStorage || typeof localCacheStorage.getItem !== "function") return null;
     try {
-      const value = JSON.parse(cacheStorage.getItem(localCacheKey) || "null");
+      const value = JSON.parse(localCacheStorage.getItem(localCacheKey) || "null");
       if (!value || typeof value !== "object") return null;
       return value;
     } catch { return null; }
   }
   function writeLocalCache(value) {
-    if (!cacheStorage || typeof cacheStorage.setItem !== "function") return false;
+    if (!localCacheStorage || typeof localCacheStorage.setItem !== "function") return false;
     try {
-      cacheStorage.setItem(localCacheKey, JSON.stringify({ ...value, cachedAt: now().toISOString() }));
+      localCacheStorage.setItem(localCacheKey, JSON.stringify({ ...value, cachedAt: now().toISOString() }));
       return true;
     } catch { return false; }
   }
@@ -676,7 +677,7 @@ export function createGitHubDataStore({
         const bytes = Uint8Array.from(binary, character => character.charCodeAt(0));
         const metadata = await readJsonAt(metadataPath, headSha);
         const mimeType = metadata?.mimeType || "application/octet-stream";
-        if (bytes.byteLength <= 512 * 1024 && cacheStorage?.setItem) {
+        if (bytes.byteLength <= 512 * 1024 && localCacheStorage?.setItem) {
           let encoded = "";for (let offset = 0; offset < bytes.length; offset += 0x8000) encoded += String.fromCharCode(...bytes.subarray(offset, offset + 0x8000));
           try { cacheStorage.setItem(objectCacheKey, JSON.stringify({ mimeType, base64: globalThis.btoa(encoded), cachedAt: now().toISOString() })); } catch {}
         }
@@ -684,7 +685,7 @@ export function createGitHubDataStore({
       } catch (error) {
         if (Number.isInteger(error?.status) && error.status < 500) throw error;
         try {
-          const cached = JSON.parse(cacheStorage?.getItem?.(objectCacheKey) || "null");
+          const cached = JSON.parse(localCacheStorage?.getItem?.(objectCacheKey) || "null");
           if (cached?.base64) {
             const binary = globalThis.atob(cached.base64);
             const bytes = Uint8Array.from(binary, character => character.charCodeAt(0));
