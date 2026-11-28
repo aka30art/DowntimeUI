@@ -1,5 +1,5 @@
 import { createGitHubActionsBroker } from "./github-actions-broker.js";
-import { createGitHubBrokerIdempotencyStore } from "./github-actions-broker-store.js";
+import { createGitHubBrokerIdempotencyStore, getGitHubBrokerAuthorityEpoch } from "./github-actions-broker-store.js";
 import { createGitHubBrokerAuthority } from "./github-broker-authority.js";
 import {
   decryptBrokerRequest,
@@ -104,7 +104,11 @@ export function createGitHubYardHubBroker({
       }
     },
     idempotencyStore,
-    getAuthorityEpoch: authority.getAuthorityEpoch
+    getAuthorityEpoch: async () => {
+      const activePrimaryEpoch = await getGitHubBrokerAuthorityEpoch({ store });
+      if (activePrimaryEpoch === null) return null;
+      return authority.getAuthorityEpoch();
+    }
   });
   return broker;
 }
