@@ -1,4 +1,4 @@
-name: YARDHUB Private Broker
+name: YARDHUB Private Broker Inbox
 
 on:
   issue_comment:
@@ -8,41 +8,22 @@ permissions:
   contents: read
   issues: write
 
-concurrency:
-  group: yardhub-broker-comment-${{ github.event.comment.id }}
-  cancel-in-progress: false
-
 jobs:
-  process:
+  invoke-pinned-broker:
     if: github.event.issue.pull_request == null && github.event.comment.user.type == 'User'
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    permissions:
-      contents: read
-      issues: write
-    steps:
-      - name: Checkout pinned DOWNTIMEUI broker code
-        uses: actions/checkout@v4
-        with:
-          repository: aka30art/DowntimeUI
-          ref: ${{ vars.DOWNTIMEUI_REF }}
-          path: downtimeui
-          persist-credentials: false
-
-      - name: Run encrypted YARDHUB broker
-        working-directory: downtimeui
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          YARDHUB_BROKER_REPOSITORY_ID: ${{ github.repository_id }}
-          YARDHUB_DATA_OWNER: ${{ vars.YARDHUB_DATA_OWNER }}
-          YARDHUB_DATA_REPOSITORY: ${{ vars.YARDHUB_DATA_REPOSITORY }}
-          YARDHUB_DATA_REPOSITORY_ID: ${{ vars.YARDHUB_DATA_REPOSITORY_ID }}
-          YARDHUB_DATA_BRANCH: ${{ vars.YARDHUB_DATA_BRANCH }}
-          YARDHUB_DATA_APP_ID: ${{ vars.YARDHUB_DATA_APP_ID }}
-          YARDHUB_DATA_APP_INSTALLATION_ID: ${{ vars.YARDHUB_DATA_APP_INSTALLATION_ID }}
-          YARDHUB_DATA_APP_PRIVATE_KEY: ${{ secrets.YARDHUB_DATA_APP_PRIVATE_KEY }}
-          YARDHUB_BROKER_ECDH_PRIVATE_KEY: ${{ secrets.YARDHUB_BROKER_ECDH_PRIVATE_KEY }}
-          YARDHUB_BOOTSTRAP_GITHUB_USER_ID: ${{ vars.YARDHUB_BOOTSTRAP_GITHUB_USER_ID }}
-          YARDHUB_BOOTSTRAP_ISSUE_ID: ${{ vars.YARDHUB_BOOTSTRAP_ISSUE_ID }}
-          YARDHUB_EDGE_ORIGIN: ${{ vars.YARDHUB_EDGE_ORIGIN }}
-        run: node scripts/run-github-actions-broker.mjs
+    uses: aka30art/DowntimeUI/.github/workflows/yardhub-github-broker.yml@<PINNED_40_CHARACTER_COMMIT_SHA>
+    with:
+      source_ref: ${{ vars.DOWNTIMEUI_REF }}
+      broker_repository_id: ${{ github.repository_id }}
+      data_owner: ${{ vars.YARDHUB_DATA_OWNER }}
+      data_repository: ${{ vars.YARDHUB_DATA_REPOSITORY }}
+      data_repository_id: ${{ vars.YARDHUB_DATA_REPOSITORY_ID }}
+      data_app_id: ${{ vars.YARDHUB_DATA_APP_ID }}
+      data_app_installation_id: ${{ vars.YARDHUB_DATA_APP_INSTALLATION_ID }}
+      data_branch: ${{ vars.YARDHUB_DATA_BRANCH }}
+      edge_origin: ${{ vars.YARDHUB_EDGE_ORIGIN }}
+      bootstrap_github_user_id: ${{ vars.YARDHUB_BOOTSTRAP_GITHUB_USER_ID }}
+      bootstrap_issue_id: ${{ vars.YARDHUB_BOOTSTRAP_ISSUE_ID }}
+    secrets:
+      data_app_private_key: ${{ secrets.YARDHUB_DATA_APP_PRIVATE_KEY }}
+      broker_ecdh_private_key: ${{ secrets.YARDHUB_BROKER_ECDH_PRIVATE_KEY }}
