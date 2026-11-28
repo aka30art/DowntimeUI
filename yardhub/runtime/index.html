@@ -2565,7 +2565,7 @@ window.addEventListener('yardhub:github-connected',()=>{
     <form id="yardhub-github-connect-form">
       <label>GitHub owner<input name="owner" value="aka30art" autocomplete="username" required></label>
       <label>Private data repository<input name="repo" placeholder="e.g. YARDHUB-DATA" autocomplete="off" required></label>
-      <label>Data branch<input name="branch" value="main" autocomplete="off" required></label>
+      <label>Data branch<input name="branch" placeholder="Leave blank to use the repository default" autocomplete="off"></label>
       <label>Fine-grained GitHub token<input name="token" type="password" autocomplete="off" required></label>
       <button type="submit">CONNECT & INITIALISE</button><button type="button" data-create-private>CREATE PRIVATE DATA REPOSITORY</button>
     </form>
