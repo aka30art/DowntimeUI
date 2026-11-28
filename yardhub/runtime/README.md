@@ -36,7 +36,7 @@ The application loads the latest central data when it connects and after USER/PI
 
 ## Scope and limits
 
-The runtime preserves the original YARDHUB interface and service logic. JSON operational records are the initial persistence target. Binary staff photos, evidence and PDF archive storage require separate verification against GitHub's practical file-size and API limits before those features can be considered production-accepted. Do not claim full operational parity until those flows pass end-to-end tests.
+The runtime preserves the original YARDHUB interface and service logic. Operational JSON and binary objects use the same private repository. The GitHub storage adapter now supports direct uploads, one-time browser upload tickets, downloads and browser-local read URLs. The current object ceiling is 10 MB; the existing STAFF original PNG limit is 5 MB and R&M attachments are limited to 4 MB. This transport has unit coverage, but staff-photo, DOWNTIME evidence, R&M evidence and PDF archive flows still require end-to-end browser and two-device tests before full operational parity can be accepted.
 
 ## Validation and release gate
 
