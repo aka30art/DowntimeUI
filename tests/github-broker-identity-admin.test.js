@@ -115,6 +115,8 @@ test("DEV can link a GitHub actor only to an active reciprocal USER/STAFF and an
   assert.equal(h.store.state.tables.downtime_github_broker_identity_audit[0].event_type, "LINKED");
   assert.equal(h.calls.issue.length, 1);
   assert.equal(h.calls.issue[0].options.headers.Authorization, "Bearer broker-issues-read-token");
+  assert.equal(h.calls.metadata.length, 1);
+  assert.equal(h.calls.metadata[0].options.headers.Authorization, "Bearer repository-restricted-data-token");
   assert.equal(h.calls.token[0].repositoryId, DATA_REPOSITORY_ID);
 });
 
@@ -151,4 +153,13 @@ test("DEV can revoke an existing GitHub identity and the operation is audited", 
   assert.deepEqual(result, { accepted: true, action: "revoke" });
   assert.equal(h.store.state.tables.downtime_github_identities[0].status, "REVOKED");
   assert.equal(h.store.state.tables.downtime_github_broker_identity_audit[0].event_type, "REVOKED");
+});
+
+
+test("identity administration refuses protected or reused repositories before minting a Data App token", async () => {
+  const protectedRepo = setup();
+  protectedRepo.env.YARDHUB_DATA_OWNER = "aka30art";
+  protectedRepo.env.YARDHUB_DATA_REPOSITORY = "DOWNTIME";
+  await assert.rejects(protectedRepo.run(), /dedicated private repositories/);
+  assert.equal(protectedRepo.calls.token.length, 0);
 });
