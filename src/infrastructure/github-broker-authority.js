@@ -25,12 +25,12 @@ const SERVICE_ACTION_POLICIES = Object.freeze({
     "central-admin-state": dev, "central-config-state": dev,
     "central-config-save-draft": dev, "central-config-publish": dev,
     "central-config-restore-draft": dev, "identity-diagnostics": root("DEV", "DEV1", "ADMIN"),
-    "identity-reset": dev, "user-staff-provision": root("DEV", "DEV1", "ADMIN"),
+    "identity-reset": DENY, "user-staff-provision": root("DEV", "DEV1", "ADMIN"),
     "user-staff-activate": root("DEV", "DEV1", "ADMIN"),
     users: view("Management"), "user-save": manage("Management"),
     "user-delete": manage("Management"), "staff-save": manage("Management"),
-    "tiers-save": manage("Management"), "staff-original-upload": manage("Management"),
-    "staff-photo-url": manage("Management"), "staff-photo-read": view("Management"),
+    "tiers-save": manage("Management"), "staff-original-upload": DENY,
+    "staff-photo-url": DENY, "staff-photo-read": DENY,
     "staff-photo-remove": manage("Management")
   }),
   "central-config-admin": Object.freeze({
@@ -51,8 +51,8 @@ const SERVICE_ACTION_POLICIES = Object.freeze({
     "report-save": enter("Traffic"), "report-archive": manage("Traffic")
   }),
   "photo-evidence": Object.freeze({
-    "create-upload": enter("SCPL"), view: view("SCPL"),
-    delete: manage("SCPL"), cleanup: dev
+    "create-upload": DENY, view: DENY,
+    delete: manage("SCPL"), cleanup: DENY
   }),
   "repair-maintenance-api": Object.freeze({
     access: view("R&M"), "asset-list": view("R&M"), "asset-add": enter("R&M"),
@@ -63,9 +63,9 @@ const SERVICE_ACTION_POLICIES = Object.freeze({
     "preset-delete": manage("R&M"), "settings-get": view("R&M"),
     "settings-update": manage("R&M"), list: view("R&M"), get: view("R&M"),
     create: enter("R&M"), update: edit("R&M"), delete: manage("R&M"),
-    "note-add": enter("R&M"), upload: enter("R&M"),
-    "export-create": enter("R&M"), "export-list": view("R&M"),
-    "export-url": view("R&M"), "export-delete": manage("R&M")
+    "note-add": enter("R&M"), upload: DENY,
+    "export-create": DENY, "export-list": view("R&M"),
+    "export-url": DENY, "export-delete": manage("R&M")
   }),
   "spectator-read": Object.freeze({
     "spectator-snapshot-read": view("SCPL")
