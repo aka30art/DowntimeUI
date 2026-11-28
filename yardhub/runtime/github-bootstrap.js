@@ -55,7 +55,7 @@ async function verifyPrivateRepository(connection){
   if(metadata.archived===true)throw new Error("The YARDHUB operational data repository is archived and cannot be changed.");
   return metadata;
 }
-async function connect(connection,{offline=false}={}){
+async function connect(connection){
   if(!connection||!connection.owner||!connection.repo||!connection.token)throw new Error("Enter the private data repository and its fine-grained token.");
   const forbidden=(connection.owner+"/"+connection.repo).toLowerCase();
   if(forbidden==="aka30art/downtime"||forbidden==="aka30art/downtimeui")throw new Error("The protected DOWNTIME repository and application source repository cannot be used for operational data.");
