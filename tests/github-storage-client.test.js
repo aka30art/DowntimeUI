@@ -90,7 +90,7 @@ test("GitHub storage adapter serves one-time browser upload tickets and private 
   assert.equal(response.status, 200);
   const download = await storage.createSignedUrl("entry/photo.jpg", 60);
   assert.equal(download.error, null);
-  assert.match(download.data.signedUrl, /^data:image\\/jpeg;base64,/);
+  assert.ok(download.data.signedUrl.startsWith("data:image/jpeg;base64,"));
   const encoded = download.data.signedUrl.split(",")[1];
   assert.deepEqual([...Uint8Array.from(atob(encoded), character => character.charCodeAt(0))], [255, 216, 255, 217]);
   const replay = await client.handleSignedUploadRequest(new Request(upload.data.signedUrl, {
