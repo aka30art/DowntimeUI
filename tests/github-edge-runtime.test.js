@@ -267,9 +267,10 @@ test("Central Config admin reads the YARDHUB launcher and photo-evidence uploads
     const after = await store.readDatabase();
     assert.equal((after.tables.downtime_attachments || []).length, 1, "authorized upload creates one attachment metadata record");
     const viewResponse = await request("photo-evidence", { action: "view", attachmentId: upload.attachmentId }, login.token);
-    assert.equal(viewResponse.status, 200);
-    const view = await viewResponse.json();
-    assert.ok(view.url.startsWith("data:image/jpeg;base64,"));
+    assert.equal(viewResponse.status, 404, "evidence must not be viewable until it is linked to an active operational record");
+    const directRead = await globalThis.__YARDHUB_GITHUB_STORAGE__.from("downtime-evidence").createSignedUrl(upload.path, 60);
+    assert.equal(directRead.error, null);
+    assert.ok(directRead.data.signedUrl.startsWith("data:image/jpeg;base64,"));
   } finally {
     await runtime.dispose();
     globalThis.fetch = originalFetch;
