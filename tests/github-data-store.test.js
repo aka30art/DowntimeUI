@@ -22,12 +22,12 @@ function response(status, body) {
   };
 }
 
-function createMockGitHub({ includeAuthority = true, includePrimaryBackup = false, tamperPrimaryBackupChecksum = false } = {}) {
+function createMockGitHub({ includeAuthority = true, includePrimaryBackup = false, tamperPrimaryBackupChecksum = false, authority = INITIAL_AUTHORITY } = {}) {
   let counter = 0;
   let head = "commit-0";
   let failNextCas = false;
   const commits = new Map([[head, { tree: "tree-0", parent: null }]]);
-  const initialAuthority = Buffer.from(JSON.stringify(INITIAL_AUTHORITY) + "\n", "utf8").toString("base64");
+  const initialAuthority = Buffer.from(JSON.stringify(authority) + "\n", "utf8").toString("base64");
   const blobs = new Map([["initial-blob", initialAuthority]]);
   const initialFiles = new Map();
   if (includeAuthority) initialFiles.set("control/authority.json", { sha: "initial-blob", content: initialAuthority });
@@ -596,4 +596,49 @@ test("broker database writes are denied until GitHub is the active primary at th
   );
   assert.equal(mutated, false, "the service mutator must not run while YARDHUB remains primary");
   assert.equal(server.getHead(), before, "no Git ref may be committed while the GitHub twin is secondary");
+});
+
+
+test("broker transaction commits only for the exact active GitHub-primary authority epoch", async () => {
+  const server = createMockGitHub({
+    authority: {
+      ...INITIAL_AUTHORITY,
+      primarySystemId: "DOWNTIMEUI-GITHUB",
+      secondarySystemId: "YARDHUB-PRIMARY",
+      epoch: 7
+    }
+  });
+  const store = makeStore(server);
+  const before = await store.readDatabase();
+  let mutated = false;
+  const result = await store.transactDatabase({
+    expectedRevision: before.revision,
+    expectedAuthorityEpoch: 7,
+    actorId: "YARDHUB-GITHUB-ACTIONS-BROKER",
+    operationId: "broker-authority-epoch-commit-0001",
+    mutate(tables) {
+      mutated = true;
+      tables.gatelog_customers.push({ id: "authority-gated-write", customer_name: "Committed" });
+      return "accepted";
+    }
+  });
+  assert.equal(mutated, true);
+  assert.equal(result.committed, true);
+  assert.equal(result.revision, before.revision + 1);
+  assert.equal(result.result, "accepted");
+  const after = await store.readDatabase();
+  assert.equal(after.tables.gatelog_customers.at(-1).id, "authority-gated-write");
+
+  const currentHead = server.getHead();
+  await assert.rejects(
+    store.transactDatabase({
+      expectedRevision: after.revision,
+      expectedAuthorityEpoch: 6,
+      actorId: "YARDHUB-GITHUB-ACTIONS-BROKER",
+      operationId: "broker-authority-stale-epoch-0002",
+      mutate() { throw new Error("A stale authority epoch must not enter the mutator."); }
+    }),
+    error => error instanceof GitHubStoreError && error.status === 409
+  );
+  assert.equal(server.getHead(), currentHead, "a stale epoch cannot commit another Git ref");
 });
