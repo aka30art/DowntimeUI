@@ -301,10 +301,15 @@ test("broker service sessions store only a hash and are revoked after the servic
 
 test("broker service session refuses non-active or incomplete canonical identities", async () => {
   const store = { readDatabase: async () => ({ revision: 0, tables: {} }), transactDatabase: async () => { throw new Error("must not write"); } };
-  await assert.rejects(createGitHubCentralServiceSession({
-    store, principal: { userId: USER_ID, staffId: "staff-01", username: "operator", enabled: false, status: "ACTIVE" },
-    requestId: REQUEST_ID, cryptoProvider: webcrypto
-  }), /active canonical USER/);
+  for (const principal of [
+    { userId: USER_ID, staffId: "staff-01", username: "operator", tier: "USER", enabled: false, status: "ACTIVE" },
+    { userId: USER_ID, staffId: "staff-01", username: "operator", enabled: true, status: "ACTIVE" },
+    { userId: "not-a-canonical-uuid", staffId: "staff-01", username: "operator", tier: "USER", enabled: true, status: "ACTIVE" }
+  ]) {
+    await assert.rejects(createGitHubCentralServiceSession({
+      store, principal, requestId: REQUEST_ID, cryptoProvider: webcrypto
+    }), /active canonical USER/);
+  }
 });
 
 
