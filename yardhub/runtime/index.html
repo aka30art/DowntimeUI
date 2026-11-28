@@ -2494,19 +2494,23 @@ container.querySelector('.spectator-header')?.insertAdjacentHTML('beforeend','<b
 
 
 render();
-loadCentralUsers().catch(()=>{});
+// The GitHub module connects asynchronously after this page script. Never query
+// central state or resume a saved USER session until the direct repository adapter
+// is installed; otherwise a valid session can be logged out against the placeholder
+// github-native.invalid endpoint during startup.
 window.addEventListener('yardhub:github-connected',async()=>{
  try{await loadCentralUsers();if(window.DowntimeCentral?.session?.token)await resumeCentralSession()}
  catch(error){console.warn('YARDHUB login list could not refresh after GitHub connection.',error)}
 });
-window.addEventListener('yardhub:github-offline',()=>{
+window.addEventListener('yardhub:github-offline',async()=>{
  const banner=$('yardHubOfflineBanner');if(banner)banner.hidden=false;
  cloudStatus('OFFLINE · CACHED DATA · READ ONLY · NOT SAVED TO GITHUB');
+ try{await loadCentralUsers();if(window.DowntimeCentral?.session?.token)await resumeCentralSession()}
+ catch(error){console.warn('Cached YARDHUB session could not be resumed in offline mode.',error)}
 });
 window.addEventListener('yardhub:github-connected',()=>{
  if(window.YARDHUB_GITHUB_OFFLINE!==true){const banner=$('yardHubOfflineBanner');if(banner)banner.hidden=true}
 });
-if(window.DowntimeCentral?.session?.token)resumeCentralSession();
 })();
 </script>
 <script src="repair-maintenance-launch.js"></script>
