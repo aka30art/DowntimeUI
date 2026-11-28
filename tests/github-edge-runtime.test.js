@@ -257,7 +257,7 @@ test("Central Config admin reads the published YARDHUB launcher and photo-eviden
     const uploadError = await uploadResponse.json();
     assert.match(uploadError.error, /binary upload transport is not implemented/);
     const after = await store.readDatabase();
-    assert.equal(after.tables.downtime_attachments.length, 0, "failed upload setup must not create attachment metadata");
+    assert.equal((after.tables.downtime_attachments || []).length, 0, "failed upload setup must not create attachment metadata");
   } finally {
     await runtime.dispose();
     globalThis.fetch = originalFetch;
