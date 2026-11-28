@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import { webcrypto } from "node:crypto";
 import { createGitHubDataStore } from "../src/infrastructure/github-data-store.js";
 import { createGitHubBrokerAuthority } from "../src/infrastructure/github-broker-authority.js";
-import { createDataRepositoryInstallationToken } from "./run-github-actions-broker.mjs";
+import { createDataRepositoryInstallationToken, verifyPrivateRepository } from "./run-github-actions-broker.mjs";
 
 function requiredEnv(env, name) {
   const value = String(env[name] || "").trim();
@@ -71,9 +71,20 @@ export async function runGitHubBrokerIdentityAdmin({
   const dataOwner = requiredEnv(env, "YARDHUB_DATA_OWNER");
   const dataRepository = requiredEnv(env, "YARDHUB_DATA_REPOSITORY");
   const dataRepositoryId = requiredId(requiredEnv(env, "YARDHUB_DATA_REPOSITORY_ID"), "Data repository ID");
-  if (dataRepositoryId === brokerRepositoryId ||
-      (dataOwner + "/" + dataRepository).toLowerCase() === repository.toLowerCase()) {
-    throw new Error("The private data repository must be distinct from the broker repository.");
+  const dataFullName = (dataOwner + "/" + dataRepository).toLowerCase();
+  const brokerFullName = repository.toLowerCase();
+  const forbiddenRepositories = new Set([
+    "aka30art/downtime",
+    "aka30art/dop-website",
+    "aka30art/downtimeui"
+  ]);
+  if (forbiddenRepositories.has(dataFullName) || forbiddenRepositories.has(brokerFullName) ||
+      dataRepositoryId === brokerRepositoryId || dataFullName === brokerFullName) {
+    throw new Error("Broker and data repositories must be distinct dedicated private repositories.");
+  }
+  const dataBranch = String(env.YARDHUB_DATA_BRANCH || "data/yardhub").trim();
+  if (dataBranch !== "data/yardhub") {
+    throw new Error("The GitHub-native operational store must use the dedicated data/yardhub branch.");
   }
   const dataAppId = requiredEnv(env, "YARDHUB_DATA_APP_ID");
   const dataInstallationId = requiredEnv(env, "YARDHUB_DATA_APP_INSTALLATION_ID");
@@ -87,10 +98,17 @@ export async function runGitHubBrokerIdentityAdmin({
     fetchImpl,
     now
   });
+  await verifyPrivateRepository({
+    owner: dataOwner,
+    repository: dataRepository,
+    token: dataToken,
+    expectedId: dataRepositoryId,
+    fetchImpl
+  });
   const store = createStore({
     owner: dataOwner,
     repo: dataRepository,
-    branch: env.YARDHUB_DATA_BRANCH || "data/yardhub",
+    branch: dataBranch,
     token: dataToken,
     fetchImpl,
     now
