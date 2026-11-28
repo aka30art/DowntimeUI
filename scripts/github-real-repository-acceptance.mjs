@@ -57,6 +57,23 @@ try {
   assert.equal(initial.offline, false);
   assert.equal(Object.keys(initial.tables).length, GITHUB_YARDHUB_TABLES.length);
   assert.equal(GITHUB_YARDHUB_TABLES.length, 39);
+  if (bootstrap.initialized && initial.revision === 1) {
+    const seededSystemTables = new Set([
+      "downtime_shared_state", "downtime_central_bank",
+      "downtime_central_config_state", "yard_hub_tier_config",
+      "downtime_roots_bootstrap"
+    ]);
+    for (const table of GITHUB_YARDHUB_TABLES) {
+      assert.equal(Array.isArray(initial.tables[table]), true, "all schema tables must be initialised: " + table);
+      if (!seededSystemTables.has(table)) {
+        assert.equal(initial.tables[table].length, 0, "fresh installation must not import MAIN/legacy records into " + table);
+      }
+    }
+    const freshBank = initial.tables.downtime_central_bank?.find(row => Number(row.id) === 1)?.payload || {};
+    assert.deepEqual(freshBank.appData || {}, {}, "fresh installation must not import DOWNTIME operational data");
+    assert.deepEqual(freshBank.staff || { roster: [], profiles: {} }, { roster: [], profiles: {} }, "fresh installation must not import STAFF records");
+    assert.deepEqual(freshBank.tiers || {}, {}, "fresh installation must not import legacy tiers");
+  }
   const users = initial.tables.downtime_central_bank?.find(row => Number(row.id) === 1)?.payload?.users || [];
   const roots = initial.tables.downtime_roots_bootstrap || [];
   const root = roots.find(row => row.singleton === true);
