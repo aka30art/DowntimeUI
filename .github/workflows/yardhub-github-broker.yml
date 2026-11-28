@@ -62,13 +62,18 @@ jobs:
       contents: read
       issues: write
     steps:
-      - name: Checkout immutable YARDHUB broker source
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-        with:
-          repository: aka30art/DowntimeUI
-          ref: ${{ inputs.source_ref }}
-          path: yardhub-source
-          persist-credentials: false
+      - name: Fetch immutable YARDHUB broker source
+        env:
+          SOURCE_REF: ${{ inputs.source_ref }}
+        run: |
+          if [[ ! "$SOURCE_REF" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "source_ref must be an immutable 40-character commit SHA."
+            exit 1
+          fi
+          git init yardhub-source
+          git -C yardhub-source remote add origin https://github.com/aka30art/DowntimeUI.git
+          git -C yardhub-source fetch --depth=1 origin "$SOURCE_REF"
+          git -C yardhub-source -c advice.detachedHead=false checkout --detach FETCH_HEAD
 
       - name: Execute encrypted broker request
         working-directory: yardhub-source
