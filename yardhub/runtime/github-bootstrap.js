@@ -137,7 +137,7 @@ function valuesFromForm(){
   return {
     owner:String(data.get("owner")||"").trim(),
     repo:String(data.get("repo")||"").trim(),
-    branch:String(data.get("branch")||"main").trim(),
+    branch:String(data.get("branch")||"").trim(),
     token:String(data.get("token")||"").trim()
   };
 }
