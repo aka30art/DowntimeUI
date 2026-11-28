@@ -69,9 +69,23 @@ export function createGitHubBrokerIdentityManager({
       const snapshot = await store.readDatabase();
       const bank = (snapshot.tables.downtime_central_bank || []).find(row => Number(row.id) === 1);
       const user = (bank?.payload?.users || []).find(row =>
-        String(row.userId) === targetUserId && String(row.staffId) === targetStaffId && row.enabled !== false
+        String(row.userId) === targetUserId &&
+        String(row.staffId) === targetStaffId &&
+        row.enabled === true &&
+        (!row.status || String(row.status).toUpperCase() === "ACTIVE")
       );
-      if (!user) throw new Error("The target USER/STAFF identity is not active in Central Bank.");
+      const profiles = bank?.payload?.staff?.profiles;
+      const staffProfile = profiles && typeof profiles === "object" && !Array.isArray(profiles)
+        ? Object.values(profiles).find(profile =>
+            profile && String(profile.staffId) === targetStaffId &&
+            String(profile.linkedUserId) === targetUserId
+          )
+        : null;
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(targetUserId) ||
+          !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(targetStaffId) ||
+          !user || !staffProfile) {
+        throw new Error("The target must be an active, reciprocal canonical USER/STAFF identity in Central Bank.");
+      }
 
       const eventId = cryptoProvider.randomUUID();
       const timestamp = now().toISOString();
