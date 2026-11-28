@@ -324,6 +324,12 @@ export function createGitHubBrokerAuthority({
     if (!actorPrincipal?.githubUserId || actorPrincipal.rootsClass !== "DEV") {
       throw new Error("Only the authenticated immutable DEV broker principal may link GitHub identities.");
     }
+    const targetRootsClass = resolveRootsClass((await store.readDatabase()).tables, String(userId || ""));
+    if (targetRootsClass === "DEV" &&
+        !(String(githubUserId) === String(bootstrapGitHubUserId) &&
+          Number(issueId) === Number(bootstrapIssueId))) {
+      throw new Error("The immutable DEV identity cannot be rebound to another GitHub account or inbox issue.");
+    }
     return identityManager.link({
       actorContext: { githubUserId: actorPrincipal.githubUserId },
       githubUserId,
@@ -337,6 +343,10 @@ export function createGitHubBrokerAuthority({
   async function revokeIdentity({ actorPrincipal, githubUserId, reason } = {}) {
     if (!actorPrincipal?.githubUserId || actorPrincipal.rootsClass !== "DEV") {
       throw new Error("Only the authenticated immutable DEV broker principal may revoke GitHub identities.");
+    }
+    const targetPrincipal = await resolvePrincipal(String(githubUserId || ""));
+    if (targetPrincipal?.rootsClass === "DEV") {
+      throw new Error("The immutable DEV identity cannot be revoked through broker identity administration.");
     }
     return identityManager.revoke({
       actorContext: { githubUserId: actorPrincipal.githubUserId },
