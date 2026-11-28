@@ -52,7 +52,6 @@ let probeCommitted = false;
 let objectUploaded = false;
 
 try {
-  await deviceA.ensureAuthority();
   await ensureGitHubDatabaseReady({ store: deviceA });
   const initial = await deviceA.readDatabase();
   assert.equal(initial.offline, false);
