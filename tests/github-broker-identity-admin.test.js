@@ -45,7 +45,7 @@ function makeStore(initialLinks = []) {
   };
 }
 
-function setup({ action = "link", actorId = DEV_GITHUB_ID, isPrivate = true, assigneeId = TARGET_GITHUB_ID, assignees = null, links = [] } = {}) {
+function setup({ action = "link", actorId = DEV_GITHUB_ID, isPrivate = true, assigneeId = TARGET_GITHUB_ID, assignees = null, labels = [{ name: "yardhub-inbox" }], links = [] } = {}) {
   const store = makeStore(links);
   const calls = { token: [], issue: [], metadata: [], brokerMetadata: [] };
   const event = {
@@ -178,22 +178,7 @@ test("identity administration refuses protected or reused repositories before mi
 
 
 test("identity linking rejects an inbox issue without the required yardhub-inbox label", async () => {
-  const h = setup();
-  h.fetchImpl = async (url, options) => {
-    if (url.endsWith("/repos/private-yardhub/yardhub-inbox")) {
-      h.calls.brokerMetadata.push({ url, options });
-      return new Response(JSON.stringify({ id: BROKER_REPOSITORY_ID, private: true }), { status: 200 });
-    }
-    if (url.endsWith("/repos/private-yardhub/yardhub-data")) {
-      h.calls.metadata.push({ url, options });
-      return new Response(JSON.stringify({ id: DATA_REPOSITORY_ID, private: true }), { status: 200 });
-    }
-    h.calls.issue.push({ url, options });
-    return new Response(JSON.stringify({
-      id: 333, number: 7, state: "open", labels: [],
-      assignees: [{ id: Number(TARGET_GITHUB_ID) }]
-    }), { status: 200 });
-  };
+  const h = setup({ labels: [] });
   await assert.rejects(h.run(), /must be open, non-PR and assigned/);
   assert.equal(h.store.state.tables.downtime_github_identities.length, 0);
 });
