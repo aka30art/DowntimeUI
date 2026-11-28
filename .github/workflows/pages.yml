@@ -33,6 +33,8 @@ jobs:
           test -s yardhub/runtime/functions/repair-maintenance-api.js
           test -s yardhub/runtime/functions/spectator-read.js
           test -s yardhub/runtime/functions/yard-hub-settings-api.js
+      - name: Assemble pure YARDHUB Pages site
+        run: npm run build:pages-site
       - name: Configure Pages
         uses: actions/configure-pages@v5
         with:
@@ -40,7 +42,7 @@ jobs:
       - name: Upload static site
         uses: actions/upload-pages-artifact@v3
         with:
-          path: .
+          path: dist
   deploy:
     environment:
       name: github-pages
