@@ -2,6 +2,18 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
+test("YARDHUB startup and real-repository acceptance do not invoke the retired two-system authority model", async () => {
+  const paths = [
+    "../yardhub/runtime/github-bootstrap.js",
+    "../yardhub/runtime/github-edge-runtime.js",
+    "../scripts/github-real-repository-acceptance.mjs"
+  ];
+  for (const path of paths) {
+    const source = await readFile(new URL(path, import.meta.url), "utf8");
+    assert.doesNotMatch(source, /ensureAuthority|readAuthority|beginPrimarySwitch|freezePrimarySwitch|completePrimarySwitch|cancelPrimarySwitch|DOWNTIMEUI-GITHUB/, path + " must stay on the standalone YARDHUB path");
+  }
+});
+
 test("compiled Central Bank bootstrap binds DEV to the immutable ROOTS bootstrap UUID", async () => {
   const source = await readFile(new URL("../yardhub/runtime/functions/central-bank.js", import.meta.url), "utf8");
   assert.match(source, /downtime_roots_bootstrap/);
