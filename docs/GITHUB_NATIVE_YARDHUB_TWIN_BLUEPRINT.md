@@ -9,6 +9,7 @@
 - GitHub Pages hosts the static YARDHUB application.
 - One dedicated private GitHub repository stores shared operational JSON and supported binary objects.
 - Each device connects directly to that repository using a fine-grained PAT restricted to that repository (Contents read/write; Metadata read).
+- Connection setup performs an authenticated Git Data blob-write capability probe. This confirms the PAT itself has Contents: write; the repository's account-level `permissions.push` metadata is not treated as sufficient proof. The probe creates an unreferenced Git blob only and does not update a branch, ref or operational record.
 - The token is stored in that browser profile so the device can reconnect. The same token must be configured on each device.
 - Existing YARDHUB USER/PIN login and YARD ROLE interface remain application-level controls. They are not a security boundary against someone who extracts the repository token.
 - The browser runs the seven local GitHub-native service handlers. GitHub is the only external platform used for hosting and persistence.
