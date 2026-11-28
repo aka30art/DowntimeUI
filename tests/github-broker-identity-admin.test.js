@@ -47,7 +47,7 @@ function makeStore(initialLinks = []) {
 
 function setup({ action = "link", actorId = DEV_GITHUB_ID, isPrivate = true, assigneeId = TARGET_GITHUB_ID, assignees = null, links = [] } = {}) {
   const store = makeStore(links);
-  const calls = { token: [], issue: [] };
+  const calls = { token: [], issue: [], metadata: [] };
   const event = {
     repository: { id: BROKER_REPOSITORY_ID, full_name: "private-yardhub/yardhub-inbox", private: isPrivate, default_branch: "main" },
     sender: { id: Number(actorId), login: "workflow-actor" },
