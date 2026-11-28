@@ -100,7 +100,11 @@ export async function installGitHubEdgeRuntime({
     const match = String(url || "").match(routePattern);
     const handler = match && handlers[match[1]];
     if (!handler) return fetchImpl(input, init);
-    return handler(request);
+    try { return await handler(request); }
+    catch (error) {
+      if (offline) return new Response(JSON.stringify({ error: "OFFLINE — cached data is read-only. This change was not saved to GitHub." }), { status: 503, headers: { "Content-Type": "application/json" } });
+      throw error;
+    }
   };
 
   return {
