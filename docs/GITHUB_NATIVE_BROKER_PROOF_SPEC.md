@@ -280,3 +280,17 @@ The setup guide and workflow are configuration artifacts only. No private broker
 - CI #630 is validating the current PR head `a0146fb647b23c4689a1647cd732957e87d4e9d1`, which includes the private caller wrapper template. Its result is not yet claimed.
 
 The broker remains fail-closed until the real private repositories, Apps, secrets, workflow, two-user authorization and full recovery are tested.
+
+
+## Binary evidence transport is a production blocker — 28 November 2026
+
+The GitHub repository/object adapter can store and retrieve bytes inside the Actions runtime, but the browser-to-broker and broker-to-browser file transport is not implemented. This is not full storage parity.
+
+- The encrypted issue-comment envelope is capped at approximately 11 KiB by the browser client; the broker parser caps the comment at 16 KiB.
+- The preserved source services accept evidence uploads up to multiple megabytes, and R&M PDF exports can be much larger. These payloads cannot be carried through the current comment envelope.
+- The old storage adapter's runner-local `blob:` URLs are not accessible from the user's browser or another workflow run. Signed upload URLs also depended on in-memory tickets that do not survive a separate Actions invocation.
+- The storage adapter now fails closed for browser signed upload/download URL requests. It no longer returns a misleading runner-local blob URL or upload ticket as though it were a usable browser endpoint.
+- The broker action policy now denies unsupported binary paths: Central Bank staff photo upload/read, Photo Evidence create/view/cleanup, R&M upload/export-create/export-url. Deletion and metadata operations that are server-side and supported remain separately permissioned.
+- The GitHub edge runtime independently blocks Central Bank `identity-reset` and `staff-original-upload`. Those copied source actions contain paths that read/write/delete staff originals in `aka30art/DOWNTIME`; the GitHub twin must never invoke them. This defense-in-depth guard is in DowntimeUI only. The protected DOWNTIME repository has not been changed.
+
+**Phase 4 remains BLOCKED.** A production decision is required between (a) a measured, secure chunked broker transport with durable staging, replay handling, and acceptable GitHub Actions/API throughput, or (b) a separate private object-storage transport. No external provider has been selected and no production files have been migrated. Do not claim photo-evidence, staff-photo or R&M binary parity until end-to-end browser upload/download and recovery tests pass.
