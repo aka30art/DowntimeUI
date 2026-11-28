@@ -31,6 +31,14 @@ function makeStore() {
       }
     },
     tables: {
+      downtime_github_identities: [{
+        github_user_id: USER_GITHUB_ID,
+        user_id: USER_ID,
+        staff_id: STAFF_ID,
+        broker_issue_id: USER_INBOX_ISSUE_ID,
+        status: "ACTIVE"
+      }],
+      downtime_github_broker_identity_audit: [],
       downtime_central_bank: [{
         id: 1,
         version: 1,
@@ -66,6 +74,18 @@ function makeStore() {
   return {
     async readDatabase() {
       return { revision: state.revision, tables: structuredClone(state.tables) };
+    },
+    async transactDatabase({ expectedRevision, mutate }) {
+      if (expectedRevision !== state.revision) {
+        const error = new Error("revision conflict");
+        error.status = 409;
+        throw error;
+      }
+      const draft = structuredClone(state.tables);
+      const result = await mutate(draft);
+      state.tables = draft;
+      state.revision += 1;
+      return { committed: true, revision: state.revision, result };
     },
     async readSnapshot() {
       return state.snapshot ? structuredClone(state.snapshot) : null;
@@ -158,7 +178,9 @@ test("only immutable DEV can link or revoke GitHub identities", async () => {
     actorPrincipal: user,
     githubUserId: "444444",
     userId: "00000000-0000-4000-8000-000000000005",
-    issueId: 1003
+    staffId: "00000000-0000-4000-8000-000000000006",
+    issueId: 1003,
+    reason: "Provision operator broker identity"
   }), /Only immutable DEV/);
 
   const rootAuthority = createGitHubBrokerAuthority({
@@ -177,12 +199,19 @@ test("only immutable DEV can link or revoke GitHub identities", async () => {
     actorPrincipal: dev,
     githubUserId: "444444",
     userId: "00000000-0000-4000-8000-000000000005",
-    issueId: 1003
+    staffId: "00000000-0000-4000-8000-000000000006",
+    issueId: 1003,
+    reason: "Provision operator broker identity"
   });
   assert.equal(linked.ok, true);
-  assert.ok(store.state.snapshot.payload.links.some(link => link.githubUserId === "444444"));
-  await rootAuthority.revokeIdentity({ actorPrincipal: dev, githubUserId: "444444" });
-  assert.equal(store.state.snapshot.payload.links.find(link => link.githubUserId === "444444").status, "REVOKED");
+  assert.ok(store.state.tables.downtime_github_identities.some(link => link.github_user_id === "444444"));
+  await rootAuthority.revokeIdentity({
+    actorPrincipal: dev,
+    githubUserId: "444444",
+    reason: "Remove operator broker access"
+  });
+  assert.equal(store.state.tables.downtime_github_identities.find(link => link.github_user_id === "444444").status, "REVOKED");
+  assert.deepEqual(store.state.tables.downtime_github_broker_identity_audit.map(row => row.event_type), ["LINKED", "REVOKED"]);
 });
 
 test("broker policy table explicitly lists all 96 source action/read surfaces", () => {
