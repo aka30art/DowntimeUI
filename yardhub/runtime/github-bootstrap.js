@@ -1,4 +1,5 @@
 import { createGitHubDataStore } from "../../src/infrastructure/github-data-store.js";
+import { createPrivateGitHubDataRepository } from "../../src/infrastructure/github-connection.js";
 import { installGitHubEdgeRuntime } from "./github-edge-runtime.js";
 
 const STORAGE_KEY="yardhub:github-data-connection:v1";
@@ -103,10 +104,22 @@ async function connectFromForm(){
 }
 form?.addEventListener("submit",event=>{event.preventDefault();void connectFromForm()});
 const createButton=form?.querySelector("[data-create-private]");
-if(createButton){
-  createButton.hidden=true;
+createButton?.addEventListener("click",async()=>{
+  const connection=valuesFromForm();
+  if(!connection.owner||!connection.repo||!connection.token){status("Enter the GitHub owner, new repository name and one-time repository-creation token.",true);return}
   createButton.disabled=true;
-}
+  try{
+    status("Creating the private YARDHUB data repository…");
+    const created=await createPrivateGitHubDataRepository({
+      owner:connection.owner,repo:connection.repo,token:connection.token,
+      fetchImpl:nativeFetch
+    });
+    const branch=form.querySelector('[name="branch"]');if(branch)branch.value=created.defaultBranch||"main";
+    const token=form.querySelector('[name="token"]');if(token)token.value="";
+    status("Private repository created. Replace the one-time token with a fine-grained token limited to this repository (Contents read/write, Metadata read), then select CONNECT.");
+  }catch(error){status(error?.message||"Private repository creation failed.",true)}
+  finally{createButton.disabled=false}
+});
 const saved=readSaved();
 if(saved){
   showOverlay();
