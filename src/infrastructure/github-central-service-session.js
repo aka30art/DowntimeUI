@@ -1,3 +1,5 @@
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 function toHex(bytes) {
   return Array.from(bytes, byte => byte.toString(16).padStart(2, "0")).join("");
 }
@@ -38,10 +40,13 @@ export async function createGitHubCentralServiceSession({
   }
   const immutableDevRoot = principal?.rootsClass === "DEV" &&
     String(principal?.username || "").trim().toUpperCase() === "DEV";
-  if (!principal?.userId || !principal?.username ||
+  if (typeof principal?.userId !== "string" || !UUID_PATTERN.test(principal.userId) ||
+      typeof principal?.username !== "string" || !principal.username.trim() ||
+      typeof principal?.tier !== "string" || !principal.tier.trim() ||
+      (principal.staffId && (typeof principal.staffId !== "string" || !UUID_PATTERN.test(principal.staffId))) ||
       (!principal.staffId && !immutableDevRoot) ||
       principal.enabled !== true || principal.status !== "ACTIVE") {
-    throw new Error("An active canonical USER/STAFF identity or immutable DEV root is required.");
+    throw new Error("An active canonical USER/STAFF identity with a valid tier, or immutable DEV root, is required.");
   }
   if (typeof requestId !== "string" || !/^[0-9a-f-]{36}$/i.test(requestId)) {
     throw new TypeError("A valid broker request ID is required.");
@@ -62,7 +67,7 @@ export async function createGitHubCentralServiceSession({
   const row = {
     token_hash: tokenHash,
     username: principal.username,
-    tier: principal.tier || null,
+    tier: principal.tier,
     created_at: createdAt.toISOString(),
     expires_at: expiresAt.toISOString()
   };
