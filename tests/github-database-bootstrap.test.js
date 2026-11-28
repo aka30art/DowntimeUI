@@ -86,15 +86,110 @@ test("bootstrap adds missing singleton records without replacing non-empty table
   assert.equal(store.tables.downtime_reports[0].title, "Keep this report");
 });
 
-test("DEV bootstrap code rotates after a reload and expires after fifteen minutes", async () => {
+test("an unexpired DEV bootstrap code is not rotated when another browser connects after reload", async () => {
   const store = memoryStore();
-  const first = await ensureGitHubDatabaseReady({ store, generateBootstrapCode: () => "A".repeat(48) });
-  delete globalThis.__YARDHUB_BOOTSTRAP_CODE__;
-  const second = await ensureGitHubDatabaseReady({ store, generateBootstrapCode: () => "B".repeat(48) });
-  assert.equal(first.bootstrapCode, "A".repeat(48));
-  assert.equal(second.bootstrapCode, "B".repeat(48));
-  assert.notEqual(store.tables.downtime_roots_bootstrap[0].bootstrap_code_hash, first.bootstrapCode);
-  assert.equal(store.tables.downtime_roots_bootstrap[0].bootstrap_code_expires_at, second.bootstrapCodeExpiresAt);
+  const previousCode = globalThis.__YARDHUB_BOOTSTRAP_CODE__;
+  try {
+    delete globalThis.__YARDHUB_BOOTSTRAP_CODE__;
+    const first = await ensureGitHubDatabaseReady({ store, generateBootstrapCode: () => "A".repeat(48) });
+    const firstHash = store.tables.downtime_roots_bootstrap[0].bootstrap_code_hash;
+    const firstExpiry = store.tables.downtime_roots_bootstrap[0].bootstrap_code_expires_at;
+    delete globalThis.__YARDHUB_BOOTSTRAP_CODE__;
+
+    let generationCount = 0;
+    const second = await ensureGitHubDatabaseReady({
+      store,
+      generateBootstrapCode() {
+        generationCount += 1;
+        return "B".repeat(48);
+      }
+    });
+
+    assert.equal(first.bootstrapCode, "A".repeat(48));
+    assert.equal(second.bootstrapCode, null, "a second browser must not claim it can recover the first browser's plaintext code");
+    assert.equal(second.initialized, false);
+    assert.equal(store.commits, 1, "opening another browser must not create another repository commit");
+    assert.equal(store.tables.downtime_roots_bootstrap[0].bootstrap_code_hash, firstHash);
+    assert.equal(store.tables.downtime_roots_bootstrap[0].bootstrap_code_expires_at, firstExpiry);
+    assert.equal(generationCount, 0, "an active code must not be regenerated before expiry");
+    assert.equal(globalThis.__YARDHUB_BOOTSTRAP_CODE__, null);
+  } finally {
+    if (previousCode === undefined) delete globalThis.__YARDHUB_BOOTSTRAP_CODE__;
+    else globalThis.__YARDHUB_BOOTSTRAP_CODE__ = previousCode;
+  }
+});
+
+test("expired DEV bootstrap code is rotated after fifteen minutes", async () => {
+  const store = memoryStore();
+  const previousCode = globalThis.__YARDHUB_BOOTSTRAP_CODE__;
+  try {
+    let clock = new Date("2026-11-27T12:00:00.000Z");
+    delete globalThis.__YARDHUB_BOOTSTRAP_CODE__;
+    const first = await ensureGitHubDatabaseReady({
+      store,
+      now: () => new Date(clock),
+      generateBootstrapCode: () => "A".repeat(48)
+    });
+    const firstHash = store.tables.downtime_roots_bootstrap[0].bootstrap_code_hash;
+    delete globalThis.__YARDHUB_BOOTSTRAP_CODE__;
+    clock = new Date("2026-11-27T12:16:00.000Z");
+
+    const second = await ensureGitHubDatabaseReady({
+      store,
+      now: () => new Date(clock),
+      generateBootstrapCode: () => "B".repeat(48)
+    });
+
+    assert.equal(first.bootstrapCode, "A".repeat(48));
+    assert.equal(second.bootstrapCode, "B".repeat(48));
+    assert.notEqual(store.tables.downtime_roots_bootstrap[0].bootstrap_code_hash, firstHash);
+    assert.equal(store.tables.downtime_roots_bootstrap[0].bootstrap_code_expires_at, second.bootstrapCodeExpiresAt);
+    assert.equal(store.commits, 2);
+  } finally {
+    if (previousCode === undefined) delete globalThis.__YARDHUB_BOOTSTRAP_CODE__;
+    else globalThis.__YARDHUB_BOOTSTRAP_CODE__ = previousCode;
+  }
+});
+
+test("database bootstrap re-reads and accepts a concurrent browser's first successful initialisation", async () => {
+  const store = memoryStore();
+  const previousCode = globalThis.__YARDHUB_BOOTSTRAP_CODE__;
+  try {
+    delete globalThis.__YARDHUB_BOOTSTRAP_CODE__;
+    let injectedRace = false;
+    const competingStore = {
+      readDatabase: () => store.readDatabase(),
+      async transactDatabase(input) {
+        if (!injectedRace) {
+          injectedRace = true;
+          const competingResult = await ensureGitHubDatabaseReady({
+            store,
+            generateBootstrapCode: () => "C".repeat(48)
+          });
+          assert.equal(competingResult.bootstrapCode, "C".repeat(48));
+          const error = new Error("another browser advanced the branch");
+          error.status = 409;
+          throw error;
+        }
+        return store.transactDatabase(input);
+      }
+    };
+
+    const result = await ensureGitHubDatabaseReady({
+      store: competingStore,
+      generateBootstrapCode: () => "D".repeat(48)
+    });
+
+    assert.equal(injectedRace, true);
+    assert.equal(result.ready, true);
+    assert.equal(result.initialized, false, "the competing browser already completed bootstrap");
+    assert.equal(result.bootstrapCode, "C".repeat(48));
+    assert.equal(store.commits, 1, "the losing browser must not create a second bootstrap commit");
+    assert.equal(Object.keys(store.tables).length, 39);
+  } finally {
+    if (previousCode === undefined) delete globalThis.__YARDHUB_BOOTSTRAP_CODE__;
+    else globalThis.__YARDHUB_BOOTSTRAP_CODE__ = previousCode;
+  }
 });
 
 test("DEV bootstrap code is not generated once a DEV account exists", async () => {
