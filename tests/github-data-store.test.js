@@ -601,6 +601,23 @@ test("database writes are denied until GitHub is the active data authority at th
 });
 
 
+test("YARDHUB-primary browser store can write at its own active authority epoch", async () => {
+  const server = createMockGitHub();
+  const store = makeStore(server, "YARDHUB-PRIMARY");
+  const before = await store.readDatabase();
+  const result = await store.transactDatabase({
+    expectedRevision: before.revision,
+    expectedAuthorityEpoch: 1,
+    actorId: "YARDHUB-BROWSER-RUNTIME",
+    operationId: "yardhub-primary-authority-write-0001",
+    mutate(tables) {
+      tables.gatelog_customers = [{ id: "yardhub-primary-write", customer_name: "Accepted" }];
+    }
+  });
+  assert.equal(result.committed, true);
+  assert.equal((await store.readDatabase()).tables.gatelog_customers[0].id, "yardhub-primary-write");
+});
+
 test("database transaction commits only for the exact active GitHub-primary authority epoch", async () => {
   const server = createMockGitHub({
     authority: {
