@@ -119,7 +119,7 @@ test("composed broker denies a GATELOG MANAGE action for a USER whose Traffic ro
     async readDatabase() { return { revision: 0, tables: structuredClone(tables) }; },
     async readSnapshot() { return structuredClone(identitySnapshot); },
     async writeSnapshot() { throw new Error("Identity link must not change during an ordinary request."); },
-    async readAuthority() { return { status: "ACTIVE", primarySystemId: "YARDHUB-PRIMARY", epoch: 1 }; },
+    async readAuthority() { return { status: "ACTIVE", primarySystemId: "DOWNTIMEUI-GITHUB", epoch: 1 }; },
     async transactDatabase() { throw new Error("Denied action must not claim idempotency or create a session."); }
   };
   const handlers = Object.fromEntries(SERVICE_NAMES.map(name => [name, async () => {
