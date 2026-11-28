@@ -205,3 +205,26 @@ The current local implementation:
 - has unit tests using mocked GitHub responses only.
 
 GitHub documents `repository_id` as a token-exchange parameter for the web authorization flow. The real GitHub App registration, returned permissions, callback configuration, two-account test and private-data-repository denial test remain outstanding. This update does not close SEC-008 or authorise production use.
+
+
+## Broker implementation and authority-gate correction — 28 November 2026
+
+The earlier sections describing the broker as callback-only are superseded by the following current code inventory. This is still a local implementation; it is not a deployed broker or a production acceptance result.
+
+- `src/infrastructure/github-broker-authority.js` resolves GitHub numeric account IDs against canonical USER/STAFF data and an explicit YARD ROLE/department capability matrix. Unknown service/action pairs are default-deny. The policy catalogue is checked against 96 source service action/read surfaces. It also restricts bootstrap to the out-of-band immutable DEV account and its designated issue.
+- `src/infrastructure/github-broker-identity-admin.js` provides DEV-only identity link/revocation, one-to-one USER/GitHub/inbox binding, and audit records.
+- `src/infrastructure/github-central-service-session.js` creates a short-lived Central Bank-compatible session for the verified principal, persists only its SHA-256 hash, and revokes it after the service action. Browser-supplied session/access tokens are rejected.
+- `src/infrastructure/github-actions-broker-store.js` stores idempotency claims in the private data-store schema and handles PROCESSING/COMMITTED/COMPLETED/FAILED states, leases and encrypted-response replay.
+- `src/infrastructure/github-actions-broker-runtime.js` composes the authority adapter, encrypted client protocol, seven preserved service handlers, broker session, idempotency store and encrypted response publisher.
+- `yardhub/runtime/github-edge-runtime.js` executes each accepted action in one staged GitHub database transaction and marks its idempotency record COMMITTED in that same commit.
+- `src/infrastructure/github-data-store.js` now supports an expected-authority-epoch precondition on the transaction. It reads the authority manifest at the same Git commit SHA used for the data transaction and rejects the commit unless the authority is ACTIVE, the epoch matches and `DOWNTIMEUI-GITHUB` is the primary system.
+- `scripts/run-github-actions-broker.mjs` is the local Actions entry point. It mints a Data App installation token restricted to the configured data-repository ID, checks that the event is a newly created non-PR issue comment from the configured private broker repository/default branch, requires broker/data repository separation, and passes optional one-time DEV bootstrap identifiers into the runtime.
+- The browser client now has an IndexedDB-backed pending-request store for recoverable ECDH CryptoKey contexts. Its real browser persistence and cross-device recovery still require browser/device acceptance testing.
+
+**Authority boundary:** the broker deliberately refuses operational actions while `YARDHUB-PRIMARY` remains primary. This is not an authority transfer. The transaction-level epoch check prevents a stale preflight authorization from committing after a primary/epoch change.
+
+**Still blocked:** dedicated private broker/inbox and data repositories have not been provisioned; neither GitHub App has been registered/installed; protected secrets are not present; no `issue_comment` workflow exists on a dedicated broker repository's default branch; actual GitHub App permissions, real event identity, two-user isolation, queue/backpressure, latency, five-bucket binary evidence transport, backup/restore and two-device recovery remain unproven.
+
+Latest observed CI before this audit update: run #599 failed on an earlier commit because the runtime callback omitted the authorityEpoch parameter. That parameter has been corrected in the PR branch; the correction requires its own exact-head CI and browser QA run. No CI/browser pass is claimed for the corrected head.
+
+No production data was migrated, no authority switch occurred, PR #3 remains open/draft, and `aka30art/DOWNTIME` remains untouched.
