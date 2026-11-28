@@ -37,6 +37,7 @@ const browser = await chromium.launch({ headless: true, args: ["--no-sandbox"] }
 const contexts = [];
 const probeId = "yardhub-browser-acceptance-" + globalThis.crypto.randomUUID();
 const secondId = probeId + "-second";
+const staleId = probeId + "-stale";
 let committed = false;
 let pageA, pageB;
 
@@ -150,7 +151,7 @@ try {
         operationId: id + "-stale-write-b",
         mutate(tables) { tables.downtime_reports.push({ id, title: "Must never commit" }); }
       });
-    }, { id: secondId, expectedRevision: staleBaseline });
+    }, { id: staleId, expectedRevision: staleBaseline });
   } catch (error) {
     staleStatus = await pageB.evaluate(() => {
       const match = String(window.__lastYardhubError || "").match(/409/);
@@ -162,7 +163,7 @@ try {
   const staleRecordPresent = await pageA.evaluate(async id => {
     const result = await window.YARDHUB_GITHUB_STORE.readDatabase();
     return result.tables.downtime_reports.some(row => row.id === id);
-  }, secondId);
+  }, staleId);
   assert.equal(staleRecordPresent, false, "The stale browser write must not appear in central GitHub data.");
 
   console.log("PASS: two independent Chromium browser profiles connected to the real private YARDHUB repository; browser A commit became visible to browser B after manual refresh; stale browser B write was rejected.");
@@ -188,7 +189,7 @@ try {
           }
         }
         return false;
-      }, [probeId, secondId]);
+      }, [probeId, secondId, staleId]);
     } catch (error) {
       console.error("CRITICAL: browser acceptance cleanup failed. Temporary test record IDs:", probeId, secondId, "Error:", error?.message || String(error));
       throw error;
