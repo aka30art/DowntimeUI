@@ -460,8 +460,8 @@ export function createGitHubAppBrokerClient({
   if (!Number.isSafeInteger(repoId) || repoId < 1) throw new TypeError("Broker repository ID is invalid.");
   const repoOwner = requiredString(owner, "Broker repository owner", /^[A-Za-z0-9-]+$/);
   const repoName = requiredString(repository, "Broker repository name", /^[A-Za-z0-9_.-]+$/);
-  const issue = Number(issueNumber);
-  if (!Number.isSafeInteger(issue) || issue < 1) throw new TypeError("Broker inbox issue number is invalid.");
+  let issue = issueNumber == null || issueNumber === "" ? 0 : Number(issueNumber);
+  if (issue && (!Number.isSafeInteger(issue) || issue < 1)) throw new TypeError("Broker inbox issue number is invalid.");
   if (typeof fetchImpl !== "function") throw new TypeError("A fetch implementation is required.");
 
   let accessToken = null;
@@ -495,6 +495,59 @@ export function createGitHubAppBrokerClient({
       throw new Error("GitHub App authorisation is missing or expired. Re-authorise the broker inbox.");
     }
     return accessToken;
+  }
+
+  function requireInboxIssue() {
+    if (!Number.isSafeInteger(issue) || issue < 1) {
+      throw new Error("No private YARDHUB inbox issue is resolved for this GitHub account.");
+    }
+    return issue;
+  }
+
+  async function resolveInboxIssue({ label = "yardhub-inbox" } = {}) {
+    const token = requireToken();
+    if (!account?.id || !account?.login) throw new Error("A verified GitHub account is required to resolve its private inbox.");
+    const labelName = requiredString(label, "Broker inbox label", /^[a-z0-9-]{2,64}$/);
+    const matches = [];
+    for (let page = 1; page <= 5; page += 1) {
+      const url = API_BASE + "/repos/" + repoOwner + "/" + repoName +
+        "/issues?assignee=" + encodeURIComponent(account.login) +
+        "&labels=" + encodeURIComponent(labelName) +
+        "&state=open&per_page=100&page=" + page;
+      const issues = await request(url, {
+        headers: {
+          Accept: "application/vnd.github+json",
+          Authorization: "Bearer " + token,
+          "X-GitHub-Api-Version": "2026-03-10"
+        }
+      }, "Assigned broker inbox lookup");
+      if (!Array.isArray(issues)) throw new Error("GitHub returned an invalid assigned inbox list.");
+      for (const candidate of issues) {
+        const labels = Array.isArray(candidate?.labels)
+          ? candidate.labels.map(item => typeof item === "string" ? item : item?.name)
+          : [];
+        const assignees = Array.isArray(candidate?.assignees) ? candidate.assignees : [];
+        if (candidate?.state === "open" && !candidate.pull_request &&
+            labels.includes(labelName) && assignees.length === 1 &&
+            Number(assignees[0]?.id) === account.id &&
+            Number.isSafeInteger(candidate.number) && candidate.number > 0 &&
+            Number.isSafeInteger(candidate.id) && candidate.id > 0) {
+          matches.push(candidate);
+        }
+      }
+      if (issues.length < 100) break;
+    }
+    if (matches.length !== 1) {
+      throw new Error(matches.length === 0
+        ? "No active private YARDHUB inbox is assigned to this GitHub account. Ask DEV to provision it."
+        : "More than one private YARDHUB inbox is assigned to this GitHub account. Ask DEV to resolve the duplicate.");
+    }
+    issue = matches[0].number;
+    return Object.freeze({
+      issueNumber: issue,
+      issueId: matches[0].id,
+      title: String(matches[0].title || "").slice(0, 120)
+    });
   }
 
   function randomVerifier() {
@@ -635,7 +688,7 @@ export function createGitHubAppBrokerClient({
     await store.put(pendingRecord(context, { status: "SUBMITTING" }));
     let response;
     try {
-      response = await request(API_BASE + "/repos/" + repoOwner + "/" + repoName + "/issues/" + issue + "/comments", {
+      response = await request(API_BASE + "/repos/" + repoOwner + "/" + repoName + "/issues/" + requireInboxIssue() + "/comments", {
         method: "POST",
         headers: {
           Accept: "application/vnd.github+json",
@@ -691,7 +744,7 @@ export function createGitHubAppBrokerClient({
       throw new Error("The pending broker request has expired.");
     }
     for (let page = 1; page <= 5; page += 1) {
-      const comments = await request(API_BASE + "/repos/" + repoOwner + "/" + repoName + "/issues/" + issue + "/comments?per_page=100&page=" + page, {
+      const comments = await request(API_BASE + "/repos/" + repoOwner + "/" + repoName + "/issues/" + requireInboxIssue() + "/comments?per_page=100&page=" + page, {
         headers: {
           Accept: "application/vnd.github+json",
           Authorization: "Bearer " + token,
@@ -721,12 +774,14 @@ export function createGitHubAppBrokerClient({
   return Object.freeze({
     startWebAuthorization,
     completeWebAuthorization,
+    resolveInboxIssue,
     submitEncryptedRequest,
     pollEncryptedResponse,
     listPendingRequests,
     restorePendingRequest,
     disconnect,
     get currentAccount() { return account; },
+    get currentInboxIssue() { return issue ? Object.freeze({ issueNumber: issue }) : null; },
     get tokenExpiresAt() { return tokenExpiresAt ? new Date(tokenExpiresAt).toISOString() : null; }
   });
 }
