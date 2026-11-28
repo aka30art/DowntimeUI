@@ -79,6 +79,7 @@ export function createGitHubYardHubBroker({
         sessionToken,
         requestId,
         actorUserId: principal.userId,
+        expectedAuthorityEpoch: authorityEpoch,
         origin
       }),
     encryptResponse: ({ requestEnvelope, payload }) => encryptBrokerResponse({
