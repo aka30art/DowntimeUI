@@ -89,6 +89,6 @@ jobs:
           YARDHUB_BROKER_ECDH_PRIVATE_KEY: ${{ secrets.broker_ecdh_private_key }}
           YARDHUB_DATA_BRANCH: ${{ inputs.data_branch }}
           YARDHUB_EDGE_ORIGIN: ${{ inputs.edge_origin }}
-          YARDHUB_BROKER_BOOTSTRAP_GITHUB_USER_ID: ${{ inputs.bootstrap_github_user_id }}
-          YARDHUB_BROKER_BOOTSTRAP_ISSUE_ID: ${{ inputs.bootstrap_issue_id }}
+          YARDHUB_BOOTSTRAP_GITHUB_USER_ID: ${{ inputs.bootstrap_github_user_id }}
+          YARDHUB_BOOTSTRAP_ISSUE_ID: ${{ inputs.bootstrap_issue_id }}
         run: node scripts/run-github-actions-broker.mjs
