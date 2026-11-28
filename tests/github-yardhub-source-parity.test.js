@@ -53,7 +53,7 @@ const expectedRpcHandlers = [
   "downtime_identity_reset_preserve_dev"
 ].sort();
 
-test("GitHub database preserves the 39-table source inventory and isolates two broker tables", () => {
+test("GitHub database preserves the 39-table source inventory and isolates three broker tables", () => {
   const expectedBrokerTables = [
     "downtime_github_broker_requests",
     "downtime_github_identities",
@@ -78,4 +78,4 @@ test("GitHub runtime implements every RPC name called by the seven source servic
   assert.deepEqual(names, expectedRpcHandlers);
 });
 
-console.log("PASS: YARDHUB source parity — 39 source tables, two isolated broker tables, five Storage buckets and 19 RPC handlers are mapped");
+console.log("PASS: YARDHUB source parity — 39 source tables, three isolated broker tables, five Storage buckets and 19 RPC handlers are mapped");
