@@ -507,3 +507,27 @@ test("atomic broker action aborts if primary authority epoch changes after reque
   assert.equal(handlerCalls, 0);
   assert.equal(committed, false);
 });
+
+
+test("GitHub edge runtime blocks source actions that could write to protected DOWNTIME", async () => {
+  const store = createMemoryStore();
+  const runtime = await installGitHubEdgeRuntime({ store, functionNames: [] });
+  let invoked = false;
+  const handlers = {
+    "central-bank": async () => {
+      invoked = true;
+      return new Response(JSON.stringify({ ok: true }), { status: 200 });
+    }
+  };
+  try {
+    for (const action of ["identity-reset", "staff-original-upload"]) {
+      await assert.rejects(executeGitHubEdgeAction({
+        store, handlers, service: "central-bank", action, args: {},
+        requestId: "30fd938a-2107-4b8a-ade1-ba77bc542182"
+      }), /protected DOWNTIME repository/);
+    }
+    assert.equal(invoked, false);
+  } finally {
+    await runtime.dispose();
+  }
+});
