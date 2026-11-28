@@ -460,3 +460,50 @@ test("broker rolls back all staged table mutations when a YARDHUB action fails",
     await runtime.dispose();
   }
 });
+
+
+test("atomic broker action aborts if primary authority epoch changes after request authorization", async () => {
+  let handlerCalls = 0;
+  let committed = false;
+  const store = {
+    async readDatabase() {
+      return { revision: 0, tables: { downtime_github_broker_requests: [{
+        request_id: "10fd938a-2107-4b8a-ade1-ba77bc542182",
+        actor_user_id: "user-01",
+        state: "PROCESSING"
+      }] } };
+    },
+    async readAuthority() {
+      return { status: "ACTIVE", primarySystemId: "DOWNTIMEUI-GITHUB", epoch: 5 };
+    },
+    async transactDatabase({ mutate }) {
+      const draft = { downtime_github_broker_requests: [{
+        request_id: "10fd938a-2107-4b8a-ade1-ba77bc542182",
+        actor_user_id: "user-01",
+        state: "PROCESSING"
+      }] };
+      const result = await mutate(draft);
+      committed = true;
+      return { committed: true, result };
+    }
+  };
+  const handlers = {
+    "gatelog-api": async () => {
+      handlerCalls += 1;
+      return new Response(JSON.stringify({ ok: true }), { status: 200 });
+    }
+  };
+  await assert.rejects(executeGitHubEdgeAction({
+    store,
+    handlers,
+    service: "gatelog-api",
+    action: "history",
+    args: {},
+    sessionToken: "a".repeat(64),
+    requestId: "10fd938a-2107-4b8a-ade1-ba77bc542182",
+    actorUserId: "user-01",
+    expectedAuthorityEpoch: 4
+  }), error => error.code === "BROKER_AUTHORITY_EPOCH_CHANGED");
+  assert.equal(handlerCalls, 0);
+  assert.equal(committed, false);
+});
