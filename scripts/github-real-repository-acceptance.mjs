@@ -47,8 +47,21 @@ const writeProbeResponse = await fetch("https://api.github.com/repos/" + encodeU
   headers: { ...headers, "Content-Type": "application/json" },
   body: JSON.stringify({ content: "YARDHUB direct repository Contents write capability probe v1", encoding: "utf-8" })
 });
-const writeProbe = await writeProbeResponse.json();
-assert.equal(writeProbeResponse.ok, true, "Fine-grained token must have actual Contents: write permission (Git Data blob probe)");
+const writeProbeBody = await writeProbeResponse.text();
+let writeProbe;
+try { writeProbe = JSON.parse(writeProbeBody); } catch { writeProbe = { message: writeProbeBody.slice(0, 1000) }; }
+if (!writeProbeResponse.ok) {
+  const acceptedPermissions = writeProbeResponse.headers.get("x-accepted-github-permissions") || "not supplied";
+  console.error("Git Data blob permission probe failed:", JSON.stringify({
+    status: writeProbeResponse.status,
+    statusText: writeProbeResponse.statusText,
+    acceptedPermissions,
+    message: typeof writeProbe.message === "string" ? writeProbe.message : "No GitHub error message",
+    documentationUrl: writeProbe.documentation_url || null,
+    errors: Array.isArray(writeProbe.errors) ? writeProbe.errors : undefined
+  }));
+}
+assert.equal(writeProbeResponse.ok, true, "Fine-grained token must have actual Contents: write permission (Git Data blob probe; inspect diagnostic above)");
 assert.match(writeProbe.sha || "", /^[a-f0-9]{40}$/, "GitHub must return the created permission-probe blob SHA");
 branch = branch || metadata.default_branch || "main";
 
