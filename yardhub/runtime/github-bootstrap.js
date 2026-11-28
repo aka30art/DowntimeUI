@@ -83,13 +83,14 @@ async function connect(connection){
     env:{DOWNTIME_CANONICAL_AUTH_READY:"true",DOWNTIME_IDENTITY_FINGERPRINT_SECRET:connection.token}
   });
   activeStore=store;activeRuntime=runtime;
-  await window.DowntimeCentral.configureGitHubRuntime(runtime);
-  setEndpoints();
-  if(!offline)saveConnection(connection);
+  // Publish connection state before any session-resume callback can run.
   window.YARDHUB_GITHUB_STORE=store;
   window.YARDHUB_GITHUB_RUNTIME=runtime;
   window.YARDHUB_GITHUB_CONNECTED=true;
-  window.YARDHUB_GITHUB_OFFLINE=offline;
+  window.YARDHUB_GITHUB_OFFLINE=Boolean(offline);
+  await window.DowntimeCentral.configureGitHubRuntime(runtime);
+  setEndpoints();
+  if(!offline)saveConnection(connection);
   hideOverlay();
   if(offline)status("OFFLINE MODE · previously loaded shared data only · saves are not sent to GitHub");
   else status("Connected to private GitHub data repository · "+connection.owner+"/"+connection.repo);
