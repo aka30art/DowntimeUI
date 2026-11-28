@@ -78,7 +78,7 @@ export function createGitHubDataStore({
   repo,
   branch = "data/yardhub",
   token,
-  systemId = "DOWNTIMEUI-GITHUB",
+  systemId = "YARDHUB-PRIMARY",
   apiBase = DEFAULT_API,
   fetchImpl = globalThis.fetch,
   maxRetries = DEFAULT_MAX_RETRIES,
