@@ -235,6 +235,10 @@ test("encrypted broker action uses canonical USER YARD ROLE, broker session, ato
   tables.yard_role_assignments = [{ user_id: userId, staff_id: staffId, yard_role_id: roleId, status: "ACTIVE" }];
   tables.yard_roles = [{ id: roleId, name: "YARD OPERATOR", status: "ACTIVE" }];
   tables.yard_role_department_permissions = [
+    { yard_role_id: roleId, department: "SCPL", can_view: false, can_enter: false, can_edit: false, can_manage: false },
+    { yard_role_id: roleId, department: "R&M", can_view: false, can_enter: false, can_edit: false, can_manage: false },
+    { yard_role_id: roleId, department: "Management", can_view: false, can_enter: false, can_edit: false, can_manage: false },
+    { yard_role_id: roleId, department: "SCFL", can_view: false, can_enter: false, can_edit: false, can_manage: false },
     { yard_role_id: roleId, department: "Traffic", can_view: true, can_enter: true, can_edit: false, can_manage: false }
   ];
   const authorityState = { status: "ACTIVE", primarySystemId: "DOWNTIMEUI-GITHUB", secondarySystemId: "YARDHUB-PRIMARY", epoch: 3 };
