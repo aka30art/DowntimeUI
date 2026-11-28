@@ -149,11 +149,12 @@ try {
   const rmPdfId = unique + "-rm-pdf";
   const pdfPath = unique + "/acceptance-report.pdf";
   function makeMinimalPdf() {
+  const stream = "BT /F1 12 Tf 72 720 Td (YARDHUB acceptance archive) Tj ET";
   const objects = [
     "<< /Type /Catalog /Pages 2 0 R >>",
     "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
     "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >>",
-    "<< /Length 58 >>\\nstream\\nBT /F1 12 Tf 72 720 Td (YARDHUB acceptance archive) Tj ET\\nendstream",
+    "<< /Length " + new TextEncoder().encode(stream).length + " >>\\nstream\\n" + stream + "\\nendstream",
     "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>"
   ];
   let document = "%PDF-1.4\\n%YARDHUB-ACCEPTANCE\\n";
