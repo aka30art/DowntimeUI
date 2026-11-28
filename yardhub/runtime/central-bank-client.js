@@ -19,7 +19,6 @@
     return value;
   }
   async function call(action,body={},options={}){
-    if(!runtimeReady)throw new Error("Connect the private GitHub data repository first.");
     const headers={"Content-Type":"application/json"};
     if(session?.token&&!options.public)headers["x-downtime-session"]=session.token;
     const response=await fetch(endpoint(),{method:"POST",headers,body:JSON.stringify({action,...body})});
