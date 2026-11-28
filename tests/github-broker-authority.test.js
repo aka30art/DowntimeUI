@@ -297,3 +297,29 @@ test("immutable DEV cannot be rebound to another GitHub account or revoked throu
     reason: "Attempt to revoke immutable DEV"
   }), /immutable DEV identity cannot be revoked/);
 });
+
+
+test("broker default-denies binary operations and protected DOWNTIME write paths even for DEV", async () => {
+  const store = makeStore();
+  const authority = createGitHubBrokerAuthority({
+    store,
+    brokerRepositoryId: BROKER_REPOSITORY_ID,
+    bootstrapGitHubUserId: DEV_GITHUB_ID,
+    bootstrapIssueId: 777
+  });
+  const dev = await authority.resolvePrincipal(DEV_GITHUB_ID);
+  for (const [service, action] of [
+    ["central-bank", "identity-reset"],
+    ["central-bank", "staff-original-upload"],
+    ["central-bank", "staff-photo-url"],
+    ["central-bank", "staff-photo-read"],
+    ["photo-evidence", "create-upload"],
+    ["photo-evidence", "view"],
+    ["photo-evidence", "cleanup"],
+    ["repair-maintenance-api", "upload"],
+    ["repair-maintenance-api", "export-create"],
+    ["repair-maintenance-api", "export-url"]
+  ]) {
+    assert.equal(await authority.authorize({ principal: dev, service, action, args: {}, authorityEpoch: 4 }), false, service + ":" + action);
+  }
+});
