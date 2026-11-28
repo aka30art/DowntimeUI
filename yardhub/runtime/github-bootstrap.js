@@ -95,7 +95,7 @@ async function connect(connection){
   hideOverlay();
   if(offline)status("OFFLINE MODE · previously loaded shared data only · saves are not sent to GitHub");
   else status("Connected to private GitHub data repository · "+connection.owner+"/"+connection.repo);
-  window.dispatchEvent(new Event(offline?"yardhub:github-offline":"yardhub:github-connected"));
+  window.dispatchEvent(new Event("yardhub:github-connected"));
   if(offline)window.dispatchEvent(new Event("yardhub:github-offline"));
   return {store,runtime,offline};
 }
