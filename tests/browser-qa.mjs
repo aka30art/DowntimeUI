@@ -320,7 +320,7 @@ try{
     const payload={users:[{username:"DEV",displayName:"DEV ROOT",tier:"DEV",enabled:true}],appData:{},staff:[],tiers:[]};
     const tables={downtime_central_bank:[{id:1,version:1,updated_at:"2026-11-28T00:00:00.000Z",payload}],downtime_central_sessions:[{token_hash:"cached-session-hash",username:"DEV",expires_at:"2026-11-28T01:00:00.000Z"}],downtime_daily_operator_assignments:[]};
     const authority={schemaVersion:1,systemId:"YARDHUB-ECOSYSTEM",primarySystemId:"YARDHUB-PRIMARY",secondarySystemId:"DOWNTIMEUI-GITHUB",epoch:1,status:"ACTIVE",replication:{direction:"YARDHUB-PRIMARY_TO_DOWNTIMEUI-GITHUB",status:"NOT_CONFIGURED",lastSuccessfulCheckpoint:null},updatedAt:"2026-11-28T00:00:00.000Z"};
-    localStorage.setItem("yardhub:github-data-connection:v1",JSON.stringify({owner:"demo",repo:"yardhub-data",branch:"main",token:"ghp_offline_test_token"}));
+    localStorage.setItem("yardhub:github-data-connection:v1",JSON.stringify({owner:"demo",repo:"yardhub-data",branch:"main",token:"ghp_offline_test_token",writeAccessVerified:true}));
     localStorage.setItem("yardhub:central-session:v1",JSON.stringify({authenticated:true,token:"offline-session-token",expiresAt:"2026-11-28T01:00:00.000Z",user}));
     localStorage.setItem("yardhub:github-cache:v1:demo:yardhub-data:YARDHUB-PRIMARY",JSON.stringify({revision:1,manifest:{schemaVersion:1,revision:1,systemId:"YARDHUB-PRIMARY"},tables,authority,headSha:"cached-head",cachedAt:"2026-11-28T00:00:00.000Z"}));
   });
@@ -378,21 +378,23 @@ try{
   await invalidAuthPage.close();
 
   const readOnlyTokenPage=await browser.newPage({viewport:{width:1440,height:900},deviceScaleFactor:1});
-  let readOnlyRepositoryChecks=0,readOnlyRefChecks=0;
+  let readOnlyRepositoryChecks=0,readOnlyWriteProbeChecks=0,readOnlyRefChecks=0;
   await readOnlyTokenPage.addInitScript(()=>{
     localStorage.setItem("yardhub:github-data-connection:v1",JSON.stringify({owner:"demo",repo:"yardhub-data",branch:"main",token:"read-only-token"}));
   });
   await readOnlyTokenPage.route("https://api.github.com/**",route=>{
     const path=new URL(route.request().url()).pathname;
-    if(path==="/repos/demo/yardhub-data"){readOnlyRepositoryChecks++;return route.fulfill({status:200,contentType:"application/json",body:JSON.stringify({private:true,archived:false,default_branch:"main",permissions:{pull:true,push:false}})})}
+    if(path==="/repos/demo/yardhub-data"){readOnlyRepositoryChecks++;return route.fulfill({status:200,contentType:"application/json",body:JSON.stringify({private:true,archived:false,default_branch:"main",permissions:{pull:true,push:true}})})}
+    if(path==="/repos/demo/yardhub-data/git/blobs"){readOnlyWriteProbeChecks++;return route.fulfill({status:403,contentType:"application/json",body:JSON.stringify({message:"Resource not accessible by personal access token"})})}
     readOnlyRefChecks++;return route.abort("internetdisconnected");
   });
   await readOnlyTokenPage.route("https://github-native.invalid/**",route=>route.fulfill({status:503,contentType:"application/json",body:JSON.stringify({error:"Read-only repository token must be rejected"})}));
   await readOnlyTokenPage.goto("http://127.0.0.1:"+address.port+"/yardhub/runtime/index.html",{waitUntil:"networkidle"});
   await readOnlyTokenPage.locator("[data-yardhub-github-status]").waitFor({state:"visible"});
   await readOnlyTokenPage.waitForTimeout(250);
-  assert.equal(readOnlyRepositoryChecks,1,"YARDHUB must inspect repository write permission.");
-  assert.equal(readOnlyRefChecks,0,"A read-only token must be rejected before database access.");
+  assert.equal(readOnlyRepositoryChecks,1,"YARDHUB must inspect private repository visibility.");
+  assert.equal(readOnlyWriteProbeChecks,1,"YARDHUB must verify the PAT's actual Contents: write scope with Git Data.");
+  assert.equal(readOnlyRefChecks,0,"A token without Contents: write must be rejected before database branch access.");
   assert.equal(await readOnlyTokenPage.locator("#yardhub-github-connect-overlay").isVisible(),true,"A read-only GitHub token must not unlock the operational app.");
   assert.equal(await readOnlyTokenPage.locator("#yardHubOfflineBanner").isVisible(),false,"A read-only token must not be treated as a network outage.");
   await readOnlyTokenPage.close();
@@ -405,6 +407,7 @@ try{
   await defaultBranchPage.route("https://api.github.com/**",route=>{
     const url=new URL(route.request().url());
     if(url.pathname==="/repos/demo/yardhub-data")return route.fulfill({status:200,contentType:"application/json",body:JSON.stringify({private:true,archived:false,default_branch:"trunk",permissions:{pull:true,push:true}})});
+    if(url.pathname==="/repos/demo/yardhub-data/git/blobs")return route.fulfill({status:201,contentType:"application/json",body:JSON.stringify({sha:"verified-write-probe-blob"})});
     if(url.pathname.includes("/git/ref/heads/")){requestedGitRefs.push(url.pathname);return route.fulfill({status:404,contentType:"application/json",body:JSON.stringify({message:"Test stopped after branch resolution"})})}
     return route.abort("internetdisconnected");
   });
