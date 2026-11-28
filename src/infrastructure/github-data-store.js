@@ -500,7 +500,7 @@ export function createGitHubDataStore({
         if (authority.status !== "ACTIVE" ||
             authority.primarySystemId !== "DOWNTIMEUI-GITHUB" ||
             authority.epoch !== expectedAuthorityEpoch) {
-          throw new GitHubStoreError("YARDHUB authority changed or GitHub is not primary. Broker transaction denied.", 409, {
+          throw new GitHubStoreError("YARDHUB data authority changed or GitHub is not the active writer. Write rejected.", 409, {
             expectedAuthorityEpoch,
             currentAuthorityEpoch: authority.epoch,
             primarySystemId: authority.primarySystemId,
