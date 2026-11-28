@@ -141,7 +141,7 @@ export function createGitHubStorageClient({ store, now = () => new Date(), ticke
   async function handleSignedUploadRequest(request) {
     try {
       const url = new URL(request.url);
-      const match = /^\\/storage-upload\\/([^/]+)\\/(.+)$/.exec(url.pathname);
+      const match = /^\/storage-upload\/([^/]+)\/(.+)$/.exec(url.pathname);
       if (!match) return new Response(JSON.stringify({ error: "Invalid GitHub storage upload route." }), { status: 404, headers: { "Content-Type": "application/json" } });
       const bucket = decodeURIComponent(match[1]);
       const path = match[2].split("/").map(decodeURIComponent).join("/");
