@@ -203,7 +203,9 @@ test("only immutable DEV can link or revoke GitHub identities", async () => {
     issueId: 1003,
     reason: "Provision operator broker identity"
   });
-  assert.equal(linked.ok, true);
+  assert.equal(linked.status, "ACTIVE");
+  assert.equal(linked.github_user_id, "444444");
+  assert.equal(linked.user_id, "00000000-0000-4000-8000-000000000005");
   assert.ok(store.state.tables.downtime_github_identities.some(link => link.github_user_id === "444444"));
   await rootAuthority.revokeIdentity({
     actorPrincipal: dev,
