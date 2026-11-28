@@ -397,6 +397,26 @@ try{
   assert.equal(await readOnlyTokenPage.locator("#yardHubOfflineBanner").isVisible(),false,"A read-only token must not be treated as a network outage.");
   await readOnlyTokenPage.close();
 
+  const defaultBranchPage=await browser.newPage({viewport:{width:1440,height:900},deviceScaleFactor:1});
+  const requestedGitRefs=[];
+  await defaultBranchPage.addInitScript(()=>{
+    localStorage.setItem("yardhub:github-data-connection:v1",JSON.stringify({owner:"demo",repo:"yardhub-data",branch:"",token:"write-token"}));
+  });
+  await defaultBranchPage.route("https://api.github.com/**",route=>{
+    const url=new URL(route.request().url());
+    if(url.pathname==="/repos/demo/yardhub-data")return route.fulfill({status:200,contentType:"application/json",body:JSON.stringify({private:true,archived:false,default_branch:"trunk",permissions:{pull:true,push:true}})});
+    if(url.pathname.includes("/git/ref/heads/")){requestedGitRefs.push(url.pathname);return route.fulfill({status:404,contentType:"application/json",body:JSON.stringify({message:"Test stopped after branch resolution"})})}
+    return route.abort("internetdisconnected");
+  });
+  await defaultBranchPage.route("https://github-native.invalid/**",route=>route.fulfill({status:503,contentType:"application/json",body:JSON.stringify({error:"Branch resolution QA"})}));
+  await defaultBranchPage.goto("http://127.0.0.1:"+address.port+"/yardhub/runtime/index.html",{waitUntil:"networkidle"});
+  await defaultBranchPage.locator("[data-yardhub-github-status]").waitFor({state:"visible"});
+  await defaultBranchPage.waitForTimeout(250);
+  assert.equal(requestedGitRefs.length,1,"A valid private repository should proceed to database branch access.");
+  assert.equal(requestedGitRefs[0],"/repos/demo/yardhub-data/git/ref/heads/trunk","When no branch is entered, YARDHUB must use the repository's declared default branch.");
+  assert.equal(await defaultBranchPage.locator("#yardhub-github-connect-overlay").isVisible(),true,"The deliberately missing test ref must leave the connection gate visible.");
+  await defaultBranchPage.close();
+
   const rmPage=await browser.newPage({viewport:{width:390,height:844},deviceScaleFactor:1});
   const rmRequests=[];
   const rmFailures=[];
