@@ -85,6 +85,7 @@ function setup({ action = "link", actorId = DEV_GITHUB_ID, isPrivate = true, ass
     createStore: args => {
       assert.equal(args.owner, "private-yardhub");
       assert.equal(args.repo, "yardhub-data");
+      assert.equal(args.branch, "data/yardhub");
       assert.equal(args.token, "repository-restricted-data-token");
       return store;
     },
