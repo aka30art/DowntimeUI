@@ -142,6 +142,9 @@ export async function executeGitHubEdgeAction({
   if (typeof action !== "string" || !/^[a-z][a-z0-9-]{1,63}$/.test(action)) {
     throw new TypeError("A valid YARDHUB action is required.");
   }
+  if (service === "central-bank" && ["identity-reset", "staff-original-upload"].includes(action)) {
+    throw new Error("This source action is blocked in the GitHub twin because it targets the protected DOWNTIME repository.");
+  }
   if (!args || typeof args !== "object" || Array.isArray(args)) {
     throw new TypeError("YARDHUB action arguments must be an object.");
   }
