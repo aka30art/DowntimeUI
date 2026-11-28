@@ -193,7 +193,7 @@ test("first-run DEV bootstrap signs in and authorises protected YARDHUB module s
   }
 });
 
-test("Edge Function and browser compatibility clients fail closed for unsupported signed binary uploads", async () => {
+test("Edge Function and browser compatibility clients share one-time GitHub binary upload and read transport", async () => {
   const store = createMemoryStore();
   const previousFetch = globalThis.fetch;
   const runtime = await installGitHubEdgeRuntime({ store, functionNames: [] });
@@ -201,15 +201,19 @@ test("Edge Function and browser compatibility clients fail closed for unsupporte
     const edgeClient = globalThis.__YARDHUB_GITHUB_COMPAT__.createClient();
     const browserClient = globalThis.supabase.createClient();
     assert.equal(edgeClient.storage, browserClient.storage);
+    const storage = browserClient.storage.from("downtime-evidence");
     const ticket = await edgeClient.storage.from("downtime-evidence").createSignedUploadUrl(
       "2026-11-27/evidence.jpg",
       { contentType: "image/jpeg", size: 3 }
     );
-    assert.equal(ticket.data, null);
-    assert.match(ticket.error.message, /binary upload transport is not implemented/);
-    const download = await browserClient.storage.from("downtime-evidence").createSignedUrl("2026-11-27/evidence.jpg");
-    assert.equal(download.data, null);
-    assert.match(download.error.message, /binary download transport is not implemented/);
+    assert.equal(ticket.error, null);
+    const uploaded = await globalThis.fetch(ticket.data.signedUrl, {
+      method: "PUT", headers: { "Content-Type": "image/jpeg" }, body: new Uint8Array([1, 2, 3])
+    });
+    assert.equal(uploaded.status, 200);
+    const download = await storage.createSignedUrl("2026-11-27/evidence.jpg");
+    assert.equal(download.error, null);
+    assert.ok(download.data.signedUrl.startsWith("data:image/jpeg;base64,"));
   } finally {
     await runtime.dispose();
     globalThis.fetch = previousFetch;
@@ -217,7 +221,7 @@ test("Edge Function and browser compatibility clients fail closed for unsupporte
 });
 
 
-test("Central Config admin reads the published YARDHUB launcher and photo-evidence upload fails closed without browser transport", async () => {
+test("Central Config admin reads the YARDHUB launcher and photo-evidence uploads through GitHub storage", async () => {
   const store = createMemoryStore();
   const originalFetch = globalThis.fetch;
   const previousSession = globalThis.DowntimeCentral;
@@ -253,11 +257,19 @@ test("Central Config admin reads the published YARDHUB launcher and photo-eviden
     const uploadResponse = await request("photo-evidence", {
       action: "create-upload", entryKey, recordId, mimeType: "image/jpeg", size: 3
     }, login.token);
-    assert.equal(uploadResponse.status, 500);
-    const uploadError = await uploadResponse.json();
-    assert.match(uploadError.error, /binary upload transport is not implemented/);
+    assert.equal(uploadResponse.status, 200);
+    const upload = await uploadResponse.json();
+    assert.ok(upload.attachmentId && upload.path && upload.token && upload.signedUrl);
+    const binaryUpload = await globalThis.fetch(upload.signedUrl, {
+      method: "PUT", headers: { "Content-Type": "image/jpeg" }, body: new Uint8Array([1, 2, 3])
+    });
+    assert.equal(binaryUpload.status, 200);
     const after = await store.readDatabase();
-    assert.equal((after.tables.downtime_attachments || []).length, 0, "failed upload setup must not create attachment metadata");
+    assert.equal((after.tables.downtime_attachments || []).length, 1, "authorized upload creates one attachment metadata record");
+    const viewResponse = await request("photo-evidence", { action: "view", attachmentId: upload.attachmentId }, login.token);
+    assert.equal(viewResponse.status, 200);
+    const view = await viewResponse.json();
+    assert.ok(view.url.startsWith("data:image/jpeg;base64,"));
   } finally {
     await runtime.dispose();
     globalThis.fetch = originalFetch;
