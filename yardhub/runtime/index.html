@@ -732,6 +732,7 @@ body.yardhub-github-locked>:not(#yardhub-github-connect-overlay){visibility:hidd
         <button id="yardHubLogoutBtn" class="yard-logout" type="button">LOG OUT</button>
       </div>
     </header>
+    <div id="yardHubOfflineBanner" class="yard-hub-footer" hidden>OFFLINE MODE · CACHED DATA · READ ONLY · NOT SAVED TO GITHUB</div>
     <div class="yard-modules-heading"><strong>APPLICATIONS</strong><span>SELECT A MODULE TO CONTINUE</span></div>
     <section class="yard-grid" aria-label="Yard applications">
       <button class="yard-tile yard-tile-active" id="launchDowntimeBtn" data-app="downtime" type="button" aria-label="Open DOWNTIME application">
@@ -2497,6 +2498,13 @@ loadCentralUsers().catch(()=>{});
 window.addEventListener('yardhub:github-connected',async()=>{
  try{await loadCentralUsers();if(window.DowntimeCentral?.session?.token)await resumeCentralSession()}
  catch(error){console.warn('YARDHUB login list could not refresh after GitHub connection.',error)}
+});
+window.addEventListener('yardhub:github-offline',()=>{
+ const banner=$('yardHubOfflineBanner');if(banner)banner.hidden=false;
+ cloudStatus('OFFLINE · CACHED DATA · READ ONLY · NOT SAVED TO GITHUB');
+});
+window.addEventListener('yardhub:github-connected',()=>{
+ if(window.YARDHUB_GITHUB_OFFLINE!==true){const banner=$('yardHubOfflineBanner');if(banner)banner.hidden=true}
 });
 if(window.DowntimeCentral?.session?.token)resumeCentralSession();
 })();
