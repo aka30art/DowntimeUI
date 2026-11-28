@@ -48,6 +48,10 @@ Never put these secrets, plaintext operational data, session tokens or decrypted
 
 Copy `docs/templates/yardhub-private-broker.workflow.yml` to the **default branch** of the dedicated private broker repository at `.github/workflows/yardhub-broker.yml`. This caller template invokes the reusable workflow at `.github/workflows/yardhub-github-broker.yml` in the public source repository. Replace the `<PINNED_40_CHARACTER_COMMIT_SHA>` placeholder in its `uses:` line with the exact reviewed DOWNTIMEUI commit SHA, and set `DOWNTIMEUI_REF` to that same SHA.
 
+The reusable inbox workflow is present in the PR branch but is not installed in a broker repository. It validates the private broker repository ID/full name/default branch, requires an issue-comment event, and only processes the encrypted request prefix. It mints a separate Data App token scoped to the private data repository. The caller's `GITHUB_TOKEN` is limited to `contents: read` and `issues: write`.
+
+For identity onboarding, copy `docs/GITHUB_NATIVE_IDENTITY_ADMIN_WORKFLOW_TEMPLATE.yml` to the same private broker repository's default branch. It calls `.github/workflows/yardhub-github-identity-admin.yml`, accepts `workflow_dispatch` only, and uses `issues: read` plus the separate Data App token. Only the authenticated immutable DEV principal can link or revoke a GitHub identity. A link is accepted only for an active reciprocal USER/STAFF pair and an open, non-PR inbox issue assigned to that GitHub account.
+
 GitHub's `issue_comment` workflow is loaded from the broker repository's default branch. A copy that exists only on a PR branch will not process comments. Pin `DOWNTIMEUI_REF` to the exact reviewed commit after the source PR has been accepted and merged under the separate release process.
 
 The template uses one concurrency group per comment. This prevents duplicate delivery of the same comment from executing simultaneously; it does not serialize all users. Git ref compare-and-swap, durable idempotency and the authority-epoch recheck remain mandatory. Pending-run behaviour, throughput and rate limits must be tested before production.
@@ -73,4 +77,4 @@ The setup must fail closed if the data repository is public, the authority manif
 - Exercise all five private storage buckets, checksums, clean-device restore and a separate full-twin backup repository.
 - Rehearse authority cutover and reverse transfer.
 
-**This template is not a production configuration.** The private repositories, Apps, keys, secrets and real workflow must be provisioned and tested before Phase 3 can pass.
+**These are reusable workflow and caller templates, not a production configuration.** The private repositories, Apps, keys, secrets and caller workflows have not been provisioned or installed. Real event and two-account tests must pass before Phase 3 can pass.
