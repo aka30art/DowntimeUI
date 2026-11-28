@@ -225,6 +225,13 @@ The earlier sections describing the broker as callback-only are superseded by th
 
 **Still blocked:** dedicated private broker/inbox and data repositories have not been provisioned; neither GitHub App has been registered/installed; protected secrets are not present; no `issue_comment` workflow exists on a dedicated broker repository's default branch; actual GitHub App permissions, real event identity, two-user isolation, queue/backpressure, latency, five-bucket binary evidence transport, backup/restore and two-device recovery remain unproven.
 
-Latest observed CI before this audit update: run #599 failed on an earlier commit because the runtime callback omitted the authorityEpoch parameter. That parameter has been corrected in the PR branch; the correction requires its own exact-head CI and browser QA run. No CI/browser pass is claimed for the corrected head.
+Latest validation evidence:
+- CI #613 passed `npm run check` on `603c15ac873cf850fd12ba9040df8e9ef8100b8c`, including broker identity/idempotency, atomic backup preservation and runtime tests. Chromium/browser QA was still in progress.
+- CI #614 passed `npm run check` on `6fdb71257b931d74559c5c1ed5c8d803277ce761`, including stricter reciprocal USER/STAFF validation for identity linking. Chromium/browser QA was still in progress.
+- The current PR head advanced after those runs; its own full CI and browser result is still required. Do not infer latest-head validation from an earlier commit.
+
+Code-level broker controls now include canonical USER/STAFF resolution, immutable DEV-only identity administration with append-only audit, service/action YARD ROLE preflight, short-lived hashed Central Bank sessions, encrypted per-user inbox transport, durable idempotency/replay, and primary/epoch revalidation inside the atomic action transaction. The source backup runner now preserves the three GitHub-only broker extension tables.
+
+These code paths remain locally tested with memory stores and mocked GitHub calls. They do not close production findings: no dedicated private broker/data/backup repositories, GitHub Apps, protected secrets, default-branch broker workflow, real event identity, two-user isolation, real five-bucket private storage, or full independent backup/restore rehearsal has been proven. The GitHub-only extension tables still need a separate full-twin backup and recovery plan.
 
 No production data was migrated, no authority switch occurred, PR #3 remains open/draft, and `aka30art/DOWNTIME` remains untouched.
