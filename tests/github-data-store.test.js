@@ -580,7 +580,7 @@ test("single-table polling reads the rows inside the versioned GitHub shard", as
 });
 
 
-test("broker database writes are denied until GitHub is the active primary at the expected authority epoch", async () => {
+test("database writes are denied until GitHub is the active data authority at the expected epoch", async () => {
   const server = createMockGitHub();
   const store = makeStore(server);
   const before = server.getHead();
@@ -589,8 +589,8 @@ test("broker database writes are denied until GitHub is the active primary at th
     store.transactDatabase({
       expectedRevision: 0,
       expectedAuthorityEpoch: 1,
-      actorId: "YARDHUB-GITHUB-ACTIONS-BROKER",
-      operationId: "broker-authority-gate-0001",
+      actorId: "YARDHUB-BROWSER-RUNTIME",
+      operationId: "data-authority-gate-0001",
       mutate() { mutated = true; }
     }),
     error => error instanceof GitHubStoreError && error.status === 409 &&
@@ -601,7 +601,7 @@ test("broker database writes are denied until GitHub is the active primary at th
 });
 
 
-test("broker transaction commits only for the exact active GitHub-primary authority epoch", async () => {
+test("database transaction commits only for the exact active GitHub-primary authority epoch", async () => {
   const server = createMockGitHub({
     authority: {
       ...INITIAL_AUTHORITY,
@@ -616,8 +616,8 @@ test("broker transaction commits only for the exact active GitHub-primary author
   const result = await store.transactDatabase({
     expectedRevision: before.revision,
     expectedAuthorityEpoch: 7,
-    actorId: "YARDHUB-GITHUB-ACTIONS-BROKER",
-    operationId: "broker-authority-epoch-commit-0001",
+    actorId: "YARDHUB-BROWSER-RUNTIME",
+    operationId: "data-authority-epoch-commit-0001",
     mutate(tables) {
       mutated = true;
       tables.gatelog_customers = Array.isArray(tables.gatelog_customers) ? tables.gatelog_customers : [];
@@ -637,8 +637,8 @@ test("broker transaction commits only for the exact active GitHub-primary author
     store.transactDatabase({
       expectedRevision: after.revision,
       expectedAuthorityEpoch: 6,
-      actorId: "YARDHUB-GITHUB-ACTIONS-BROKER",
-      operationId: "broker-authority-stale-epoch-0002",
+      actorId: "YARDHUB-BROWSER-RUNTIME",
+      operationId: "data-authority-stale-epoch-0002",
       mutate() { throw new Error("A stale authority epoch must not enter the mutator."); }
     }),
     error => error instanceof GitHubStoreError && error.status === 409
