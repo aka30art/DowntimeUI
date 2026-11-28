@@ -659,6 +659,15 @@ export function createGitHubDataStore({
         throw error;
       }
     },
+    async updateLocalCache(mutator) {
+      if (typeof mutator !== "function") throw new TypeError("A local cache mutator is required.");
+      const cached = readLocalCache();
+      if (!cached?.manifest || !cached?.tables) throw new GitHubStoreError("No cached GitHub database is available.", 404);
+      const draft = structuredClone(cached);
+      const result = await mutator(draft);
+      writeLocalCache(draft);
+      return { result, snapshot: draft };
+    },
 
     async transactDatabase({ expectedRevision, expectedAuthorityEpoch = null, actorId, operationId = null, mutate } = {}) {
       if (!Number.isInteger(expectedRevision) || expectedRevision < 0) {
@@ -848,23 +857,37 @@ export function createGitHubDataStore({
       if (segments.some(segment => !segment || segment === "." || segment === ".." || !/^[A-Za-z0-9._-]+$/.test(segment))) {
         throw new TypeError("Storage object path contains an invalid segment.");
       }
-      const binaryPath = "storage/" + systemId.toLowerCase() + "/" + bucket + "/" + objectName;
-      const metadataPath = "storage/" + systemId.toLowerCase() + "/metadata/" + bucket + "/" + objectName + ".json";
-      const headSha = await getHead();
-      const file = await request("/contents/" + contentPath(binaryPath) + "?ref=" + encodeURIComponent(headSha), {}, { allowNotFound: true });
-      if (!file) throw new GitHubStoreError("Storage object not found: " + bucket + "/" + objectName, 404);
-      const blob = await request("/git/blobs/" + encodeURIComponent(file.sha));
-      if (blob.encoding !== "base64" || typeof blob.content !== "string") throw new GitHubStoreError("GitHub returned an unsupported storage blob encoding.");
-      const binary = globalThis.atob(blob.content.replace(/\s/g, ""));
-      const bytes = Uint8Array.from(binary, character => character.charCodeAt(0));
-      const metadata = await readJsonAt(metadataPath, headSha);
-      return {
-        bucket, path: objectName, bytes,
-        mimeType: metadata?.mimeType || "application/octet-stream",
-        size: bytes.byteLength, sha: file.sha
-      };
+      const objectCacheKey = localCacheKey + ":object:" + bucket + ":" + objectName;
+      try {
+        const binaryPath = "storage/" + systemId.toLowerCase() + "/" + bucket + "/" + objectName;
+        const metadataPath = "storage/" + systemId.toLowerCase() + "/metadata/" + bucket + "/" + objectName + ".json";
+        const headSha = await getHead();
+        const file = await request("/contents/" + contentPath(binaryPath) + "?ref=" + encodeURIComponent(headSha), {}, { allowNotFound: true });
+        if (!file) throw new GitHubStoreError("Storage object not found: " + bucket + "/" + objectName, 404);
+        const blob = await request("/git/blobs/" + encodeURIComponent(file.sha));
+        if (blob.encoding !== "base64" || typeof blob.content !== "string") throw new GitHubStoreError("GitHub returned an unsupported storage blob encoding.");
+        const binary = globalThis.atob(blob.content.replace(/\\s/g, ""));
+        const bytes = Uint8Array.from(binary, character => character.charCodeAt(0));
+        const metadata = await readJsonAt(metadataPath, headSha);
+        const mimeType = metadata?.mimeType || "application/octet-stream";
+        if (bytes.byteLength <= 512 * 1024 && cacheStorage?.setItem) {
+          let encoded = "";for (let offset = 0; offset < bytes.length; offset += 0x8000) encoded += String.fromCharCode(...bytes.subarray(offset, offset + 0x8000));
+          try { cacheStorage.setItem(objectCacheKey, JSON.stringify({ mimeType, base64: globalThis.btoa(encoded), cachedAt: now().toISOString() })); } catch {}
+        }
+        return { bucket, path: objectName, bytes, mimeType, size: bytes.byteLength, sha: file.sha, offline: false };
+      } catch (error) {
+        if (Number.isInteger(error?.status) && error.status < 500) throw error;
+        try {
+          const cached = JSON.parse(cacheStorage?.getItem?.(objectCacheKey) || "null");
+          if (cached?.base64) {
+            const binary = globalThis.atob(cached.base64);
+            const bytes = Uint8Array.from(binary, character => character.charCodeAt(0));
+            return { bucket, path: objectName, bytes, mimeType: cached.mimeType || "application/octet-stream", size: bytes.byteLength, sha: null, offline: true };
+          }
+        } catch {}
+        throw error;
+      }
     },
-
     async deleteObject({ bucket: bucketInput, path: pathInput } = {}) {
       const bucket = requiredString(bucketInput, "Storage bucket", /^[a-z0-9][a-z0-9_-]{0,62}$/);
       const objectName = requiredString(pathInput, "Storage object path");
