@@ -55,7 +55,7 @@ async function verifyPrivateRepository(connection){
   if(metadata.archived===true)throw new Error("The YARDHUB operational data repository is archived and cannot be changed.");
   return metadata;
 }
-async function connect(connection){
+async function connect(connection,{offline=false}={}){
   if(!connection||!connection.owner||!connection.repo||!connection.token)throw new Error("Enter the private data repository and its fine-grained token.");
   const forbidden=(connection.owner+"/"+connection.repo).toLowerCase();
   if(forbidden==="aka30art/downtime"||forbidden==="aka30art/downtimeui")throw new Error("The protected DOWNTIME repository and application source repository cannot be used for operational data.");
@@ -146,8 +146,13 @@ if(saved){
       const field=form.querySelector('[name="'+name+'"]');if(field)field.value=value;
     }
   }
-  connect(saved).catch(error=>{
+  connect(saved).catch(async error=>{
     window.YARDHUB_GITHUB_CONNECTED=false;
+    const offlineFailure=error instanceof TypeError||globalThis.navigator?.onLine===false;
+    if(offlineFailure){
+      try{await connect(saved,{offline:true});return;}
+      catch(offlineError){status((offlineError?.message||"No previously loaded YARDHUB data is available offline."),true);return;}
+    }
     status((error?.message||"Saved GitHub connection could not be restored.")+" Re-enter the repository token to reconnect.",true);
     const token=form?.querySelector('[name="token"]');if(token)token.focus();
   });
@@ -158,6 +163,7 @@ if(saved){
 window.YARDHUB_GITHUB_READY=()=>Boolean(window.YARDHUB_GITHUB_CONNECTED);
 window.YARDHUB_GITHUB_REFRESH=async()=>{
   if(!activeStore)throw new Error("GitHub data repository is not connected.");
+  if(window.YARDHUB_GITHUB_OFFLINE)throw new Error("Refresh is unavailable offline. Reconnect to GitHub first.");
   const result=await activeStore.readDatabase();
   window.dispatchEvent(new CustomEvent("yardhub:shared-data-refreshed",{detail:{headSha:result.headSha,refreshedAt:new Date().toISOString()}}));
   return result;
