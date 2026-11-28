@@ -1,0 +1,28 @@
+name: YARDHUB Real GitHub Acceptance
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  private-repository-acceptance:
+    name: Verify the configured private YARDHUB data repository
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout selected PR branch
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install test dependencies
+        run: npm install --no-audit --no-fund
+      - name: Run real GitHub repository acceptance
+        run: npm run test:github-real
+        env:
+          YARDHUB_DATA_REPOSITORY: ${{ secrets.YARDHUB_DATA_REPOSITORY }}
+          YARDHUB_DATA_TOKEN: ${{ secrets.YARDHUB_DATA_TOKEN }}
+          YARDHUB_DATA_BRANCH: ${{ secrets.YARDHUB_DATA_BRANCH }}
