@@ -576,3 +576,24 @@ test("YARDHUB primary restore rejects a backup with a checksum mismatch", async 
   );
   assert.equal(server.getHead(), before);
 });
+
+
+test("broker database writes are denied until GitHub is the active primary at the expected authority epoch", async () => {
+  const server = createMockGitHub();
+  const store = makeStore(server);
+  const before = server.getHead();
+  let mutated = false;
+  await assert.rejects(
+    store.transactDatabase({
+      expectedRevision: 0,
+      expectedAuthorityEpoch: 1,
+      actorId: "YARDHUB-GITHUB-ACTIONS-BROKER",
+      operationId: "broker-authority-gate-0001",
+      mutate() { mutated = true; }
+    }),
+    error => error instanceof GitHubStoreError && error.status === 409 &&
+      /authority changed or GitHub is not primary/.test(error.message)
+  );
+  assert.equal(mutated, false, "the service mutator must not run while YARDHUB remains primary");
+  assert.equal(server.getHead(), before, "no Git ref may be committed while the GitHub twin is secondary");
+});
