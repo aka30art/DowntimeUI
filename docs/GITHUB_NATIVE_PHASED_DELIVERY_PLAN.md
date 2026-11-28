@@ -32,7 +32,7 @@ Create a dedicated private repository (suggested name `YARDHUB-DATA`). Connect a
 The branch includes a manual `YARDHUB Real GitHub Acceptance` Actions workflow. Before running it, add these repository Actions secrets in `aka30art/DowntimeUI`:
 - `YARDHUB_DATA_REPOSITORY`: the private data repository in `owner/repo` form.
 - `YARDHUB_DATA_TOKEN`: fine-grained PAT scoped only to that private repository, with Contents read/write and Metadata read.
-- `YARDHUB_DATA_BRANCH`: optional branch name (defaults to `main`).
+- `YARDHUB_DATA_BRANCH`: optional branch name; when omitted, the runtime and acceptance script use the repository's declared default branch.
 
 Then run **Actions → YARDHUB Real GitHub Acceptance → Run workflow** on this PR branch. The workflow verifies repository privacy, initializes the empty 39-table schema if needed, checks two independent store sessions, refresh visibility, stale-write rejection, binary object transport and offline cached reads. It removes its temporary test records and object. Run this before creating DEV ROOT; the first-run assertion expects an empty USER directory.
 
@@ -50,10 +50,11 @@ Review the complete acceptance evidence against the exact final PR head. Only af
 
 ## Current gate status
 
-- Obsolete broker and scheduled Supabase backup paths: removed from the branch; cleanup CI is being re-run.
-- Direct runtime unit/service/browser tests: pending final green CI after cleanup.
-- Real private repository, PAT and two-device tests: blocked pending data repository and credential setup.
-- Full binary and recovery acceptance: pending real repository.
+- Obsolete GitHub Actions broker and scheduled Supabase backup workflows: removed. The GitHub-native compatibility shim remains local to the browser and has no Supabase network or realtime transport.
+- Universal App Foundation CI #767: passed, including `npm run check` and Playwright browser QA. CI #770 is validating the latest branch-default and browser regression tests.
+- YARDHUB Real GitHub Acceptance #11: blocked at credential preflight because `YARDHUB_DATA_REPOSITORY` and `YARDHUB_DATA_TOKEN` are not configured. No real private-repository test has been executed.
+- The acceptance script verifies empty fresh-install tables, DEV ROOT bootstrap identity, two independent store clients, stale-write rejection, binary object transport and offline cached reads. It does not yet prove all module workflows or real browser/device behaviour.
+- Full-system JSON backup/restore including binary objects is not yet exposed in the YARDHUB runtime. Git history is available, but full recovery acceptance remains a release blocker.
 - Merge/deploy: prohibited until all gates pass.
 
 ## Protected boundary
