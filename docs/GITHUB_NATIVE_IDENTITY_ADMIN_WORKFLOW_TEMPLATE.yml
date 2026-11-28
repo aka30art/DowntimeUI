@@ -50,7 +50,7 @@ jobs:
       data_repository_id: "<PRIVATE_DATA_REPOSITORY_NUMERIC_ID>"
       data_app_id: "<DATA_APP_ID>"
       data_app_installation_id: "<DATA_APP_INSTALLATION_ID>"
-      data_branch: main
+      data_branch: data/yardhub
       bootstrap_github_user_id: "<ONE_TIME_DEV_GITHUB_NUMERIC_ID>"
       bootstrap_issue_id: "<ONE_TIME_DEV_INBOX_ISSUE_INTERNAL_ID>"
     secrets:
