@@ -2502,11 +2502,9 @@ window.addEventListener('yardhub:github-connected',async()=>{
  try{await loadCentralUsers();if(window.DowntimeCentral?.session?.token)await resumeCentralSession()}
  catch(error){console.warn('YARDHUB login list could not refresh after GitHub connection.',error)}
 });
-window.addEventListener('yardhub:github-offline',async()=>{
+window.addEventListener('yardhub:github-offline',()=>{
  const banner=$('yardHubOfflineBanner');if(banner)banner.hidden=false;
  cloudStatus('OFFLINE · CACHED DATA · READ ONLY · NOT SAVED TO GITHUB');
- try{await loadCentralUsers();if(window.DowntimeCentral?.session?.token)await resumeCentralSession()}
- catch(error){console.warn('Cached YARDHUB session could not be resumed in offline mode.',error)}
 });
 window.addEventListener('yardhub:github-connected',()=>{
  if(window.YARDHUB_GITHUB_OFFLINE!==true){const banner=$('yardHubOfflineBanner');if(banner)banner.hidden=true}
