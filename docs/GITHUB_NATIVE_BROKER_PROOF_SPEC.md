@@ -238,3 +238,15 @@ No dedicated private broker repository or private YARDHUB data repository has be
 The three broker extension tables are preserved during source replication, but a separate private backup repository and full recovery rehearsal for the entire GitHub twin—including broker identities, audit and idempotency state—remain outstanding. Initial immutable DEV provisioning in the private data repository also remains an out-of-band setup gate.
 
 **Release position is unchanged:** YARDHUB remains primary; the broker must fail closed until the GitHub twin is explicitly active primary. No production records have been copied, no authority transfer has occurred, and PR #3 remains open/draft.
+
+
+### Reusable workflow and identity onboarding — 28 November 2026
+
+- `.github/workflows/yardhub-github-broker.yml` is a reusable `workflow_call` workflow. It fetches a reviewed 40-character source commit SHA and invokes the broker runner only for an encrypted request comment. The private caller template must be installed on the broker repository's default branch with `contents: read` and `issues: write` permissions.
+- `.github/workflows/yardhub-github-identity-admin.yml` is a separate reusable `workflow_call` workflow for the private broker repository's `workflow_dispatch` identity-admin caller. `scripts/manage-github-broker-identity.mjs` verifies the authenticated actor as immutable DEV, validates the private repository/default branch, verifies the assigned inbox issue, and performs audited link/revoke operations.
+- Caller templates are present in the PR, but no private broker repository exists in this workspace and no caller workflow is installed. No GitHub Apps or protected secrets have been provisioned.
+- CI #629 passed full unit/integration checks, Playwright browser QA and screenshot upload on `06c58ab6ea50144ed5a2f4148c05d927c5c3a012`. The current head at this note is a later documentation-only commit; exact-head validation remains required.
+
+### Release-control incident record
+
+An unintended push of `7561df62dacf05c52c9b8b1ac857f577fba93cd6` to `main` added a caller workflow template and triggered Pages run #26, which completed successfully. The main ref was restored to `58955b13f6a70f9da44d6ead9e409639086989a7`; rollback Pages run #27 also completed successfully. Main was verified equal to the PR base. This was an unauthorised Pages deployment followed by corrective rollback. It did not alter operational data, secrets, authority or the protected DOWNTIME repository.
