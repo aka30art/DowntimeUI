@@ -60,7 +60,7 @@ export async function createDataRepositoryInstallationToken({
   return result.token;
 }
 
-async function verifyPrivateRepository({ owner, repository, token, expectedId, fetchImpl }) {
+export async function verifyPrivateRepository({ owner, repository, token, expectedId, fetchImpl }) {
   const response = await fetchImpl(
     "https://api.github.com/repos/" + encodeURIComponent(owner) + "/" + encodeURIComponent(repository),
     {
@@ -154,6 +154,10 @@ export async function runGitHubActionsBroker({
       (dataOwner + "/" + dataRepository).toLowerCase() === repository.toLowerCase()) {
     throw new Error("The private YARDHUB data repository must be distinct from the broker inbox repository.");
   }
+  const dataBranch = String(env.YARDHUB_DATA_BRANCH || "data/yardhub").trim();
+  if (dataBranch !== "data/yardhub") {
+    throw new Error("The GitHub-native operational store must use the dedicated data/yardhub branch.");
+  }
   const dataAppId = requiredEnv(env, "YARDHUB_DATA_APP_ID");
   const dataInstallationId = requiredEnv(env, "YARDHUB_DATA_APP_INSTALLATION_ID");
   const dataAppPrivateKey = requiredEnv(env, "YARDHUB_DATA_APP_PRIVATE_KEY");
@@ -185,7 +189,7 @@ export async function runGitHubActionsBroker({
   const store = createGitHubDataStore({
     owner: dataOwner,
     repo: dataRepository,
-    branch: env.YARDHUB_DATA_BRANCH || "data/yardhub",
+    branch: dataBranch,
     token: dataToken,
     fetchImpl,
     now
