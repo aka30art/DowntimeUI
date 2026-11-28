@@ -285,6 +285,10 @@ export function createGitHubBrokerAuthority({
 
   async function authorize({ principal, service, action, args, authorityEpoch }) {
     if (!principal?.userId || !Number.isSafeInteger(authorityEpoch) || authorityEpoch < 1) return false;
+    const currentAuthority = await store.readAuthority();
+    if (!currentAuthority || currentAuthority.status !== "ACTIVE" ||
+        currentAuthority.primarySystemId !== "DOWNTIMEUI-GITHUB" ||
+        currentAuthority.epoch !== authorityEpoch) return false;
     const policy = SERVICE_ACTION_POLICIES[service]?.[action];
     if (!policy || policy.deny) return false;
     if (policy.self) return true;
@@ -298,7 +302,11 @@ export function createGitHubBrokerAuthority({
 
   async function getAuthorityEpoch() {
     const authority = await store.readAuthority();
-    if (!authority || authority.status !== "ACTIVE") throw new Error("YARDHUB authority is not active.");
+    if (!authority || authority.status !== "ACTIVE" ||
+        authority.primarySystemId !== "DOWNTIMEUI-GITHUB" ||
+        !Number.isSafeInteger(authority.epoch) || authority.epoch < 1) {
+      throw new Error("GitHub twin is not the active YARDHUB primary; broker actions are disabled until an approved authority transfer.");
+    }
     return authority.epoch;
   }
 
