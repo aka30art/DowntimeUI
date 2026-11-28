@@ -101,9 +101,9 @@ function setup({ action = "link", actorId = DEV_GITHUB_ID, isPrivate = true, ass
       calls.issue.push({ url, options });
       return new Response(JSON.stringify({
         id: 333,
-        number: 7,
+        number: 77,
         state: "open",
-        labels: [{ name: "yardhub-inbox" }],
+        labels,
         assignees: assignees || [{ id: Number(assigneeId) }]
       }), { status: 200, headers: { "content-type": "application/json" } });
     }
