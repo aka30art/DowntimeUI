@@ -679,7 +679,7 @@ export function createGitHubDataStore({
         const mimeType = metadata?.mimeType || "application/octet-stream";
         if (bytes.byteLength <= 512 * 1024 && localCacheStorage?.setItem) {
           let encoded = "";for (let offset = 0; offset < bytes.length; offset += 0x8000) encoded += String.fromCharCode(...bytes.subarray(offset, offset + 0x8000));
-          try { cacheStorage.setItem(objectCacheKey, JSON.stringify({ mimeType, base64: globalThis.btoa(encoded), cachedAt: now().toISOString() })); } catch {}
+          try { localCacheStorage.setItem(objectCacheKey, JSON.stringify({ mimeType, base64: globalThis.btoa(encoded), cachedAt: now().toISOString() })); } catch {}
         }
         return { bucket, path: objectName, bytes, mimeType, size: bytes.byteLength, sha: file.sha, offline: false };
       } catch (error) {
