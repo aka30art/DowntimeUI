@@ -76,13 +76,27 @@ test("GitHub storage adapter removes only requested objects", async () => {
 });
 
 
-test("GitHub storage adapter fails closed when asked for browser upload or download URLs", async () => {
+test("GitHub storage adapter serves one-time browser upload tickets and private data URLs", async () => {
   const client = createGitHubStorageClient({ store: makeStore() });
   const storage = client.from("downtime-evidence");
   const upload = await storage.createSignedUploadUrl("entry/photo.jpg");
-  assert.equal(upload.data, null);
-  assert.match(upload.error.message, /binary upload transport is not implemented/);
-  const download = await storage.createSignedUrl("entry/photo.jpg");
-  assert.equal(download.data, null);
-  assert.match(download.error.message, /binary download transport is not implemented/);
+  assert.equal(upload.error, null);
+  assert.equal(upload.data.path, "entry/photo.jpg");
+  const response = await client.handleSignedUploadRequest(new Request(upload.data.signedUrl, {
+    method: "PUT",
+    headers: { "Content-Type": "image/jpeg" },
+    body: new Uint8Array([255, 216, 255, 217])
+  }));
+  assert.equal(response.status, 200);
+  const download = await storage.createSignedUrl("entry/photo.jpg", 60);
+  assert.equal(download.error, null);
+  assert.match(download.data.signedUrl, /^data:image\\/jpeg;base64,/);
+  const encoded = download.data.signedUrl.split(",")[1];
+  assert.deepEqual([...Uint8Array.from(atob(encoded), character => character.charCodeAt(0))], [255, 216, 255, 217]);
+  const replay = await client.handleSignedUploadRequest(new Request(upload.data.signedUrl, {
+    method: "PUT",
+    headers: { "Content-Type": "image/jpeg" },
+    body: new Uint8Array([255, 216, 255, 217])
+  }));
+  assert.equal(replay.status, 400);
 });
