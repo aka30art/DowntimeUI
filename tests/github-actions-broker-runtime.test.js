@@ -245,6 +245,20 @@ test("encrypted broker action uses canonical USER YARD ROLE, broker session, ato
   const store = {
     async readDatabase() { return { revision, tables: structuredClone(tables), manifest: { revision } }; },
     async readTable(name) { return structuredClone(tables[name] || []); },
+    async readSnapshot({ module, snapshotId }) {
+      if (module !== "BROKER" || snapshotId !== "github-identity-links-v1") return null;
+      return {
+        version: 1,
+        payload: { links: [{
+          githubUserId,
+          userId,
+          brokerRepositoryId: repositoryId,
+          brokerIssueId: issueId,
+          status: "ACTIVE"
+        }] }
+      };
+    },
+    async writeSnapshot() { throw new Error("An ordinary broker request must not mutate identity links."); },
     async readAuthority() { return structuredClone(authorityState); },
     async uploadObject({ bucket, path }) { return { bucket, path, sha: "test-object-sha" }; },
     async downloadObject() { return null; },
