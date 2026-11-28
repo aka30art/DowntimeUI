@@ -330,7 +330,7 @@ try{
   assert.match(await offlinePage.locator("#yardHubOfflineBanner").innerText(),/READ ONLY.*NOT SAVED TO GITHUB/,"Offline mode must be visibly read-only and must not claim central saves.");
   const requestsBeforeOfflineRefresh=githubApiRequests;
   await offlinePage.locator("#yardHubRefreshBtn").click();
-  assert.match(await offlinePage.locator("#cloudStatus").innerText(),/REFRESH UNAVAILABLE/,"Manual refresh must report unavailable while offline.");
+  assert.match(await offlinePage.locator("#cloudStatus").textContent(),/REFRESH UNAVAILABLE/,"Manual refresh must report unavailable while offline.");
   assert.equal(githubApiRequests,requestsBeforeOfflineRefresh,"Offline refresh must not issue a GitHub request or claim a successful sync.");
   assert.deepEqual(offlineErrors,[],"Offline cached runtime errors: "+offlineErrors.join(" | "));
   await offlinePage.screenshot({path:"artifacts/yardhub-offline-readonly.png",fullPage:true});
