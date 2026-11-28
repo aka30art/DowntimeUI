@@ -1,6 +1,16 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createGitHubTableClient } from "../src/infrastructure/github-table-client.js";
+import { createGitHubTableClient, DEFAULT_PRIMARY_KEYS } from "../src/infrastructure/github-table-client.js";
+
+test("direct GitHub runtime has no obsolete broker table definitions", () => {
+  for (const name of [
+    "downtime_github_identities",
+    "downtime_github_broker_requests",
+    "downtime_github_broker_identity_audit"
+  ]) {
+    assert.equal(Object.hasOwn(DEFAULT_PRIMARY_KEYS, name), false, name + " must not remain in the direct GitHub table client");
+  }
+});
 
 function createMemoryStore(initial = {}) {
   let revision = 0;
