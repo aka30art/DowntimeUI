@@ -8,7 +8,8 @@
     "test:browser": "node tests/browser-qa.mjs",
     "build:yardhub": "node scripts/build-yardhub-github-runtime.mjs",
     "test:github-real": "node scripts/github-real-repository-acceptance.mjs",
-    "test:github-real-browser": "node scripts/github-real-browser-acceptance.mjs"
+    "test:github-real-browser": "node scripts/github-real-browser-acceptance.mjs",
+    "test:github-real-modules": "node scripts/github-real-module-recovery-acceptance.mjs"
   },
   "devDependencies": {
     "playwright": "1.65.1",
