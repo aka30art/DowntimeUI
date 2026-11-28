@@ -377,6 +377,26 @@ try{
   assert.equal(await invalidAuthPage.locator("#yardHubOfflineBanner").isVisible(),false,"Invalid credentials must not be presented as genuine offline mode.");
   await invalidAuthPage.close();
 
+  const readOnlyTokenPage=await browser.newPage({viewport:{width:1440,height:900},deviceScaleFactor:1});
+  let readOnlyRepositoryChecks=0,readOnlyRefChecks=0;
+  await readOnlyTokenPage.addInitScript(()=>{
+    localStorage.setItem("yardhub:github-data-connection:v1",JSON.stringify({owner:"demo",repo:"yardhub-data",branch:"main",token:"read-only-token"}));
+  });
+  await readOnlyTokenPage.route("https://api.github.com/**",route=>{
+    const path=new URL(route.request().url()).pathname;
+    if(path==="/repos/demo/yardhub-data"){readOnlyRepositoryChecks++;return route.fulfill({status:200,contentType:"application/json",body:JSON.stringify({private:true,archived:false,default_branch:"main",permissions:{pull:true,push:false}})})}
+    readOnlyRefChecks++;return route.abort("internetdisconnected");
+  });
+  await readOnlyTokenPage.route("https://github-native.invalid/**",route=>route.fulfill({status:503,contentType:"application/json",body:JSON.stringify({error:"Read-only repository token must be rejected"})}));
+  await readOnlyTokenPage.goto("http://127.0.0.1:"+address.port+"/yardhub/runtime/index.html",{waitUntil:"networkidle"});
+  await readOnlyTokenPage.locator("[data-yardhub-github-status]").waitFor({state:"visible"});
+  await readOnlyTokenPage.waitForTimeout(250);
+  assert.equal(readOnlyRepositoryChecks,1,"YARDHUB must inspect repository write permission.");
+  assert.equal(readOnlyRefChecks,0,"A read-only token must be rejected before database access.");
+  assert.equal(await readOnlyTokenPage.locator("#yardhub-github-connect-overlay").isVisible(),true,"A read-only GitHub token must not unlock the operational app.");
+  assert.equal(await readOnlyTokenPage.locator("#yardHubOfflineBanner").isVisible(),false,"A read-only token must not be treated as a network outage.");
+  await readOnlyTokenPage.close();
+
   const rmPage=await browser.newPage({viewport:{width:390,height:844},deviceScaleFactor:1});
   const rmRequests=[];
   const rmFailures=[];
