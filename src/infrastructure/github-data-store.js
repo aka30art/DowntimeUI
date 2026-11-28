@@ -111,7 +111,9 @@ export function createGitHubDataStore({
   maxRetries = DEFAULT_MAX_RETRIES,
   maxShardBytes = DEFAULT_MAX_SHARD_BYTES,
   now = () => new Date(),
-  sleep = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds))
+  sleep = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds)),
+  cacheStorage = globalThis.localStorage,
+  cacheKey = null
 } = {}) {
   owner = requiredString(owner, "GitHub owner", /^[A-Za-z0-9-]+$/);
   repo = requiredString(repo, "GitHub repository", /^[A-Za-z0-9_.-]+$/);
@@ -125,6 +127,26 @@ export function createGitHubDataStore({
   }
 
   const root = apiBase.replace(/\/$/, "") + "/repos/" + encodeURIComponent(owner) + "/" + encodeURIComponent(repo);
+  const localCacheKey = cacheKey || ("yardhub:github-cache:v1:" + owner.toLowerCase() + ":" + repo.toLowerCase() + ":" + systemId);
+  function readLocalCache() {
+    if (!cacheStorage || typeof cacheStorage.getItem !== "function") return null;
+    try {
+      const value = JSON.parse(cacheStorage.getItem(localCacheKey) || "null");
+      if (!value || !value.manifest || !value.tables || typeof value.tables !== "object") return null;
+      return value;
+    } catch { return null; }
+  }
+  function writeLocalCache(value) {
+    if (!cacheStorage || typeof cacheStorage.setItem !== "function") return false;
+    try {
+      cacheStorage.setItem(localCacheKey, JSON.stringify({ ...value, cachedAt: now().toISOString() }));
+      return true;
+    } catch { return false; }
+  }
+  function cacheAuthority(authority) {
+    const cached = readLocalCache() || {};
+    writeLocalCache({ ...cached, authority });
+  }
   const request = async (path, options = {}, { allowNotFound = false } = {}) => {
     const response = await fetchImpl(root + path, {
       ...options,
@@ -304,38 +326,52 @@ export function createGitHubDataStore({
     owner, repo, branch, systemId,
 
     async ensureAuthority() {
-      for (let attempt = 0; attempt < maxRetries; attempt += 1) {
-        const headSha = await getHead();
-        const treeSha = await getCommitTree(headSha);
-        const current = await readJsonAt(AUTHORITY_PATH, headSha);
-        if (current) return validateAuthority(current);
-        const authority = validateAuthority({
-          schemaVersion: 1,
-          systemId: "YARDHUB-ECOSYSTEM",
-          primarySystemId: "YARDHUB-PRIMARY",
-          secondarySystemId: "DOWNTIMEUI-GITHUB",
-          epoch: 1,
-          status: "ACTIVE",
-          replication: {
-            direction: "YARDHUB-PRIMARY_TO_DOWNTIMEUI-GITHUB",
-            status: "NOT_CONFIGURED",
-            lastSuccessfulCheckpoint: null
-          },
-          updatedAt: now().toISOString()
-        });
-        const result = await commitJsonAtHead({
-          headSha, treeSha, path: AUTHORITY_PATH, value: authority,
-          message: "Initialise YARDHUB GitHub data authority"
-        });
-        if (result.committed) return authority;
-        await sleep(Math.min(100 * (2 ** attempt), 1200));
+      try {
+        for (let attempt = 0; attempt < maxRetries; attempt += 1) {
+          const headSha = await getHead();
+          const treeSha = await getCommitTree(headSha);
+          const current = await readJsonAt(AUTHORITY_PATH, headSha);
+          if (current) { const authority = validateAuthority(current); cacheAuthority(authority); return authority; }
+          const authority = validateAuthority({
+            schemaVersion: 1,
+            systemId: "YARDHUB-ECOSYSTEM",
+            primarySystemId: "YARDHUB-PRIMARY",
+            secondarySystemId: "DOWNTIMEUI-GITHUB",
+            epoch: 1,
+            status: "ACTIVE",
+            replication: {
+              direction: "YARDHUB-PRIMARY_TO_DOWNTIMEUI-GITHUB",
+              status: "NOT_CONFIGURED",
+              lastSuccessfulCheckpoint: null
+            },
+            updatedAt: now().toISOString()
+          });
+          const result = await commitJsonAtHead({
+            headSha, treeSha, path: AUTHORITY_PATH, value: authority,
+            message: "Initialise YARDHUB GitHub data authority"
+          });
+          if (result.committed) { cacheAuthority(authority); return authority; }
+          await sleep(Math.min(100 * (2 ** attempt), 1200));
+        }
+        throw new GitHubStoreError("Could not initialise GitHub data authority because the branch changed repeatedly.", 409);
+      } catch (error) {
+        const cached = readLocalCache()?.authority;
+        if (cached) return validateAuthority(cached);
+        throw error;
       }
-      throw new GitHubStoreError("Could not initialise GitHub data authority because the branch changed repeatedly.", 409);
     },
 
     async readAuthority() {
-      const headSha = await getHead();
-      return validateAuthority(await readJsonAt(AUTHORITY_PATH, headSha));
+      try {
+        const headSha = await getHead();
+        const authority = validateAuthority(await readJsonAt(AUTHORITY_PATH, headSha));
+        cacheAuthority(authority);
+        return authority;
+      } catch (error) {
+        const cached = readLocalCache()?.authority;
+        if (cached) return validateAuthority(cached);
+        throw error;
+      }
     },
 
     async appendEvent(input) {
@@ -610,9 +646,18 @@ export function createGitHubDataStore({
     },
 
     async readDatabase() {
-      const headSha = await getHead();
-      const { manifest, tables } = await readDatabaseAtHead(headSha);
-      return { revision: manifest.revision, manifest, tables };
+      try {
+        const headSha = await getHead();
+        const { manifest, tables } = await readDatabaseAtHead(headSha);
+        const cached = readLocalCache();
+        const result = { revision: manifest.revision, manifest, tables, headSha, offline: false };
+        writeLocalCache({ ...result, authority: cached?.authority || null });
+        return result;
+      } catch (error) {
+        const cached = readLocalCache();
+        if (cached) return { ...cached, offline: true, cacheAge: cached.cachedAt || null };
+        throw error;
+      }
     },
 
     async transactDatabase({ expectedRevision, expectedAuthorityEpoch = null, actorId, operationId = null, mutate } = {}) {
@@ -685,6 +730,10 @@ export function createGitHubDataStore({
       if (!committed.committed) {
         throw new GitHubStoreError("Database transaction conflicted with another writer. No records were committed; reload and retry.", 409);
       }
+      writeLocalCache({
+        revision: nextManifest.revision, manifest: nextManifest, tables,
+        headSha: committed.commitSha, authority: readLocalCache()?.authority || null
+      });
       return {
         committed: true,
         revision: nextManifest.revision,
