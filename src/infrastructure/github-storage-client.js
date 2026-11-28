@@ -49,7 +49,7 @@ export function createGitHubStorageClient({ store, now = () => new Date(), ticke
 
       async createSignedUploadUrl(path, options = {}) {
         try {
-          const ticket = createUploadTicket({ bucket: bucketName, path, mimeType: "" });
+          const ticket = createUploadTicket({ bucket: bucketName, path, mimeType: options.contentType || "", size: Number.isInteger(options.size) ? options.size : null });
           const encodedPath = String(path).split("/").map(encodeURIComponent).join("/");
           const signedUrl = "https://github-native.invalid/storage-upload/" + encodeURIComponent(bucketName) + "/" + encodedPath + "?token=" + encodeURIComponent(ticket.token);
           return { data: { path: ticket.path, token: ticket.token, signedUrl }, error: null };
