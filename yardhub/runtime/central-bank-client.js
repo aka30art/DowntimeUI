@@ -6,6 +6,7 @@
   const SESSION_KEY="yardhub:central-session:v1";
   let runtimeReady=false;
   let session=null;
+  const staffPhotoUrls=new Map();
   try{
     const saved=JSON.parse(sessionStorage.getItem(SESSION_KEY)||"null");
     if(saved&&typeof saved.token==="string"&&saved.token){
@@ -91,9 +92,31 @@
     async deleteUser(username,version){return call("user-delete",{username,version})},
     async saveStaff(name,profile,version){return call("staff-save",{name,profile,version})},
     async saveTiers(tiers,version){return call("tiers-save",{tiers,version})},
-    async signedStaffPhotoUpload(){const error=new Error("Binary photo upload is not yet included in the GitHub JSON storage phase.");error.code="GITHUB_BINARY_STORAGE_PENDING";error.status=501;throw error},
-    async uploadStaffOriginal(){const error=new Error("Original photo upload is not yet included in the GitHub JSON storage phase.");error.code="GITHUB_BINARY_STORAGE_PENDING";error.status=501;throw error},
-    async signedStaffPhotoRead(){const error=new Error("Binary photo retrieval is not yet included in the GitHub JSON storage phase.");error.code="GITHUB_BINARY_STORAGE_PENDING";error.status=501;throw error},
+    async signedStaffPhotoUpload(name){
+      const storage=window.__YARDHUB_GITHUB_STORAGE__;
+      if(!storage?.createUploadTicket)throw new Error("GitHub staff-photo storage is not ready.");
+      const slug=String(name||"").trim().toLowerCase().replace(/[^a-z0-9_-]/g,"-").slice(0,30);
+      if(!slug)throw new Error("A valid STAFF name is required for the photo destination.");
+      return storage.createUploadTicket({bucket:"downtime-staff-photos",path:slug+"/"+crypto.randomUUID(),mimeType:""});
+    },
+    async uploadStaffOriginal(name,file){
+      if(!file)throw new Error("The original PNG file is missing.");
+      const bytes=file instanceof Uint8Array?file:new Uint8Array(await file.arrayBuffer());
+      if(bytes.byteLength<8||bytes.byteLength>5*1024*1024)throw new Error("PNG must be between 8 bytes and 5 MB.");
+      const binaryChunks=[];for(let offset=0;offset<bytes.length;offset+=0x8000)binaryChunks.push(String.fromCharCode(...bytes.subarray(offset,offset+0x8000)));
+      const base64=btoa(binaryChunks.join(""));
+      const staffKey=String(name||"").trim().toLowerCase().replace(/[^a-z0-9_-]/g,"-").slice(0,30);
+      return call("staff-original-upload",{staffKey,mimeType:"image/png",base64});
+    },
+    async signedStaffPhotoRead(path){
+      const storage=window.__YARDHUB_GITHUB_STORAGE__;
+      if(!storage?.from)throw new Error("GitHub staff-photo storage is not ready.");
+      const result=await storage.from("downtime-staff-photos").download(path);
+      if(result.error)throw result.error;
+      const previous=staffPhotoUrls.get(path);if(previous)URL.revokeObjectURL(previous);
+      const url=URL.createObjectURL(result.data);staffPhotoUrls.set(path,url);
+      return {url,path};
+    },
     async removeStaffPhoto(path){return call("staff-photo-remove",{path})},
     async bootstrap(data){return call("bootstrap",data,{public:true})},
     get session(){return session},
