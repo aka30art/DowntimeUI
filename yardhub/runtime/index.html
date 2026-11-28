@@ -2558,16 +2558,16 @@ window.addEventListener('yardhub:github-connected',()=>{
 <script src="gatelog-settings.js?v=20261126-1"></script>
 <div id="yardhub-github-connect-overlay" role="dialog" aria-modal="true" aria-labelledby="yardhub-github-connect-title">
   <div class="yardhub-github-connect-card">
-    <div class="yardhub-github-connect-kicker">DOWNTIMEUI · INDEPENDENT DATA INFRASTRUCTURE</div>
+    <div class="yardhub-github-connect-kicker">YARDHUB · GITHUB DATA CONNECTION</div>
     <h1 id="yardhub-github-connect-title">Connect YARDHUB to GitHub</h1>
-    <p>Connect a dedicated <strong>private</strong> GitHub repository for operational data. Do not use the DOWNTIME or DOWNTIMEUI application-source repositories.</p>
-    <p class="yardhub-github-connect-note">Create a new private repository here using a one-time token with Repository creation (write) or Administration (write). This token is used only for repository creation.</p><p class="yardhub-github-connect-note">After creation, use a fine-grained token limited to this one private repository with Contents read/write and Metadata read. The token is stored in this browser profile so it reconnects after reload. Anyone with access to this browser profile can use it; configure the same token on each device.</p>
+    <p>Connect to your existing <strong>private YARDHUB-DATA</strong> repository. This repository stores YARDHUB operational data and is separate from the application source.</p>
+    <p class="yardhub-github-connect-note">Use a fine-grained GitHub token restricted to YARDHUB-DATA with Contents read/write and Metadata read. No repository-creation permission is needed.</p><p class="yardhub-github-connect-note">The token is stored in this browser profile so it reconnects after reload. Anyone with access to this browser profile can use it; configure the same token separately on each device.</p>
     <form id="yardhub-github-connect-form">
       <label>GitHub owner<input name="owner" value="aka30art" autocomplete="username" required></label>
-      <label>Private data repository<input name="repo" placeholder="e.g. YARDHUB-DATA" autocomplete="off" required></label>
+      <label>Private data repository<input name="repo" value="YARDHUB-DATA" autocomplete="off" required></label>
       <label>Data branch<input name="branch" placeholder="Leave blank to use the repository default" autocomplete="off"></label>
-      <label>Fine-grained GitHub token<input name="token" type="password" autocomplete="off" required></label>
-      <button type="submit">CONNECT & INITIALISE</button><button type="button" data-create-private>CREATE PRIVATE DATA REPOSITORY</button>
+      <label>Fine-grained GitHub token · YARDHUB-DATA only<input name="token" type="password" autocomplete="off" required></label>
+      <button type="submit">CONNECT TO EXISTING REPOSITORY</button>
     </form>
     <p class="yardhub-github-connect-status" data-yardhub-github-status>Waiting for a private GitHub data repository.</p>
     <p class="yardhub-github-connect-note">The initial DEV owner setup is a one-time, private-session operation. Its random setup code is hashed in the private data repository, expires after 15 minutes and is invalidated after DEV is created. The repository token is stored locally in this browser profile and is not written to the repository.</p>
