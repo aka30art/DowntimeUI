@@ -193,7 +193,7 @@ test("first-run DEV bootstrap signs in and authorises protected YARDHUB module s
   }
 });
 
-test("Edge Function and browser clients share one-time GitHub storage upload tickets", async () => {
+test("Edge Function and browser compatibility clients fail closed for unsupported signed binary uploads", async () => {
   const store = createMemoryStore();
   const previousFetch = globalThis.fetch;
   const runtime = await installGitHubEdgeRuntime({ store, functionNames: [] });
@@ -205,14 +205,11 @@ test("Edge Function and browser clients share one-time GitHub storage upload tic
       "2026-11-27/evidence.jpg",
       { contentType: "image/jpeg", size: 3 }
     );
-    assert.equal(ticket.error, null);
-    const result = await browserClient.storage.from("downtime-evidence").uploadToSignedUrl(
-      ticket.data.path, ticket.data.token,
-      new Blob([new Uint8Array([1, 2, 3])], { type: "image/jpeg" }),
-      { contentType: "image/jpeg" }
-    );
-    assert.equal(result.error, null);
-    assert.equal(result.data.path, "2026-11-27/evidence.jpg");
+    assert.equal(ticket.data, null);
+    assert.match(ticket.error.message, /binary upload transport is not implemented/);
+    const download = await browserClient.storage.from("downtime-evidence").createSignedUrl("2026-11-27/evidence.jpg");
+    assert.equal(download.data, null);
+    assert.match(download.error.message, /binary download transport is not implemented/);
   } finally {
     await runtime.dispose();
     globalThis.fetch = previousFetch;
@@ -220,7 +217,7 @@ test("Edge Function and browser clients share one-time GitHub storage upload tic
 });
 
 
-test("Central Config admin reads the published YARDHUB launcher and photo-evidence uploads use private Storage tickets", async () => {
+test("Central Config admin reads the published YARDHUB launcher and photo-evidence upload fails closed without browser transport", async () => {
   const store = createMemoryStore();
   const originalFetch = globalThis.fetch;
   const previousSession = globalThis.DowntimeCentral;
@@ -256,50 +253,11 @@ test("Central Config admin reads the published YARDHUB launcher and photo-eviden
     const uploadResponse = await request("photo-evidence", {
       action: "create-upload", entryKey, recordId, mimeType: "image/jpeg", size: 3
     }, login.token);
-    assert.equal(uploadResponse.status, 200);
-    const upload = await uploadResponse.json();
-    assert.ok(upload.attachmentId);
-    assert.ok(upload.token);
-    assert.match(upload.path, new RegExp("^" + entryKey + "/"));
-
-    const browserClient = globalThis.supabase.createClient();
-    const uploaded = await browserClient.storage.from("downtime-evidence").uploadToSignedUrl(
-      upload.path, upload.token,
-      new Blob([new Uint8Array([255, 216, 255])], { type: "image/jpeg" }),
-      { contentType: "image/jpeg" }
-    );
-    assert.equal(uploaded.error, null);
-    assert.equal(uploaded.data.path, upload.path);
-
-    const current = await store.readDatabase();
-    await store.transactDatabase({
-      expectedRevision: current.revision,
-      actorId: "runtime-test",
-      mutate(tables) {
-        const bank = tables.downtime_central_bank.find(row => Number(row.id) === 1);
-        bank.payload.appData ||= {};
-        bank.payload.appData.weeks ||= {};
-        bank.payload.appData.weeks["2026-11-23"] = {
-          days: [{
-            date: "2026-11-23",
-            entries: [{ recordId, attachmentId: upload.attachmentId }]
-          }]
-        };
-      }
-    });
-    const viewResponse = await request("photo-evidence", {
-      action: "view", attachmentId: upload.attachmentId
-    }, login.token);
-    assert.equal(viewResponse.status, 200);
-    const view = await viewResponse.json();
-    assert.ok(view.url);
-    assert.equal(view.expiresIn, 60);
-
-    const deleteResponse = await request("photo-evidence", {
-      action: "delete", attachmentId: upload.attachmentId
-    }, login.token);
-    assert.equal(deleteResponse.status, 200);
-    assert.equal((await deleteResponse.json()).ok, true);
+    assert.equal(uploadResponse.status, 500);
+    const uploadError = await uploadResponse.json();
+    assert.match(uploadError.error, /binary upload transport is not implemented/);
+    const after = await store.readDatabase();
+    assert.equal(after.tables.downtime_attachments.length, 0, "failed upload setup must not create attachment metadata");
   } finally {
     await runtime.dispose();
     globalThis.fetch = originalFetch;
