@@ -70,14 +70,12 @@ async function connect(connection){
     const metadata=await verifyPrivateRepository(connection);
     connection.branch=connection.branch||metadata.default_branch||"main";
     status("Preparing the empty YARDHUB data structure…");
-    await store.ensureAuthority();
   }catch(error){
     const networkUnavailable=!Number.isInteger(error?.status)||error.status===0||error.status>=500;
     if(!networkUnavailable)throw error;
     status("GitHub is unavailable. Checking this device's last cached YARDHUB data…");
     const cached=await store.readDatabase();
     if(!cached?.offline||!cached.manifest||!cached.tables)throw new Error("GitHub is offline and this device has no previously loaded YARDHUB data. Reconnect to load the shared repository.");
-    await store.readAuthority();
     offline=true;
   }
   const runtime=await installGitHubEdgeRuntime({
