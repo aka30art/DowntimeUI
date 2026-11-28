@@ -78,17 +78,29 @@ try {
 
   const firstCommit = await pageA.evaluate(async id => {
     const store = window.YARDHUB_GITHUB_STORE;
-    const current = await store.readDatabase();
-    const result = await store.transactDatabase({
-      expectedRevision: current.revision,
-      actorId: "REAL-BROWSER-ACCEPTANCE",
-      operationId: id + "-write-a",
-      mutate(tables) {
-        tables.downtime_reports ||= [];
-        tables.downtime_reports.push({ id, title: "Temporary two-browser refresh probe", created_at: new Date().toISOString() });
+    let lastError = null;
+    for (let attempt = 0; attempt < 6; attempt += 1) {
+      const current = await store.readDatabase();
+      try {
+        const result = await store.transactDatabase({
+          expectedRevision: current.revision,
+          actorId: "REAL-BROWSER-ACCEPTANCE",
+          operationId: id + "-write-a-" + attempt,
+          mutate(tables) {
+            tables.downtime_reports ||= [];
+            if (!tables.downtime_reports.some(row => row.id === id)) {
+              tables.downtime_reports.push({ id, title: "Temporary two-browser refresh probe", created_at: new Date().toISOString() });
+            }
+          }
+        });
+        return { revision: result.revision };
+      } catch (error) {
+        lastError = error;
+        if (error?.status !== 409 || attempt === 5) throw error;
+        await new Promise(resolve => setTimeout(resolve, 150 * (attempt + 1)));
       }
-    });
-    return { revision: result.revision };
+    }
+    throw lastError || new Error("Browser A could not commit its probe record.");
   }, probeId);
   committed = true;
 
