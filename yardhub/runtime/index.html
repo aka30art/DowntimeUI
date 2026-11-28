@@ -1882,24 +1882,7 @@ async function refreshCentralFromRealtime(version=0,updatedAt=null){
   flushCentralRealtimeRefresh();
  }
 }
-async function startCentralRealtimeSync(client){
- if(!client?.channel||centralRealtimeChannel)return;
- try{
-  if(client.realtime?.setAuth)await client.realtime.setAuth();
-  centralRealtimeClient=client;
-  const channel=client.channel('downtime-central-state',{config:{private:true}});
-  channel.on('broadcast',{event:'central_state_changed'},message=>{
-   const signal=message?.payload&&typeof message.payload==='object'?message.payload:(message||{});
-   refreshCentralFromRealtime(signal.version,signal.updated_at||signal.updatedAt||null).catch(error=>console.warn('Central Realtime event failed.',error));
-  });
-  centralRealtimeChannel=channel;
-  channel.subscribe((status,error)=>{
-   if(status==='SUBSCRIBED'){
-    if(centralRealtimeVersion>centralVersion)refreshCentralFromRealtime(centralRealtimeVersion,null);
-   }else if(error)console.warn('Central Realtime subscription unavailable; polling fallback remains active.',error);
-  });
- }catch(error){centralRealtimeChannel=null;centralRealtimeClient=null;console.warn('Unable to start central Realtime subscription; polling fallback remains active.',error)}
-}
+async function startCentralRealtimeSync(){centralRealtimeChannel=null;centralRealtimeClient=null;return false}
 function stopCentralRealtimeSync(){
  const channel=centralRealtimeChannel,client=centralRealtimeClient;
  centralRealtimeChannel=null;centralRealtimeClient=null;centralRealtimeRefreshQueued=false;centralRealtimeVersion=0;
@@ -2360,7 +2343,7 @@ async function saveCentralUserSettings(){
 }
 function applyIncomingCloudPayload(payload,status,updatedAt=null,version=centralVersion,remoteUser=null){if(!payload)return;const previous=state,incoming=centralAppData(payload);const additions=cloudReady&&managementRole()?addedEntries(previous,incoming):[];const plantChanged=cloudReady&&managementRole()&&typeof previous?.plantOn==='boolean'&&typeof incoming?.plantOn==='boolean'&&previous.plantOn!==incoming.plantOn;centralBankPayload=payload;mergeDailyOperatorRecords(payload.dailyOperators||[]);if(remoteUser){centralUser=remoteUser;activeOperator=remoteUser.username}state=incoming;centralVersion=Number(version)||centralVersion;localStorage.setItem(STORE,JSON.stringify(state));const last=$('lastSync');if(last)last.textContent='Last successful refresh · '+new Date().toLocaleString('en-GB');render();enforceOperatorMode();applyTierVisibility();renderCentralUserSettings();renderAreaPresetSettings();renderReasonPresetSettings();renderShiftSchedule();renderDailyTaskSettings();renderOperatorRosterAdmin();cloudStatus(status);notifyOverviewFrame(centralVersion,updatedAt);if(plantChanged)showPlantTransitionAlert(incoming.plantOn,updatedAt);if(additions.length){additions.slice(0,5).forEach(item=>{item.dayName=DAYS[item.dayIndex];showManagementToast(item)});if(additions.length>5)showManagementToast({entry:{area:(additions.length-5)+' more new downtime records',reason:'',hours:0,minutes:0},dayName:'Updates'})}}
 let managementPollTimer=null,managementPollBusy=false;
-function startManagementPolling(){if(managementPollTimer)clearInterval(managementPollTimer);managementPollTimer=setInterval(async()=>{if(!centralReady||cloudSyncFailed||managementPollBusy||cloudBusy||centralPendingWrites>0)return;managementPollBusy=true;try{const result=await window.DowntimeCentral.state();if(Number(result.version)>centralVersion)applyIncomingCloudPayload(result.payload,'CENTRAL · remote update',result.updatedAt,result.version,result.user)}catch(error){if(error.status===401||/session expired/i.test(error.message||''))cloudStatus('CENTRAL SESSION EXPIRED · SIGN IN AGAIN');else console.warn('Central update polling failed.',error)}finally{managementPollBusy=false}},5000)}
+function startManagementPolling(){if(managementPollTimer)clearInterval(managementPollTimer);managementPollTimer=null;return false}
 async function manualRefresh(){const btn=$('manualRefreshBtn');if(!centralReady){cloudStatus('REFRESH FAILED · CENTRAL SESSION NOT CONNECTED');return}if(cloudBusy||centralPendingWrites>0){cloudStatus('REFRESH PAUSED · CENTRAL SAVE IN PROGRESS');return}if(cloudSyncFailed&&!confirm('A local change has not synced. Refreshing will discard that unsynced change and load the central copy. Continue?'))return;if(btn){btn.disabled=true;btn.textContent='↻ REFRESHING…'}try{await cloudWrite;const result=await window.DowntimeCentral.state();applyIncomingCloudPayload(result.payload,'CENTRAL · MANUAL REFRESH COMPLETE',result.updatedAt,result.version,result.user);cloudSyncFailed=false;const last=$('lastSync');if(last)last.textContent='Last successful refresh · '+new Date().toLocaleString('en-GB')}catch(error){cloudStatus('REFRESH FAILED · '+(error.message||'Check central connection'));console.warn('Central manual refresh failed.',error)}finally{if(btn){btn.disabled=false;btn.textContent='↻ REFRESH DATA'}}}
 $('manualRefreshBtn').onclick=manualRefresh;
 $('centralAccountSave')?.addEventListener('click',saveCentralUserSettings);
@@ -2519,7 +2502,7 @@ if(window.DowntimeCentral?.session?.token)resumeCentralSession();
     <div class="yardhub-github-connect-kicker">DOWNTIMEUI · INDEPENDENT DATA INFRASTRUCTURE</div>
     <h1 id="yardhub-github-connect-title">Connect YARDHUB to GitHub</h1>
     <p>Connect a dedicated <strong>private</strong> GitHub repository for operational data. Do not use the DOWNTIME or DOWNTIMEUI application-source repositories.</p>
-    <p class="yardhub-github-connect-note">Create a new private repository here using a one-time token with Repository creation (write) or Administration (write). This token is used only for repository creation.</p><p class="yardhub-github-connect-note">After creation, use a separate fine-grained token limited to this one private repository with Contents read/write and Metadata read. It stays in memory only and must not be shared with staff.</p>
+    <p class="yardhub-github-connect-note">Create a new private repository here using a one-time token with Repository creation (write) or Administration (write). This token is used only for repository creation.</p><p class="yardhub-github-connect-note">After creation, use a fine-grained token limited to this one private repository with Contents read/write and Metadata read. The token is stored in this browser profile so it reconnects after reload. Anyone with access to this browser profile can use it; configure the same token on each device.</p>
     <form id="yardhub-github-connect-form">
       <label>GitHub owner<input name="owner" value="aka30art" autocomplete="username" required></label>
       <label>Private data repository<input name="repo" placeholder="e.g. YARDHUB-DATA" autocomplete="off" required></label>
@@ -2528,7 +2511,7 @@ if(window.DowntimeCentral?.session?.token)resumeCentralSession();
       <button type="submit">CONNECT & INITIALISE</button><button type="button" data-create-private>CREATE PRIVATE DATA REPOSITORY</button>
     </form>
     <p class="yardhub-github-connect-status" data-yardhub-github-status>Waiting for a private GitHub data repository.</p>
-    <p class="yardhub-github-connect-note">The initial DEV owner setup is a one-time, private-session operation. Its random setup code is hashed in the private data repository, expires after 15 minutes and is invalidated after DEV is created. The repository token stays in memory only.</p>
+    <p class="yardhub-github-connect-note">The initial DEV owner setup is a one-time, private-session operation. Its random setup code is hashed in the private data repository, expires after 15 minutes and is invalidated after DEV is created. The repository token is stored locally in this browser profile and is not written to the repository.</p>
   </div>
 </div>
 <script type="module" src="github-bootstrap.js"></script>
