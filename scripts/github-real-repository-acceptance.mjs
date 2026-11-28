@@ -5,6 +5,7 @@ import { ensureGitHubDatabaseReady, GITHUB_YARDHUB_TABLES } from "../src/infrast
 const repository = String(process.env.YARDHUB_DATA_REPOSITORY || "").trim();
 const token = String(process.env.YARDHUB_DATA_TOKEN || "").trim();
 let branch = String(process.env.YARDHUB_DATA_BRANCH || "").trim();
+let acceptanceBranch = null;
 if (!repository || !token) {
   console.error("Real-repository acceptance requires YARDHUB_DATA_REPOSITORY=owner/repo and YARDHUB_DATA_TOKEN. No test was run.");
   process.exit(2);
@@ -139,6 +140,18 @@ assert.equal(writeProbeResponse.ok, true, "Fine-grained token must have actual C
 assert.match(writeProbe.sha || "", /^[a-f0-9]{40}$/, "GitHub must return the created permission-probe blob SHA");
 branch = branch || metadata.default_branch || "main";
 
+const sourceBranch = branch || metadata.default_branch || "main";
+const sourceRefResponse = await fetch("https://api.github.com/repos/" + encodeURIComponent(owner) + "/" + encodeURIComponent(repo) + "/git/ref/heads/" + sourceBranch.split("/").map(encodeURIComponent).join("/"), { headers });
+const sourceRef = await sourceRefResponse.json();
+assert.equal(sourceRefResponse.ok, true, "Configured private data branch must exist before acceptance.");
+acceptanceBranch = "yardhub-acceptance-" + globalThis.crypto.randomUUID().replace(/-/g, "");
+const createBranchResponse = await fetch("https://api.github.com/repos/" + encodeURIComponent(owner) + "/" + encodeURIComponent(repo) + "/git/refs", {
+  method: "POST", headers: { ...headers, "Content-Type": "application/json" },
+  body: JSON.stringify({ ref: "refs/heads/" + acceptanceBranch, sha: sourceRef.object.sha })
+});
+assert.equal(createBranchResponse.ok, true, "A temporary isolated acceptance branch must be created.");
+branch = acceptanceBranch;
+
 const cacheA = memoryStorage();
 const cacheB = memoryStorage();
 const deviceA = makeStore(cacheA);
@@ -245,29 +258,17 @@ try {
 
   console.log("PASS: private repository access, empty 39-table bootstrap, independent-device refresh, stale-write conflict, binary object upload/read/delete and cached offline read.");
 } finally {
-  if (objectUploaded) {
-    try { await deviceA.deleteObject({ bucket: "downtime-evidence", path: objectPath }); } catch {}
-  }
-  if (probeCommitted) {
-    let cleaned = false;
-    for (let attempt = 0; attempt < 3 && !cleaned; attempt += 1) {
-      const latest = await deviceA.readDatabase();
-      try {
-        await deviceA.transactDatabase({
-          expectedRevision: latest.revision,
-          actorId: "REAL-REPOSITORY-ACCEPTANCE-CLEANUP",
-          operationId: probeId + "-cleanup-" + attempt,
-          mutate(tables) {
-            tables.downtime_reports = (tables.downtime_reports || []).filter(row =>
-              row.id !== probeId && row.id !== probeId + "-second" && row.id !== probeId + "-stale"
-            );
-          }
-        });
-        cleaned = true;
-      } catch (error) {
-        if (error?.status !== 409 || attempt === 2) throw error;
-      }
+  // All probes live on a disposable branch. Deleting the branch removes every
+  // temporary table row and binary object without touching operational data.
+  if (acceptanceBranch) {
+    const response = await fetch(
+      "https://api.github.com/repos/" + encodeURIComponent(owner) + "/" + encodeURIComponent(repo) +
+      "/git/refs/heads/" + encodeURIComponent(acceptanceBranch),
+      { method: "DELETE", headers }
+    );
+    if (!response.ok && response.status !== 404) {
+      const body = await response.text();
+      console.error("Temporary acceptance branch cleanup failed:", response.status, body.slice(0, 500));
     }
-    assert.equal(cleaned, true, "temporary acceptance records must be removed");
   }
 }
