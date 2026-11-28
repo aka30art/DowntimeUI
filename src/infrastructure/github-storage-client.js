@@ -47,17 +47,11 @@ export function createGitHubStorageClient({ store, now = () => new Date(), ticke
         }
       },
 
-      async createSignedUploadUrl(path, options = {}) {
-        try {
-          const ticket = createUploadTicket({
-            bucket: bucketName, path,
-            mimeType: options.contentType || null,
-            size: Number.isInteger(options.size) ? options.size : null
-          });
-          return { data: { path: ticket.path, token: ticket.token, signedUrl: ticket.token }, error: null };
-        } catch (error) {
-          return { data: null, error };
-        }
+      async createSignedUploadUrl() {
+        return {
+          data: null,
+          error: new Error("Browser-to-GitHub private binary upload transport is not implemented; signed upload URLs are unavailable.")
+        };
       },
 
       async uploadToSignedUrl(path, token, file, options = {}) {
@@ -123,14 +117,11 @@ export function createGitHubStorageClient({ store, now = () => new Date(), ticke
         }
       },
 
-      async createSignedUrl(path) {
-        try {
-          const result = await store.downloadObject({ bucket: bucketName, path });
-          const blob = new Blob([result.bytes], { type: result.mimeType });
-          return { data: { signedUrl: URL.createObjectURL(blob), path }, error: null };
-        } catch (error) {
-          return { data: null, error };
-        }
+      async createSignedUrl() {
+        return {
+          data: null,
+          error: new Error("Browser-accessible private binary download transport is not implemented; runner-local blob URLs are never returned.")
+        };
       }
     });
   }
