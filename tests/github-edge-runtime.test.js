@@ -467,7 +467,7 @@ test("atomic broker action aborts if primary authority epoch changes after reque
 });
 
 
-test("GitHub edge runtime blocks source actions that could write to protected DOWNTIME", async () => {
+test("GitHub edge runtime blocks protected DOWNTIME and unsupported binary actions before handler invocation", async () => {
   const store = createMemoryStore();
   const runtime = await installGitHubEdgeRuntime({ store, functionNames: [] });
   let invoked = false;
@@ -478,11 +478,24 @@ test("GitHub edge runtime blocks source actions that could write to protected DO
     }
   };
   try {
-    for (const action of ["identity-reset", "staff-original-upload"]) {
+    const blocked = [
+      ["central-bank", "identity-reset"],
+      ["central-bank", "staff-original-upload"],
+      ["central-bank", "staff-photo-url"],
+      ["central-bank", "staff-photo-read"],
+      ["photo-evidence", "create-upload"],
+      ["photo-evidence", "view"],
+      ["photo-evidence", "cleanup"],
+      ["repair-maintenance-api", "upload"],
+      ["repair-maintenance-api", "export-create"],
+      ["repair-maintenance-api", "export-url"]
+    ];
+    for (const [service, action] of blocked) {
       await assert.rejects(executeGitHubEdgeAction({
-        store, handlers, service: "central-bank", action, args: {},
+        store, handlers: { [service]: async () => { invoked = true; return new Response("{}", { status: 200 }); } },
+        service, action, args: {},
         requestId: "30fd938a-2107-4b8a-ade1-ba77bc542182"
-      }), /protected DOWNTIME repository/);
+      }), /protected-repository or binary transport path/);
     }
     assert.equal(invoked, false);
   } finally {
