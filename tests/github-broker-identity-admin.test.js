@@ -90,6 +90,14 @@ function setup({ action = "link", actorId = DEV_GITHUB_ID, isPrivate = true, ass
       return store;
     },
     fetchImpl: async (url, options) => {
+      if (url.endsWith("/repos/private-yardhub/yardhub-inbox")) {
+        calls.brokerMetadata.push({ url, options });
+        return new Response(JSON.stringify({ id: BROKER_REPOSITORY_ID, private: true }), { status: 200 });
+      }
+      if (url.endsWith("/repos/private-yardhub/yardhub-data")) {
+        calls.metadata.push({ url, options });
+        return new Response(JSON.stringify({ id: DATA_REPOSITORY_ID, private: true }), { status: 200 });
+      }
       calls.issue.push({ url, options });
       return new Response(JSON.stringify({
         id: 333,
