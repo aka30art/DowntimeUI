@@ -145,7 +145,7 @@ function hasCapability(principal, department, capability) {
  * for unmapped GitHub IDs, inactive USER/STAFF identities, missing ROOTS/ROLE
  * data, unknown service actions and unassigned inbox issue IDs.
  *
- * GitHub identity links are held in a versioned private-repository snapshot,
+ * GitHub identity links are held in a private extension table,
  * separate from the 39 source tables. Only immutable DEV may change the links.
  */
 export function createGitHubBrokerAuthority({
