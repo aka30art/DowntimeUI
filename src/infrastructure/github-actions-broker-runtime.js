@@ -69,7 +69,7 @@ export function createGitHubYardHubBroker({
     }),
     authorize: authority.authorize,
     createServiceSession: authority.createServiceSession,
-    execute: ({ principal, service, action, args, sessionToken, requestId }) =>
+    execute: ({ principal, service, action, args, sessionToken, requestId, authorityEpoch }) =>
       executeGitHubEdgeAction({
         store,
         handlers,
