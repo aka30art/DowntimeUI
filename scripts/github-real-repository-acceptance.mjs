@@ -97,6 +97,9 @@ try {
     error => error?.status === 409,
     "device B stale write must be rejected with HTTP 409 semantics"
   );
+  const afterConflict = await deviceA.readDatabase();
+  assert.equal(afterConflict.tables.downtime_reports.some(row => row.id === probeId + "-stale"), false,
+    "rejected stale write must not appear in the central repository");
 
   const bytes = new TextEncoder().encode("YARDHUB GitHub private storage acceptance " + probeId);
   await deviceA.uploadObject({ bucket: "downtime-evidence", path: objectPath, data: bytes, mimeType: "text/plain", upsert: false });
