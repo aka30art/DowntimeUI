@@ -293,3 +293,92 @@ test("GitHub App browser OAuth uses PKCE, validates state and scopes the user to
 });
 
 console.log("PASS: GitHub App browser PKCE, state validation, repo-scoped token, encrypted requests and encrypted response contract");
+
+
+test("broker client resolves exactly one open, non-PR inbox assigned exclusively to the authenticated GitHub account", async () => {
+  const values = new Map();
+  const storage = {
+    getItem: key => values.get(key) || null,
+    setItem: (key, value) => values.set(key, value),
+    removeItem: key => values.delete(key)
+  };
+  const calls = [];
+  const client = createGitHubAppBrokerClient({
+    clientId: "public-client-id",
+    repositoryId: 123456,
+    owner: "private-yardhub",
+    repository: "yardhub-inbox",
+    fetchImpl: async (url, options = {}) => {
+      calls.push({ url: String(url), options });
+      if (String(url).endsWith("/login/oauth/access_token")) {
+        return new Response(JSON.stringify({ access_token: "broker-token", token_type: "bearer", expires_in: 1800 }), { status: 200 });
+      }
+      if (String(url).endsWith("/user")) {
+        return new Response(JSON.stringify({ id: 987654, login: "yard-operator" }), { status: 200 });
+      }
+      if (String(url).includes("/issues?assignee=yard-operator")) {
+        return new Response(JSON.stringify([
+          {
+            id: 555, number: 77, state: "open", title: "YARDHUB inbox — operator",
+            assignees: [{ id: 987654 }],
+            labels: [{ name: "yardhub-inbox" }]
+          },
+          {
+            id: 556, number: 78, state: "open", title: "Not this user's inbox",
+            assignees: [{ id: 111111 }],
+            labels: [{ name: "yardhub-inbox" }]
+          },
+          {
+            id: 557, number: 79, state: "open", pull_request: { url: "https://api.github.com/pulls/79" },
+            assignees: [{ id: 987654 }],
+            labels: [{ name: "yardhub-inbox" }]
+          }
+        ]), { status: 200 });
+      }
+      throw new Error("Unexpected GitHub request: " + url);
+    },
+    storage,
+    pendingRequestStore: createMemoryPendingRequestStore()
+  });
+  const started = await client.startWebAuthorization({ redirectUri: "https://example.com/callback" });
+  const state = new URL(started.authorizationUrl).searchParams.get("state");
+  await client.completeWebAuthorization({
+    callbackUrl: "https://example.com/callback?code=oauth-code&state=" + state,
+    clientSecret: "public-client-secret"
+  });
+  const inbox = await client.resolveInboxIssue();
+  assert.deepEqual(inbox, { issueNumber: 77, issueId: 555, title: "YARDHUB inbox — operator" });
+  assert.deepEqual(client.currentInboxIssue, { issueNumber: 77 });
+  assert.ok(calls.some(call => call.url.includes("labels=yardhub-inbox")));
+});
+
+test("broker client refuses missing, duplicate or shared inbox assignments", async () => {
+  async function resolveWith(issues) {
+    const values = new Map();
+    const storage = {
+      getItem: key => values.get(key) || null,
+      setItem: (key, value) => values.set(key, value),
+      removeItem: key => values.delete(key)
+    };
+    const client = createGitHubAppBrokerClient({
+      clientId: "public-client-id", repositoryId: 123456,
+      owner: "private-yardhub", repository: "yardhub-inbox",
+      fetchImpl: async url => {
+        if (String(url).endsWith("/login/oauth/access_token")) return new Response(JSON.stringify({ access_token: "token", token_type: "bearer", expires_in: 1800 }), { status: 200 });
+        if (String(url).endsWith("/user")) return new Response(JSON.stringify({ id: 987654, login: "yard-operator" }), { status: 200 });
+        if (String(url).includes("/issues?assignee=yard-operator")) return new Response(JSON.stringify(issues), { status: 200 });
+        throw new Error("Unexpected GitHub request: " + url);
+      },
+      storage,
+      pendingRequestStore: createMemoryPendingRequestStore()
+    });
+    const started = await client.startWebAuthorization({ redirectUri: "https://example.com/callback" });
+    const state = new URL(started.authorizationUrl).searchParams.get("state");
+    await client.completeWebAuthorization({ callbackUrl: "https://example.com/callback?code=code&state=" + state, clientSecret: "secret" });
+    return client.resolveInboxIssue();
+  }
+  const base = { state: "open", assignees: [{ id: 987654 }], labels: [{ name: "yardhub-inbox" }] };
+  await assert.rejects(resolveWith([]), /No active private YARDHUB inbox/);
+  await assert.rejects(resolveWith([{ ...base, id: 1, number: 1 }, { ...base, id: 2, number: 2 }]), /More than one private YARDHUB inbox/);
+  await assert.rejects(resolveWith([{ ...base, id: 3, number: 3, assignees: [{ id: 987654 }, { id: 111111 }] }]), /No active private YARDHUB inbox/);
+});
