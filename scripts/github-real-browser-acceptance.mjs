@@ -40,8 +40,36 @@ const secondId = probeId + "-second";
 const staleId = probeId + "-stale";
 let committed = false;
 let pageA, pageB;
+let acceptanceBranch = null;
+const apiHeaders = {
+  Accept: "application/vnd.github+json",
+  Authorization: "Bearer " + token,
+  "X-GitHub-Api-Version": "2022-11-28",
+  "Content-Type": "application/json"
+};
+const apiBase = "https://api.github.com/repos/" + encodeURIComponent(owner) + "/" + encodeURIComponent(repo);
 
 try {
+  const metadataResponse = await fetch(apiBase, { headers: apiHeaders });
+  const metadata = await metadataResponse.json();
+  assert.equal(metadataResponse.ok, true, "The configured private YARDHUB data repository must be readable.");
+  assert.equal(metadata.private, true, "Browser acceptance target must be private.");
+  assert.equal(metadata.archived, false, "Browser acceptance target must be writable.");
+  assert.equal(metadata.permissions?.push, true, "Browser acceptance token must have repository write access.");
+  const sourceBranch = branch || metadata.default_branch || "main";
+  const sourceRefResponse = await fetch(
+    apiBase + "/git/ref/heads/" + sourceBranch.split("/").map(encodeURIComponent).join("/"),
+    { headers: apiHeaders }
+  );
+  const sourceRef = await sourceRefResponse.json();
+  assert.equal(sourceRefResponse.ok, true, "The configured YARDHUB data branch must exist.");
+  acceptanceBranch = "yardhub-browser-acceptance-" + globalThis.crypto.randomUUID().replace(/-/g, "");
+  const createBranchResponse = await fetch(apiBase + "/git/refs", {
+    method: "POST",
+    headers: apiHeaders,
+    body: JSON.stringify({ ref: "refs/heads/" + acceptanceBranch, sha: sourceRef.object.sha })
+  });
+  assert.equal(createBranchResponse.ok, true, "A disposable browser-acceptance branch must be created.");
   for (let i = 0; i < 2; i += 1) {
     const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
     contexts.push(context);
@@ -53,7 +81,7 @@ try {
     await page.locator("#yardhub-github-connect-overlay").waitFor({ state: "visible" });
     await page.locator('#yardhub-github-connect-form [name="owner"]').fill(owner);
     await page.locator('#yardhub-github-connect-form [name="repo"]').fill(repo);
-    await page.locator('#yardhub-github-connect-form [name="branch"]').fill(branch);
+    await page.locator('#yardhub-github-connect-form [name="branch"]').fill(acceptanceBranch);
     await page.locator('#yardhub-github-connect-form [name="token"]').fill(token);
     await page.locator('#yardhub-github-connect-form [type="submit"]').click();
     try {
@@ -195,7 +223,20 @@ try {
       throw error;
     }
   }
-  for (const context of contexts) await context.close().catch(() => {});
-  await browser.close();
-  await new Promise(resolve => server.close(resolve));
+  try {
+    if (acceptanceBranch) {
+      const response = await fetch(apiBase + "/git/refs/heads/" + encodeURIComponent(acceptanceBranch), {
+        method: "DELETE",
+        headers: apiHeaders
+      });
+      if (!response.ok && response.status !== 404) {
+        const body = await response.text();
+        throw new Error("Disposable browser-acceptance branch cleanup failed: " + response.status + " " + body.slice(0, 500));
+      }
+    }
+  } finally {
+    for (const context of contexts) await context.close().catch(() => {});
+    await browser.close();
+    await new Promise(resolve => server.close(resolve));
+  }
 }
