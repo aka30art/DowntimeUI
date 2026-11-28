@@ -38,6 +38,7 @@ test("first GitHub installation seeds all operational tables and immutable DEV b
   assert.notEqual(result.bootstrapCode, "YARDHUB-INITIAL-SETUP");
   assert.equal(store.tables.downtime_roots_bootstrap[0].bootstrap_code_hash.length, 64);
   assert.notEqual(store.tables.downtime_roots_bootstrap[0].bootstrap_code_hash, result.bootstrapCode);
+  assert.equal(store.tables.downtime_roots_bootstrap[0].bootstrap_code, result.bootstrapCode);
   assert.equal(store.tables.downtime_roots_bootstrap[0].bootstrap_code_expires_at, result.bootstrapCodeExpiresAt);
   assert.equal(store.tables.yard_hub_tier_config[0].version, 0);
   assert.equal(store.commits, 1);
@@ -86,7 +87,7 @@ test("bootstrap adds missing singleton records without replacing non-empty table
   assert.equal(store.tables.downtime_reports[0].title, "Keep this report");
 });
 
-test("an unexpired DEV bootstrap code is not rotated when another browser connects after reload", async () => {
+test("all browser profiles reuse the same unexpired DEV bootstrap code without another commit", async () => {
   const store = memoryStore();
   const previousCode = globalThis.__YARDHUB_BOOTSTRAP_CODE__;
   try {
@@ -106,13 +107,14 @@ test("an unexpired DEV bootstrap code is not rotated when another browser connec
     });
 
     assert.equal(first.bootstrapCode, "A".repeat(48));
-    assert.equal(second.bootstrapCode, null, "a second browser must not claim it can recover the first browser's plaintext code");
+    assert.equal(second.bootstrapCode, first.bootstrapCode, "a second browser must receive the same active one-time code");
     assert.equal(second.initialized, false);
     assert.equal(store.commits, 1, "opening another browser must not create another repository commit");
+    assert.equal(store.tables.downtime_roots_bootstrap[0].bootstrap_code, first.bootstrapCode);
     assert.equal(store.tables.downtime_roots_bootstrap[0].bootstrap_code_hash, firstHash);
     assert.equal(store.tables.downtime_roots_bootstrap[0].bootstrap_code_expires_at, firstExpiry);
     assert.equal(generationCount, 0, "an active code must not be regenerated before expiry");
-    assert.equal(globalThis.__YARDHUB_BOOTSTRAP_CODE__, null);
+    assert.equal(globalThis.__YARDHUB_BOOTSTRAP_CODE__, first.bootstrapCode);
   } finally {
     if (previousCode === undefined) delete globalThis.__YARDHUB_BOOTSTRAP_CODE__;
     else globalThis.__YARDHUB_BOOTSTRAP_CODE__ = previousCode;
