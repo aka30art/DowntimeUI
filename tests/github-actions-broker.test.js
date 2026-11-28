@@ -9,7 +9,7 @@ import {
 
 const REPOSITORY_ID = 123456;
 const ACTOR_ID = 987654;
-const USER_ID = "canonical-user-01";
+const USER_ID = "00000000-0000-4000-8000-000000000002";
 const REQUEST_ID = "10fd938a-2107-4b8a-ade1-ba77bc542182";
 
 function envelope() {
@@ -66,7 +66,7 @@ function createBrokerHarness({
       return {
         githubUserId,
         userId: USER_ID,
-        staffId: "staff-01",
+        staffId: "00000000-0000-4000-8000-000000000003",
         enabled: true,
         status: "ACTIVE",
         ...principalOverrides
@@ -212,7 +212,7 @@ test("broker rejects caller-supplied session or access tokens before idempotency
 test("broker refuses execution if the current authority epoch is unavailable", async () => {
   const broker = createGitHubActionsBroker({
     expectedRepositoryId: REPOSITORY_ID,
-    resolvePrincipal: async id => ({ githubUserId: id, userId: USER_ID, staffId: "staff-01", enabled: true, status: "ACTIVE" }),
+    resolvePrincipal: async id => ({ githubUserId: id, userId: USER_ID, staffId: "00000000-0000-4000-8000-000000000003", enabled: true, status: "ACTIVE" }),
     authorizeInboxIssue: async () => true,
     decryptRequest: async () => ({ requestId: REQUEST_ID, service: "gatelog-api", action: "history", args: {} }),
     authorize: async () => true,
@@ -230,7 +230,7 @@ test("broker refuses execution if the current authority epoch is unavailable", a
 test("broker denies a valid USER when the request issue is not assigned to that USER", async () => {
   const restricted = createGitHubActionsBroker({
     expectedRepositoryId: REPOSITORY_ID,
-    resolvePrincipal: async id => ({ githubUserId: id, userId: USER_ID, staffId: "staff-01", enabled: true, status: "ACTIVE" }),
+    resolvePrincipal: async id => ({ githubUserId: id, userId: USER_ID, staffId: "00000000-0000-4000-8000-000000000003", enabled: true, status: "ACTIVE" }),
     authorizeInboxIssue: async () => false,
     decryptRequest: async () => { throw new Error("Must not decrypt an unassigned inbox issue."); },
     authorize: async () => true,
@@ -279,7 +279,7 @@ test("broker service sessions store only a hash and are revoked after the servic
   };
   const session = await createGitHubCentralServiceSession({
     store,
-    principal: { userId: USER_ID, staffId: "staff-01", username: "operator", tier: "USER", enabled: true, status: "ACTIVE" },
+    principal: { userId: USER_ID, staffId: "00000000-0000-4000-8000-000000000003", username: "operator", tier: "USER", enabled: true, status: "ACTIVE" },
     requestId: REQUEST_ID,
     cryptoProvider: webcrypto,
     now: () => new Date("2026-11-27T12:00:00.000Z")
@@ -302,9 +302,9 @@ test("broker service sessions store only a hash and are revoked after the servic
 test("broker service session refuses non-active or incomplete canonical identities", async () => {
   const store = { readDatabase: async () => ({ revision: 0, tables: {} }), transactDatabase: async () => { throw new Error("must not write"); } };
   for (const principal of [
-    { userId: USER_ID, staffId: "staff-01", username: "operator", tier: "USER", enabled: false, status: "ACTIVE" },
-    { userId: USER_ID, staffId: "staff-01", username: "operator", enabled: true, status: "ACTIVE" },
-    { userId: "not-a-canonical-uuid", staffId: "staff-01", username: "operator", tier: "USER", enabled: true, status: "ACTIVE" }
+    { userId: USER_ID, staffId: "00000000-0000-4000-8000-000000000003", username: "operator", tier: "USER", enabled: false, status: "ACTIVE" },
+    { userId: USER_ID, staffId: "00000000-0000-4000-8000-000000000003", username: "operator", enabled: true, status: "ACTIVE" },
+    { userId: "not-a-canonical-uuid", staffId: "00000000-0000-4000-8000-000000000003", username: "operator", tier: "USER", enabled: true, status: "ACTIVE" }
   ]) {
     await assert.rejects(createGitHubCentralServiceSession({
       store, principal, requestId: REQUEST_ID, cryptoProvider: webcrypto
@@ -337,7 +337,7 @@ test("broker uses the private-store Central Bank session factory when no overrid
     cryptoProvider: webcrypto,
     now: () => new Date("2026-11-27T12:00:00.000Z"),
     resolvePrincipal: async id => ({
-      githubUserId: id, userId: USER_ID, staffId: "staff-01",
+      githubUserId: id, userId: USER_ID, staffId: "00000000-0000-4000-8000-000000000003",
       username: "operator", tier: "USER", enabled: true, status: "ACTIVE"
     }),
     authorizeInboxIssue: async () => true,
