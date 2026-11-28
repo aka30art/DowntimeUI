@@ -1,171 +1,101 @@
-import {
-  clearGitHubConnection,
-  createConnectedGitHubStore,
-  createPrivateGitHubDataRepository,
-  saveGitHubConnection
-} from "../../src/infrastructure/github-connection.js";
-import { ensureGitHubDatabaseReady } from "../../src/infrastructure/github-database-bootstrap.js";
-import { installGitHubEdgeRuntime } from "./github-edge-runtime.js";
+import { createGitHubAppBrokerClient } from "../../src/infrastructure/github-app-broker-client.js";
+import { createGitHubBrokerFetchAdapter } from "../../src/infrastructure/github-broker-fetch-adapter.js";
 
-let resolveReady;
-const ready = new Promise(resolve => { resolveReady = resolve; });
-globalThis.__YARDHUB_GITHUB_READY__ = ready;
-const nativeFetch = globalThis.fetch.bind(globalThis);
-globalThis.__YARDHUB_NATIVE_FETCH__ = nativeFetch;
-const earlyFetch = async (input, init) => {
-  const url = typeof input === "string" ? input : input?.url || "";
-  if (/\/functions\/v1\//i.test(String(url))) {
-    await ready;
-    const activeFetch = globalThis.fetch;
-    if (activeFetch !== earlyFetch) return activeFetch(input, init);
+const config = window.YARDHUB_GITHUB_BROKER_CONFIG || {};
+const nativeFetch = window.fetch.bind(window);
+const functionBase = "https://github-native.invalid/functions/v1/";
+
+function setStatus(message, isError = false) {
+  const target = document.getElementById("authMsg") || document.getElementById("githubBrokerStatus");
+  if (target) {
+    target.textContent = message;
+    target.dataset.state = isError ? "error" : "info";
   }
-  return nativeFetch(input, init);
-};
-globalThis.fetch = earlyFetch;
-
-function status(message, isError = false) {
-  const target = document.querySelector("[data-yardhub-github-status]");
-  if (!target) return;
-  target.textContent = message;
-  target.dataset.state = isError ? "error" : "info";
 }
 
-function lockApplication(locked) {
-  document.body.classList.toggle("yardhub-github-locked", locked);
-  const overlay = document.getElementById("yardhub-github-connect-overlay");
-  if (overlay) overlay.hidden = !locked;
+function validConfig() {
+  return typeof config.clientId === "string" && config.clientId.trim().length > 0 &&
+    typeof config.clientSecret === "string" && config.clientSecret.trim().length > 0 &&
+    Number.isSafeInteger(Number(config.repositoryId)) && Number(config.repositoryId) > 0 &&
+    typeof config.owner === "string" && config.owner.trim().length > 0 &&
+    typeof config.repository === "string" && config.repository.trim().length > 0 &&
+    typeof config.brokerPublicKey === "string" && config.brokerPublicKey.trim().length > 0;
 }
 
-async function activateRepository({ owner, repo, button, tokenInput }) {
-  let runtime = null;
-  try {
-    status("Verifying private repository and initialising the YARDHUB data schema…");
-    const store = await createConnectedGitHubStore({
-      storage: globalThis.localStorage,
-      systemId: "DOWNTIMEUI-GITHUB",
-      fetchImpl: globalThis.__YARDHUB_NATIVE_FETCH__ || globalThis.fetch
-    });
-    const authority = await store.ensureAuthority();
-    const beforeRestore = await store.readDatabase();
-    let restoreResult = null;
-    if (beforeRestore.revision === 0 && Object.keys(beforeRestore.tables).length === 0 &&
-        typeof store.inspectYardHubPrimaryBackup === "function") {
-      const primaryBackup = await store.inspectYardHubPrimaryBackup();
-      if (primaryBackup) {
-        const restore = globalThis.confirm(
-          "A YARDHUB primary backup manifest was found (" + primaryBackup.tableCount +
-          " tables, " + primaryBackup.storageObjectCount + " files, exported " +
-          primaryBackup.exportedAt + ").\n\nRestore this backup into the private GitHub database now?\n\nChoose Cancel to install a clean empty YARDHUB instead."
-        );
-        if (restore) {
-          restoreResult = await store.restoreYardHubPrimaryBackup({ expectedRevision: beforeRestore.revision });
-        }
-      }
-    }
-    const database = await ensureGitHubDatabaseReady({ store });
-    runtime = await installGitHubEdgeRuntime({
-      store, actorId: "YARDHUB-GITHUB-RUNTIME",
-      fetchImpl: globalThis.__YARDHUB_NATIVE_FETCH__ || globalThis.fetch
-    });
-    const verifiedAuthority = await store.readAuthority();
-    if (verifiedAuthority.primarySystemId !== "YARDHUB-PRIMARY" ||
-        verifiedAuthority.status !== "ACTIVE" ||
-        verifiedAuthority.epoch !== 1) {
-      throw new Error("Initial authority check failed. YARDHUB must remain the primary system during installation.");
-    }
-    globalThis.__YARDHUB_GITHUB_STORE__ = store;
-    globalThis.__YARDHUB_GITHUB_RUNTIME__ = runtime;
-    globalThis.__YARDHUB_GITHUB_DATABASE__ = database;
-    globalThis.__YARDHUB_GITHUB_CONNECTED__ = true;
-    const bootstrapInput = document.getElementById("setupCode");
-    if (bootstrapInput) bootstrapInput.value = database.bootstrapCode || "";
-    status("Private repository ready · " + owner + "/" + repo +
-      " · " + database.tableCount + " tables" +
-      (restoreResult ? " · restored verified primary backup from " + restoreResult.exportedAt + " · " + restoreResult.storageObjectCount + " files" : "") +
-      " · primary: " + verifiedAuthority.primarySystemId);
-    lockApplication(false);
-    resolveReady({ store, runtime, authority, database });
-    globalThis.dispatchEvent(new CustomEvent("yardhub:github-connected", {
-      detail: { authority: verifiedAuthority, database }
-    }));
-    return true;
-  } catch (error) {
-    await runtime?.dispose?.();
-    clearGitHubConnection();
-    status(error?.message || "GitHub initialisation failed. Check the private repository and token.", true);
-    button.disabled = false;
-    tokenInput.focus();
+function configureEndpoints() {
+  window.DOWNTIME_CENTRAL_API = functionBase + "central-bank";
+  window.CENTRAL_CONFIG_ADMIN_API = functionBase + "central-config-admin";
+  window.GATELOG_API = functionBase + "gatelog-api";
+  window.PHOTO_EVIDENCE_API = functionBase + "photo-evidence";
+  window.REPAIR_MAINTENANCE_API = functionBase + "repair-maintenance-api";
+  window.SPECTATOR_READ_API = functionBase + "spectator-read";
+  window.YARD_HUB_SETTINGS_API = functionBase + "yard-hub-settings-api";
+  // GitHub-only runtime must not fall back to Supabase anonymous auth.
+  window.SUPABASE_URL = "";
+  window.SUPABASE_ANON_KEY = "";
+}
+
+async function initialiseBroker() {
+  if (!validConfig()) {
+    window.YARDHUB_GITHUB_BROKER_CONFIGURED = false;
+    const button = document.getElementById("unlockBtn");
+    if (button) button.disabled = true;
+    setStatus("GitHub broker is not configured yet. Direct data-repository tokens are disabled. Configure the public Inbox App and private broker repository settings to continue.", true);
     return false;
   }
-}
 
-async function connectExisting(form) {
-  const owner = form.querySelector("[name=owner]").value.trim();
-  const repo = form.querySelector("[name=repo]").value.trim();
-  const branch = form.querySelector("[name=branch]").value.trim() || "main";
-  const tokenInput = form.querySelector("[name=token]");
-  const token = tokenInput.value.trim();
-  const button = form.querySelector("[type=submit]");
-  button.disabled = true;
-  try {
-    saveGitHubConnection({ owner, repo, branch, token });
-    tokenInput.value = "";
-    await activateRepository({ owner, repo, button, tokenInput });
-  } catch (error) {
-    clearGitHubConnection();
-    status(error?.message || "GitHub connection failed. Check the private repository and token.", true);
-    button.disabled = false;
-    tokenInput.focus();
+  const redirectUri = String(config.redirectUri || (window.location.origin + window.location.pathname));
+  const brokerClient = createGitHubAppBrokerClient({
+    clientId: config.clientId.trim(),
+    repositoryId: Number(config.repositoryId),
+    owner: config.owner.trim(),
+    repository: config.repository.trim(),
+    issueNumber: null,
+    fetchImpl: nativeFetch,
+    storage: window.sessionStorage
+  });
+  const brokerFetch = createGitHubBrokerFetchAdapter({
+    brokerClient,
+    brokerPublicKey: config.brokerPublicKey.trim(),
+    fetchImpl: nativeFetch
+  });
+
+  window.YARDHUB_GITHUB_BROKER_CLIENT = brokerClient;
+  window.YARDHUB_GITHUB_BROKER_CONFIGURED = true;
+  window.YARDHUB_GITHUB_BROKER_CONFIG = config;
+  window.fetch = brokerFetch;
+  configureEndpoints();
+  if (window.DowntimeCentral?.configureBroker) {
+    window.DowntimeCentral.configureBroker(brokerClient, { ...config, redirectUri });
+  } else {
+    throw new Error("Central Bank broker client did not initialise before GitHub bootstrap.");
   }
-}
 
-async function createPrivateRepository(form) {
-  const owner = form.querySelector("[name=owner]").value.trim();
-  const repo = form.querySelector("[name=repo]").value.trim();
-  const tokenInput = form.querySelector("[name=token]");
-  const token = tokenInput.value.trim();
-  const button = form.querySelector("[data-create-private]");
-  button.disabled = true;
-  try {
-    const created = await createPrivateGitHubDataRepository({
-      owner, repo, token,
-      fetchImpl: globalThis.__YARDHUB_NATIVE_FETCH__ || globalThis.fetch
-    });
-    tokenInput.value = "";
-    const branchInput = form.querySelector("[name=branch]");
-    if (branchInput) branchInput.value = created.defaultBranch;
-    button.hidden = true;
-    status("Created private repository · " + created.fullName +
-      ". Now enter a separate fine-grained token limited to this repository (Contents read/write, Metadata read), then choose CONNECT & INITIALISE.");
-    tokenInput.focus();
-  } catch (error) {
-    status(error?.message || "Private repository creation failed. Check the token permissions.", true);
-    button.disabled = false;
-    tokenInput.focus();
+  const callback = new URL(window.location.href);
+  if (callback.searchParams.has("error")) {
+    const error = callback.searchParams.get("error_description") || callback.searchParams.get("error");
+    setStatus("GitHub sign-in was not completed: " + String(error).slice(0, 180), true);
+    window.history.replaceState({}, document.title, redirectUri);
+    return true;
   }
+  if (callback.searchParams.has("code") || callback.searchParams.has("state")) {
+    setStatus("Verifying GitHub identity and assigned YARDHUB inbox…");
+    try {
+      await window.DowntimeCentral.completeBrokerLogin(window.location.href);
+      window.history.replaceState({}, document.title, redirectUri);
+      setStatus("GitHub identity verified. Loading YARDHUB…");
+    } catch (error) {
+      window.history.replaceState({}, document.title, redirectUri);
+      setStatus(String(error?.message || "GitHub broker sign-in failed.").slice(0, 240), true);
+    }
+  }
+  return true;
 }
 
-function initialise() {
-  const form = document.getElementById("yardhub-github-connect-form");
-  if (!form) return;
-  lockApplication(true);
-  form.addEventListener("submit", event => {
-    event.preventDefault();
-    void connectExisting(form);
-  });
-  form.querySelector("[data-create-private]")?.addEventListener("click", () => {
-    void createPrivateRepository(form);
-  });
-  const disconnect = document.querySelector("[data-yardhub-github-disconnect]");
-  disconnect?.addEventListener("click", () => {
-    clearGitHubConnection();
-    globalThis.__YARDHUB_GITHUB_RUNTIME__?.dispose?.();
-    globalThis.location.reload();
-  });
-}
-
-if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", initialise, { once: true });
-} else {
-  initialise();
-}
+window.YARDHUB_GITHUB_BROKER_READY = initialiseBroker().catch(error => {
+  window.YARDHUB_GITHUB_BROKER_CONFIGURED = false;
+  setStatus(String(error?.message || "GitHub broker initialisation failed.").slice(0, 240), true);
+  const button = document.getElementById("unlockBtn");
+  if (button) button.disabled = true;
+  return false;
+});
