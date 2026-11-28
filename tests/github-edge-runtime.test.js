@@ -280,6 +280,29 @@ test("Central Config admin reads the YARDHUB launcher and photo-evidence uploads
 });
 
 
+test("offline GitHub runtime serves cached reads and returns an explicit unsaved response for failed writes", async () => {
+  const store = createMemoryStore();
+  const previousFetch = globalThis.fetch;
+  const previousOffline = globalThis.__YARDHUB_GITHUB_OFFLINE__;
+  const runtime = await installGitHubEdgeRuntime({ store, offline: true, functionNames: [] });
+  try {
+    assert.equal(globalThis.__YARDHUB_GITHUB_OFFLINE__, true);
+    runtime.handlers["offline-write-test"] = async () => { throw new TypeError("Failed to fetch"); };
+    const response = await globalThis.fetch("https://github-native.invalid/functions/v1/offline-write-test", {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "save" })
+    });
+    assert.equal(response.status, 503);
+    const result = await response.json();
+    assert.match(result.error, /OFFLINE/);
+    assert.match(result.error, /not saved to GitHub/);
+  } finally {
+    await runtime.dispose();
+    globalThis.fetch = previousFetch;
+    if (previousOffline === undefined) delete globalThis.__YARDHUB_GITHUB_OFFLINE__;
+    else globalThis.__YARDHUB_GITHUB_OFFLINE__ = previousOffline;
+  }
+});
+
 test("R&M machinery register and GATELOG customer visit complete authenticated CRUD flows", async () => {
   const store = createMemoryStore();
   const originalFetch = globalThis.fetch;
