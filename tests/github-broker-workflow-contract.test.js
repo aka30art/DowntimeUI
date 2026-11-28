@@ -39,7 +39,7 @@ test("private broker caller templates keep event triggers and secret bindings ou
   assert.match(inboxTemplate, /types: \[created\]/);
   assert.match(inboxTemplate, /YARDHUB_DATA_APP_PRIVATE_KEY/);
   assert.match(inboxTemplate, /YARDHUB_BROKER_ECDH_PRIVATE_KEY/);
-  assert.match(inboxTemplate, /<PRIVATE_BROKER_REPOSITORY_NUMERIC_ID>/);
+  assert.match(inboxTemplate, /broker_repository_id: \$\{\{ github\.repository_id \}\}/);
   assert.match(identityTemplate, /workflow_dispatch:/);
   assert.match(identityTemplate, /options: \[link, revoke\]/);
   assert.match(identityTemplate, /YARDHUB_DATA_APP_PRIVATE_KEY/);
