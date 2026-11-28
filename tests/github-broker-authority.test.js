@@ -272,3 +272,28 @@ test("broker refuses to issue an authority epoch or authorize actions while YARD
     principal, service: "gatelog-api", action: "customer-arrival", args: {}, authorityEpoch: 4
   }), false);
 });
+
+
+test("immutable DEV cannot be rebound to another GitHub account or revoked through identity administration", async () => {
+  const store = makeStore();
+  const authority = createGitHubBrokerAuthority({
+    store,
+    brokerRepositoryId: BROKER_REPOSITORY_ID,
+    bootstrapGitHubUserId: DEV_GITHUB_ID,
+    bootstrapIssueId: 777
+  });
+  const dev = await authority.resolvePrincipal(DEV_GITHUB_ID);
+  await assert.rejects(authority.linkIdentity({
+    actorPrincipal: dev,
+    githubUserId: "999999",
+    userId: dev.userId,
+    staffId: dev.staffId || "00000000-0000-4000-8000-000000000003",
+    issueId: 888,
+    reason: "Attempt to rebind immutable DEV"
+  }), /immutable DEV identity cannot be rebound/);
+  await assert.rejects(authority.revokeIdentity({
+    actorPrincipal: dev,
+    githubUserId: DEV_GITHUB_ID,
+    reason: "Attempt to revoke immutable DEV"
+  }), /immutable DEV identity cannot be revoked/);
+});
