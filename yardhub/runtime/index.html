@@ -728,6 +728,7 @@ body.yardhub-github-locked>:not(#yardhub-github-connect-overlay){visibility:hidd
       </div>
       <div class="yard-session">
         <div class="yard-session-copy"><span>AUTHENTICATED USER</span><strong id="yardHubUsername">—</strong></div>
+        <button id="yardHubRefreshBtn" class="yard-logout" type="button">↻ REFRESH DATA</button>
         <button id="yardHubLogoutBtn" class="yard-logout" type="button">LOG OUT</button>
       </div>
     </header>
@@ -2346,6 +2347,16 @@ let managementPollTimer=null,managementPollBusy=false;
 function startManagementPolling(){if(managementPollTimer)clearInterval(managementPollTimer);managementPollTimer=null;return false}
 async function manualRefresh(){const btn=$('manualRefreshBtn');if(!centralReady){cloudStatus('REFRESH FAILED · CENTRAL SESSION NOT CONNECTED');return}if(cloudBusy||centralPendingWrites>0){cloudStatus('REFRESH PAUSED · CENTRAL SAVE IN PROGRESS');return}if(cloudSyncFailed&&!confirm('A local change has not synced. Refreshing will discard that unsynced change and load the central copy. Continue?'))return;if(btn){btn.disabled=true;btn.textContent='↻ REFRESHING…'}try{await cloudWrite;const result=await window.DowntimeCentral.state();applyIncomingCloudPayload(result.payload,'CENTRAL · MANUAL REFRESH COMPLETE',result.updatedAt,result.version,result.user);cloudSyncFailed=false;const last=$('lastSync');if(last)last.textContent='Last successful refresh · '+new Date().toLocaleString('en-GB')}catch(error){cloudStatus('REFRESH FAILED · '+(error.message||'Check central connection'));console.warn('Central manual refresh failed.',error)}finally{if(btn){btn.disabled=false;btn.textContent='↻ REFRESH DATA'}}}
 $('manualRefreshBtn').onclick=manualRefresh;
+window.refreshYardHubSharedData=async function(){
+ await manualRefresh();
+ window.dispatchEvent(new CustomEvent('yardhub:manual-refresh',{detail:{refreshedAt:new Date().toISOString()}}));
+ return true;
+};
+$('yardHubRefreshBtn')?.addEventListener('click',async event=>{
+ const button=event.currentTarget;if(button.disabled)return;
+ button.disabled=true;const previous=button.textContent;button.textContent='↻ REFRESHING…';
+ try{await window.refreshYardHubSharedData()}finally{button.disabled=false;button.textContent=previous}
+});
 $('centralAccountSave')?.addEventListener('click',saveCentralUserSettings);
 $('centralAccountCancel')?.addEventListener('click',()=>{resetCentralUserForm();$('centralUsersStatus').textContent='Edit cancelled.'});
 $('centralUsersRefresh')?.addEventListener('click',()=>refreshCentralUserSettings().catch(error=>{$('centralUsersStatus').textContent=error.message||'Refresh failed.'}));
