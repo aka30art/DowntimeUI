@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { createGitHubDataStore, GitHubStoreError } from "../src/infrastructure/github-data-store.js";
-import { GITHUB_YARDHUB_TABLES, GITHUB_YARDHUB_SOURCE_TABLES } from "../src/infrastructure/github-database-bootstrap.js";
+import { GITHUB_YARDHUB_TABLES } from "../src/infrastructure/github-database-bootstrap.js";
 
 const INITIAL_AUTHORITY = {
   schemaVersion: 1,
@@ -22,7 +22,7 @@ function response(status, body) {
   };
 }
 
-function createMockGitHub({ includeAuthority = true, includePrimaryBackup = false, tamperPrimaryBackupChecksum = false, authority = INITIAL_AUTHORITY } = {}) {
+function createMockGitHub({ includeAuthority = true, authority = INITIAL_AUTHORITY } = {}) {
   let counter = 0;
   let head = "commit-0";
   let failNextCas = false;
@@ -42,37 +42,7 @@ function createMockGitHub({ includeAuthority = true, includePrimaryBackup = fals
     initialFiles.set(filePath, { sha, content: encoded });
     return sha;
   }
-  if (includePrimaryBackup) {
-    const checksums = {};
-    const tableCounts = {};
-    for (const table of GITHUB_YARDHUB_SOURCE_TABLES) {
-      const rows = table === "downtime_shared_state"
-        ? [{ id: 1, version: 7, payload: { source: "YARDHUB", checks: 24 } }]
-        : table === "downtime_central_bank"
-          ? [{ id: 1, version: 4, payload: { users: [{ username: "DEV", userId: "root-dev-id" }] } }]
-          : [];
-      tableCounts[table] = rows.length;
-      const path = "replication/yardhub-primary/tables/" + table + ".json";
-      checksums[path] = addInitialFile(path, JSON.stringify(rows) + "\n");
-    }
-    const objectPath = "downtime-evidence/week-1/photo.png";
-    const storagePath = "replication/yardhub-primary/storage/" + objectPath;
-    checksums[storagePath] = addInitialFile(storagePath, Buffer.from([1, 2, 3, 4]));
-    const metadataPath = "replication/yardhub-primary/storage-metadata/" + objectPath + ".json";
-    checksums[metadataPath] = addInitialFile(metadataPath, JSON.stringify({
-      bucket: "downtime-evidence", path: "week-1/photo.png",
-      mimeType: "image/png", size: 4, updatedAt: "2026-11-27T10:00:00.000Z"
-    }) + "\n");
-    if (tamperPrimaryBackupChecksum) {
-      checksums["replication/yardhub-primary/tables/downtime_shared_state.json"] = "incorrect-checksum";
-    }
-    addInitialFile("replication/yardhub-primary/manifest.json", JSON.stringify({
-      schemaVersion: 1, source: "YARDHUB-SUPABASE",
-      sourceProjectRef: "source-project", exportedAt: "2026-11-27T10:00:00.000Z",
-      tableCounts, tableCount: GITHUB_YARDHUB_SOURCE_TABLES.length,
-      storageObjectCount: 1, storageBytes: 4, sessionsExcluded: true, checksums
-    }) + "\n");
-  }
+
 
   const fetchImpl = async (url, options = {}) => {
     const parsed = new URL(url);
