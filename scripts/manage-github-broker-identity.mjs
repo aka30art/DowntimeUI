@@ -16,6 +16,12 @@ function requiredId(value, label) {
   return number;
 }
 
+function requiredGitHubUserId(value) {
+  const id = String(value ?? "").trim();
+  if (!/^\\d{1,20}$/.test(id)) throw new TypeError("GitHub user ID must be a numeric string.");
+  return id;
+}
+
 function requiredReason(value) {
   const reason = String(value || "").trim();
   if (reason.length < 5 || reason.length > 300) throw new TypeError("An identity administration reason between 5 and 300 characters is required.");
@@ -109,7 +115,7 @@ export async function runGitHubBrokerIdentityAdmin({
 
   const reason = requiredReason(inputs.reason);
   if (action === "link") {
-    const githubUserId = requiredId(inputs.github_user_id, "Target GitHub user ID");
+    const githubUserId = requiredGitHubUserId(inputs.github_user_id);
     const brokerIssueNumber = requiredId(inputs.broker_issue_number, "Target broker inbox issue number");
     const brokerIssueId = requiredId(inputs.broker_issue_id, "Target broker inbox issue ID");
     const userId = String(inputs.user_id || "").trim();
@@ -129,22 +135,22 @@ export async function runGitHubBrokerIdentityAdmin({
     if (!issueResponse.ok || Number(issue.id) !== brokerIssueId ||
         issue.pull_request || String(issue.state).toLowerCase() !== "open" ||
         !Array.isArray(issue.assignees) ||
-        !issue.assignees.some(assignee => Number(assignee.id) === githubUserId)) {
+        !issue.assignees.some(assignee => String(assignee.id) === githubUserId)) {
       throw new Error("The target inbox issue must be open, non-PR and assigned to the target GitHub account.");
     }
     await authority.linkIdentity({
       actorPrincipal: principal,
-      githubUserId: String(githubUserId),
+      githubUserId,
       userId,
       staffId,
       issueId: brokerIssueId,
       reason
     });
   } else {
-    const githubUserId = requiredId(inputs.github_user_id, "Target GitHub user ID");
+    const githubUserId = requiredGitHubUserId(inputs.github_user_id);
     await authority.revokeIdentity({
       actorPrincipal: principal,
-      githubUserId: String(githubUserId),
+      githubUserId,
       reason
     });
   }
