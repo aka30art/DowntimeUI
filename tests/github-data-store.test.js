@@ -411,6 +411,61 @@ test("two independent device clients share GitHub records and reject stale revis
   assert.equal(finalB.tables.gatelog_customers[0].customer_name, "Shared Customer");
 });
 
+test("GitHub data cache supports offline reads, cached small files and rejects offline writes", async () => {
+  const server = createMockGitHub();
+  const values = new Map();
+  const cacheStorage = {
+    getItem(key) { return values.get(key) ?? null; },
+    setItem(key, value) { values.set(key, String(value)); },
+    removeItem(key) { values.delete(key); }
+  };
+  let online = true;
+  const fetchImpl = (url, options) => online
+    ? server.fetchImpl(url, options)
+    : Promise.reject(new TypeError("Failed to fetch"));
+  const store = createGitHubDataStore({
+    owner: "aka30art", repo: "DowntimeUI", branch: "data/yardhub",
+    token: "test-token", systemId: "YARDHUB-PRIMARY",
+    fetchImpl, cacheStorage, sleep: async () => {}
+  });
+
+  await store.ensureAuthority();
+  await store.transactDatabase({
+    expectedRevision: 0, actorId: "DEV",
+    mutate(tables) {
+      tables.downtime_central_bank = [{ id: 1, version: 1, updated_at: "2026-11-28T00:00:00.000Z", payload: { users: [{ username: "DEV" }], appData: {} } }];
+      tables.downtime_central_sessions = [{ token_hash: "cached-session", username: "DEV", expires_at: "2026-11-28T01:00:00.000Z" }];
+    }
+  });
+  await store.uploadObject({ bucket: "downtime-evidence", path: "cached/photo.jpg", data: new Uint8Array([1, 2, 3, 4]), mimeType: "image/jpeg" });
+  const onlineObject = await store.downloadObject({ bucket: "downtime-evidence", path: "cached/photo.jpg" });
+  assert.equal(onlineObject.offline, false);
+
+  online = false;
+  const cached = await store.readDatabase();
+  assert.equal(cached.offline, true);
+  assert.equal(cached.tables.downtime_central_bank[0].payload.users[0].username, "DEV");
+  await store.updateLocalCache(snapshot => {
+    snapshot.tables.downtime_central_sessions[0].expires_at = "2999-12-31T23:59:59.999Z";
+  });
+  const cachedObject = await store.downloadObject({ bucket: "downtime-evidence", path: "cached/photo.jpg" });
+  assert.equal(cachedObject.offline, true);
+  assert.deepEqual([...cachedObject.bytes], [1, 2, 3, 4]);
+
+  await assert.rejects(
+    store.transactDatabase({
+      expectedRevision: 1, actorId: "DEV",
+      mutate(tables) { tables.downtime_central_bank[0].payload.users[0].username = "UNSAVED"; }
+    }),
+    /Failed to fetch/
+  );
+  const finalCache = await store.readDatabase();
+  assert.equal(finalCache.offline, true);
+  assert.equal(finalCache.revision, 1);
+  assert.equal(finalCache.tables.downtime_central_bank[0].payload.users[0].username, "DEV");
+  assert.equal(finalCache.tables.downtime_central_sessions[0].expires_at, "2999-12-31T23:59:59.999Z");
+});
+
 test("GitHub database transaction rejects a stale revision without changing records", async () => {
   const server = createMockGitHub();
   const store = makeStore(server);
