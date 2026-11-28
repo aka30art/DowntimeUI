@@ -4,7 +4,7 @@ import { readFile } from "node:fs/promises";
 
 const brokerWorkflow = await readFile(".github/workflows/yardhub-github-broker.yml", "utf8");
 const identityWorkflow = await readFile(".github/workflows/yardhub-github-identity-admin.yml", "utf8");
-const inboxTemplate = await readFile("docs/GITHUB_NATIVE_PRIVATE_BROKER_WORKFLOW_TEMPLATE.yml", "utf8");
+const inboxTemplate = await readFile("docs/templates/yardhub-private-broker.workflow.yml", "utf8");
 const identityTemplate = await readFile("docs/GITHUB_NATIVE_IDENTITY_ADMIN_WORKFLOW_TEMPLATE.yml", "utf8");
 
 test("broker reusable workflow is workflow_call-only and accepts only encrypted new issue comments", () => {
