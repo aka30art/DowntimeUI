@@ -25,7 +25,7 @@ function createGitHubAppJwt({ appId, privateKey, now = () => new Date() }) {
   return unsigned + "." + signer.sign(privateKey, "base64url");
 }
 
-async function createDataRepositoryInstallationToken({
+export async function createDataRepositoryInstallationToken({
   appId, appPrivateKey, installationId, repositoryId, fetchImpl = globalThis.fetch, now = () => new Date()
 }) {
   const repositoryNumericId = Number(repositoryId);
