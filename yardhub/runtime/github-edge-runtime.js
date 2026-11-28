@@ -42,9 +42,9 @@ export async function installGitHubEdgeRuntime({
   const previousDeno = globalThis.Deno;
   const previousFetch = globalThis.fetch;
   const previousSupabase = globalThis.supabase;
-  // This is a local compatibility harness, not a trusted production broker.
-  // The adapter marker is deliberately not a credential. Secret-bearing source
-  // features remain unavailable unless explicitly supplied by an isolated test.
+  // This is an in-browser compatibility adapter over the private GitHub data store.
+  // It is not a Supabase service and makes no requests to a Supabase host.
+  // The compatibility marker is not a credential or secret.
   const environment = {
     SUPABASE_URL: "https://github-native.invalid",
     SUPABASE_SERVICE_ROLE_KEY: "GITHUB_NATIVE_COMPAT_ADAPTER",
