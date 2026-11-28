@@ -165,7 +165,12 @@ test("broker authorization requires the exact department capability and denies u
     principal: { ...principal, rootsClass: "DEV" },
     service: "central-bank", action: "identity-reset",
     args: {}, authorityEpoch: 4
-  }), true);
+  }), false);
+  assert.equal(await authority.authorize({
+    principal: { ...principal, rootsClass: "DEV" },
+    service: "central-bank", action: "staff-original-upload",
+    args: {}, authorityEpoch: 4
+  }), false);
 });
 
 test("only immutable DEV can link or revoke GitHub identities", async () => {
