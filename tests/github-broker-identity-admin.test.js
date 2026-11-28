@@ -47,7 +47,7 @@ function makeStore(initialLinks = []) {
 
 function setup({ action = "link", actorId = DEV_GITHUB_ID, isPrivate = true, assigneeId = TARGET_GITHUB_ID, assignees = null, links = [] } = {}) {
   const store = makeStore(links);
-  const calls = { token: [], issue: [], metadata: [] };
+  const calls = { token: [], issue: [], metadata: [], brokerMetadata: [] };
   const event = {
     repository: { id: BROKER_REPOSITORY_ID, full_name: "private-yardhub/yardhub-inbox", private: isPrivate, default_branch: "main" },
     sender: { id: Number(actorId), login: "workflow-actor" },
@@ -115,6 +115,8 @@ test("DEV can link a GitHub actor only to an active reciprocal USER/STAFF and an
   assert.equal(h.store.state.tables.downtime_github_broker_identity_audit[0].event_type, "LINKED");
   assert.equal(h.calls.issue.length, 1);
   assert.equal(h.calls.issue[0].options.headers.Authorization, "Bearer broker-issues-read-token");
+  assert.equal(h.calls.brokerMetadata.length, 1);
+  assert.equal(h.calls.brokerMetadata[0].options.headers.Authorization, "Bearer broker-issues-read-token");
   assert.equal(h.calls.metadata.length, 1);
   assert.equal(h.calls.metadata[0].options.headers.Authorization, "Bearer repository-restricted-data-token");
   assert.equal(h.calls.token[0].repositoryId, DATA_REPOSITORY_ID);
