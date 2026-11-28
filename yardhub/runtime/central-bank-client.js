@@ -8,7 +8,7 @@
   let session=null;
   const staffPhotoUrls=new Map();
   try{
-    const saved=JSON.parse(sessionStorage.getItem(SESSION_KEY)||"null");
+    const saved=JSON.parse(sessionStorage.getItem(SESSION_KEY)||localStorage.getItem(SESSION_KEY)||"null");
     if(saved&&typeof saved.token==="string"&&saved.token){
       session={authenticated:true,token:saved.token,expiresAt:saved.expiresAt||null,user:saved.user||null};
     }
@@ -22,7 +22,15 @@
   async function call(action,body={},options={}){
     const headers={"Content-Type":"application/json"};
     if(session?.token&&!options.public)headers["x-downtime-session"]=session.token;
-    const response=await fetch(endpoint(),{method:"POST",headers,body:JSON.stringify({action,...body})});
+    let response;
+    try{response=await fetch(endpoint(),{method:"POST",headers,body:JSON.stringify({action,...body})})}
+    catch(error){
+      if(window.YARDHUB_GITHUB_OFFLINE===true){
+        const offlineError=new Error("OFFLINE — cached data is read-only. This change was not saved to GitHub.");
+        offlineError.status=503;offlineError.code="YARDHUB_OFFLINE_NOT_SAVED";throw offlineError;
+      }
+      throw error;
+    }
     let result={};
     try{result=await response.json()}catch{}
     if(!response.ok){
@@ -34,8 +42,14 @@
   }
   function persistSession(){
     try{
-      if(session?.token)sessionStorage.setItem(SESSION_KEY,JSON.stringify(session));
-      else sessionStorage.removeItem(SESSION_KEY);
+      if(session?.token){
+        const value=JSON.stringify(session);
+        sessionStorage.setItem(SESSION_KEY,value);
+        localStorage.setItem(SESSION_KEY,value);
+      }else{
+        sessionStorage.removeItem(SESSION_KEY);
+        localStorage.removeItem(SESSION_KEY);
+      }
     }catch{}
   }
   async function configureGitHubRuntime(runtime){
@@ -62,13 +76,31 @@
     return true;
   }
   async function state(){
+    if(window.YARDHUB_GITHUB_OFFLINE===true){
+      const database=await window.YARDHUB_GITHUB_STORE?.readDatabase?.();
+      const row=database?.tables?.downtime_central_bank?.find(item=>Number(item.id)===1);
+      if(!row?.payload||!session?.user)throw new Error("No previously authenticated YARDHUB user is cached for offline viewing.");
+      const result={
+        payload:row.payload,
+        dailyOperators:database.tables.downtime_daily_operator_assignments||[],
+        user:session.user,
+        version:Number(row.version)||0,
+        updatedAt:row.updated_at||database.cachedAt||null,
+        offline:true
+      };
+      session.centralBank=result;persistSession();return result;
+    }
     const result=await call("get-state");
     if(session){session.user=result.user||session.user;session.centralBank=result;persistSession()}
     return result;
   }
   async function listUsers(){
-    const result=await call("list-users",{}, {public:true});
-    return result;
+    if(window.YARDHUB_GITHUB_OFFLINE===true){
+      const database=await window.YARDHUB_GITHUB_STORE?.readDatabase?.();
+      const row=database?.tables?.downtime_central_bank?.find(item=>Number(item.id)===1);
+      return {users:(row?.payload?.users||[]).map(user=>({username:user.username,displayName:user.displayName||user.name||user.username}))};
+    }
+    return call("list-users",{}, {public:true});
   }
   const api={
     configureGitHubRuntime,
