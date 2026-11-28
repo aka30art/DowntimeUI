@@ -161,7 +161,7 @@ No commits, pull requests, workflow runs, settings changes, deployments, Supabas
 - Orchestration core: `src/infrastructure/github-actions-broker.js` validates GitHub issue-comment event identity, maps numeric sender IDs to canonical USER/STAFF, checks per-USER inbox ownership, decrypts via callback, checks action authorization and authority epoch, rejects caller identity injection, and uses injected idempotency and encrypted-response interfaces.
 - The core is not connected to a real GitHub Actions workflow, broker/data repositories, Data App credentials, concrete USER/role lookup, cryptographic key custody or response publisher. Ephemeral client keys are memory-only; device recovery and two-device use are open.
 - CI #487 on `19eae382` passed before the latest hardening and broker changes. Runs #506 passed `npm run check` and continued through Chromium/browser QA on earlier code. Run #508 is the first full validation attempt of the ECDH-envelope-aligned broker core; later changes add per-USER inbox ownership and need their own CI result.
-- Phase 3 remains BLOCKED pending final browser auth decision, real workflow/default-branch trigger, private broker/data infrastructure, protected secrets, two-account proof, recovery and measured throughput.
+- Phase 3 remains BLOCKED pending real browser OAuth callback/PKCE acceptance, private caller workflow installation on the broker repository default branch, private broker/data infrastructure, protected secrets, two-account proof, recovery and measured throughput.
 
 
 ## Broker runtime integration and primary-authority lock — 28 November 2026
