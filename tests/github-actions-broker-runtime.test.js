@@ -231,6 +231,10 @@ test("encrypted broker action uses canonical USER YARD ROLE, broker session, ato
     async readDatabase() { return { revision, tables: structuredClone(tables), manifest: { revision } }; },
     async readTable(name) { return structuredClone(tables[name] || []); },
     async readAuthority() { return structuredClone(authorityState); },
+    async uploadObject({ bucket, path }) { return { bucket, path, sha: "test-object-sha" }; },
+    async downloadObject() { return null; },
+    async deleteObject({ bucket, path }) { return { deleted: true, bucket, path }; },
+    async listObjects() { return []; },
     async transactDatabase({ expectedRevision, mutate }) {
       if (expectedRevision !== revision) { const error = new Error("revision conflict"); error.status = 409; throw error; }
       const draft = structuredClone(tables);
