@@ -60,6 +60,24 @@ export async function createDataRepositoryInstallationToken({
   return result.token;
 }
 
+async function verifyPrivateRepository({ owner, repository, token, expectedId, fetchImpl }) {
+  const response = await fetchImpl(
+    "https://api.github.com/repos/" + encodeURIComponent(owner) + "/" + encodeURIComponent(repository),
+    {
+      headers: {
+        Accept: "application/vnd.github+json",
+        Authorization: "Bearer " + token,
+        "X-GitHub-Api-Version": "2022-11-28"
+      }
+    }
+  );
+  const metadata = await response.json();
+  if (!response.ok || metadata.private !== true || Number(metadata.id) !== Number(expectedId)) {
+    throw new Error("The configured broker/data repository must be private and match its pinned repository ID.");
+  }
+  return metadata;
+}
+
 function importBrokerPrivateKey(pem, cryptoProvider) {
   const normalized = String(pem).replace(/\\n/g, "\n");
   const base64 = normalized.replace(/-----BEGIN PRIVATE KEY-----|-----END PRIVATE KEY-----|\s/g, "");
@@ -121,6 +139,17 @@ export async function runGitHubActionsBroker({
   const dataOwner = requiredEnv(env, "YARDHUB_DATA_OWNER");
   const dataRepository = requiredEnv(env, "YARDHUB_DATA_REPOSITORY");
   const dataRepositoryId = requiredEnv(env, "YARDHUB_DATA_REPOSITORY_ID");
+  const dataFullName = (dataOwner + "/" + dataRepository).toLowerCase();
+  const brokerFullName = repository.toLowerCase();
+  const forbiddenRepositories = new Set([
+    "aka30art/downtime",
+    "aka30art/dop-website",
+    "aka30art/downtimeui"
+  ]);
+  if (forbiddenRepositories.has(dataFullName) || forbiddenRepositories.has(brokerFullName) ||
+      dataFullName === brokerFullName) {
+    throw new Error("Broker and data repositories must be separate dedicated private repositories.");
+  }
   if (Number(dataRepositoryId) === brokerRepositoryId ||
       (dataOwner + "/" + dataRepository).toLowerCase() === repository.toLowerCase()) {
     throw new Error("The private YARDHUB data repository must be distinct from the broker inbox repository.");
@@ -138,6 +167,20 @@ export async function runGitHubActionsBroker({
     repositoryId: dataRepositoryId,
     fetchImpl,
     now
+  });
+  await verifyPrivateRepository({
+    owner: brokerOwner,
+    repository: brokerRepository,
+    token: workflowToken,
+    expectedId: brokerRepositoryId,
+    fetchImpl
+  });
+  await verifyPrivateRepository({
+    owner: dataOwner,
+    repository: dataRepository,
+    token: dataToken,
+    expectedId: dataRepositoryId,
+    fetchImpl
   });
   const store = createGitHubDataStore({
     owner: dataOwner,
