@@ -12,6 +12,16 @@ import {
   createGitHubAppBrokerClient
 } from "../src/infrastructure/github-app-broker-client.js";
 
+function createMemoryPendingRequestStore() {
+  const records = new Map();
+  return {
+    async put(record) { records.set(record.requestId, record); },
+    async get(requestId) { return records.get(requestId) || null; },
+    async list(accountId) { return [...records.values()].filter(record => record.accountId === accountId); },
+    async remove(requestId) { records.delete(requestId); }
+  };
+}
+
 function base64Url(bytes) {
   return Buffer.from(bytes).toString("base64url");
 }
