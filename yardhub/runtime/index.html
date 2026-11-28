@@ -2371,6 +2371,7 @@ async function manualRefresh(){
  try{
   await cloudWrite;
   const result=await window.DowntimeCentral.state();
+  await loadCentralUsers();
   applyIncomingCloudPayload(result.payload,'CENTRAL · MANUAL REFRESH COMPLETE',result.updatedAt,result.version,result.user);
   cloudSyncFailed=false;
   const last=$('lastSync');if(last)last.textContent='Last successful refresh · '+new Date().toLocaleString('en-GB');
