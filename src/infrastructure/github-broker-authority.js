@@ -1,8 +1,8 @@
 import { resolveYardRolePermissions } from "../../yardhub/reference/supabase/functions/_shared/yard-role-resolver.mjs";
 import { createGitHubCentralServiceSession } from "./github-central-service-session.js";
+import { createGitHubBrokerIdentityManager } from "./github-broker-identity-admin.js";
 
-const IDENTITY_SNAPSHOT_MODULE = "BROKER";
-const IDENTITY_SNAPSHOT_ID = "github-identity-links-v1";
+const IDENTITY_TABLE = "downtime_github_identities";
 const GITHUB_ID_PATTERN = /^[0-9]{1,20}$/;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -157,8 +157,8 @@ export function createGitHubBrokerAuthority({
   now = () => new Date()
 } = {}) {
   if (!store || typeof store.readDatabase !== "function" ||
-      typeof store.readSnapshot !== "function" || typeof store.writeSnapshot !== "function") {
-    throw new TypeError("A private GitHub data store with snapshot support is required.");
+      typeof store.transactDatabase !== "function") {
+    throw new TypeError("A private GitHub data store with transactional table support is required.");
   }
   const repositoryId = Number(brokerRepositoryId);
   if (!Number.isSafeInteger(repositoryId) || repositoryId < 1) throw new TypeError("Broker repository ID is invalid.");
@@ -174,15 +174,22 @@ export function createGitHubBrokerAuthority({
     throw new TypeError("Immutable DEV bootstrap requires a dedicated broker issue ID.");
   }
 
-  async function readLinks() {
-    const snapshot = await store.readSnapshot({
-      module: IDENTITY_SNAPSHOT_MODULE,
-      snapshotId: IDENTITY_SNAPSHOT_ID
-    });
-    if (!snapshot) return { version: null, links: [] };
-    const links = snapshot.payload?.links;
-    if (!Array.isArray(links)) throw new Error("Private GitHub identity-link snapshot is malformed.");
-    return { version: snapshot.version, links };
+  async function readLinks(database = null) {
+    const source = database || await store.readDatabase();
+    const rows = source.tables?.[IDENTITY_TABLE] || [];
+    if (!Array.isArray(rows)) throw new Error("Private GitHub identity table is malformed.");
+    return rows.map(row => ({
+      githubUserId: String(row.github_user_id || ""),
+      userId: String(row.user_id || ""),
+      staffId: String(row.staff_id || ""),
+      brokerIssueId: Number(row.broker_issue_id),
+      brokerRepositoryId: repositoryId,
+      status: String(row.status || "").toUpperCase(),
+      linkedAt: row.linked_at || null,
+      linkedByUserId: row.linked_by_user_id || null,
+      revokedAt: row.revoked_at || null,
+      revokedByUserId: row.revoked_by_user_id || null
+    }));
   }
 
   async function resolvePrincipal(githubUserId) {
@@ -221,9 +228,8 @@ export function createGitHubBrokerAuthority({
       return null;
     }
 
-    const identity = await readLinks();
-    const links = identity.links.filter(link =>
-      link.githubUserId === externalId && String(link.status || "").toUpperCase() === "ACTIVE"
+    const links = (await readLinks(database)).filter(link =>
+      link.githubUserId === externalId && link.status === "ACTIVE"
     );
     if (links.length !== 1) return null;
     const link = links[0];
@@ -267,13 +273,12 @@ export function createGitHubBrokerAuthority({
     if (principal.bootstrapRoot === true) {
       return principal.rootsClass === "DEV" && Number(issueId) === bootstrapTicketId;
     }
-    const identity = await readLinks();
-    const matching = identity.links.filter(link =>
+    const matching = (await readLinks()).filter(link =>
       link.githubUserId === principal.githubUserId &&
       link.userId === principal.userId &&
-      String(link.status || "").toUpperCase() === "ACTIVE" &&
+      link.status === "ACTIVE" &&
       link.brokerRepositoryId === repositoryId &&
-      Number(link.brokerIssueId || defaultIssueId) === Number(issueId)
+      Number(link.brokerIssueId) === Number(issueId)
     );
     return matching.length === 1;
   }
@@ -297,63 +302,38 @@ export function createGitHubBrokerAuthority({
     return authority.epoch;
   }
 
-  async function linkIdentity({ actorPrincipal, githubUserId, userId, issueId } = {}) {
-    if (actorPrincipal?.rootsClass !== "DEV") throw new Error("Only immutable DEV may link GitHub identities.");
-    const externalId = requiredString(githubUserId, "GitHub numeric user ID", GITHUB_ID_PATTERN);
-    const canonicalUserId = requiredString(userId, "Canonical USER ID", UUID_PATTERN);
-    const targetIssue = Number(issueId ?? defaultIssueId);
-    if (!Number.isSafeInteger(targetIssue) || targetIssue < 1) throw new TypeError("An approved broker issue ID is required.");
-    const database = await store.readDatabase();
-    const bank = getBank(database.tables);
-    const targetUser = (bank?.users || []).find(row => row?.userId === canonicalUserId);
-    if (!activeUser(targetUser)) throw new Error("Target is not an active canonical USER.");
-    const rootsClass = resolveRootsClass(database.tables, canonicalUserId);
-    const profile = targetUser.staffId ? findStaffProfile(bank, targetUser) : null;
-    if (targetUser.staffId && !profile) throw new Error("Target USER/STAFF identity is not reciprocal.");
-    if (!targetUser.staffId && rootsClass !== "DEV") throw new Error("Only the immutable DEV USER may exist without STAFF.");
-    const current = await readLinks();
-    if (current.links.some(link => link.githubUserId === externalId && link.status === "ACTIVE")) {
-      throw new Error("GitHub account is already linked to an active USER.");
+  const identityManager = createGitHubBrokerIdentityManager({
+    store,
+    now,
+    verifyDevAuthority: async actorContext => {
+      const caller = await resolvePrincipal(actorContext?.githubUserId);
+      if (!caller || caller.rootsClass !== "DEV") return null;
+      return { userId: caller.userId, isImmutableDev: true };
     }
-    if (current.links.some(link => link.userId === canonicalUserId && link.status === "ACTIVE")) {
-      throw new Error("Canonical USER already has an active GitHub identity link.");
+  });
+
+  async function linkIdentity({ actorPrincipal, githubUserId, userId, staffId, issueId, reason } = {}) {
+    if (!actorPrincipal?.githubUserId || actorPrincipal.rootsClass !== "DEV") {
+      throw new Error("Only the authenticated immutable DEV broker principal may link GitHub identities.");
     }
-    const nextLinks = current.links.filter(link => link.githubUserId !== externalId && link.userId !== canonicalUserId);
-    nextLinks.push({
-      githubUserId: externalId,
-      userId: canonicalUserId,
-      brokerRepositoryId: repositoryId,
-      brokerIssueId: targetIssue,
-      status: "ACTIVE",
-      linkedAt: now().toISOString(),
-      linkedByUserId: actorPrincipal.userId
-    });
-    return store.writeSnapshot({
-      module: IDENTITY_SNAPSHOT_MODULE,
-      snapshotId: IDENTITY_SNAPSHOT_ID,
-      actorId: actorPrincipal.userId,
-      payload: { links: nextLinks },
-      expectedVersion: current.version
+    return identityManager.link({
+      actorContext: { githubUserId: actorPrincipal.githubUserId },
+      githubUserId,
+      userId,
+      staffId,
+      brokerIssueId: issueId,
+      reason
     });
   }
 
-  async function revokeIdentity({ actorPrincipal, githubUserId } = {}) {
-    if (actorPrincipal?.rootsClass !== "DEV") throw new Error("Only immutable DEV may revoke GitHub identities.");
-    const externalId = requiredString(githubUserId, "GitHub numeric user ID", GITHUB_ID_PATTERN);
-    const current = await readLinks();
-    let changed = false;
-    const nextLinks = current.links.map(link => {
-      if (link.githubUserId !== externalId || link.status !== "ACTIVE") return link;
-      changed = true;
-      return { ...link, status: "REVOKED", revokedAt: now().toISOString(), revokedByUserId: actorPrincipal.userId };
-    });
-    if (!changed) throw new Error("No active GitHub identity link was found.");
-    return store.writeSnapshot({
-      module: IDENTITY_SNAPSHOT_MODULE,
-      snapshotId: IDENTITY_SNAPSHOT_ID,
-      actorId: actorPrincipal.userId,
-      payload: { links: nextLinks },
-      expectedVersion: current.version
+  async function revokeIdentity({ actorPrincipal, githubUserId, reason } = {}) {
+    if (!actorPrincipal?.githubUserId || actorPrincipal.rootsClass !== "DEV") {
+      throw new Error("Only the authenticated immutable DEV broker principal may revoke GitHub identities.");
+    }
+    return identityManager.revoke({
+      actorContext: { githubUserId: actorPrincipal.githubUserId },
+      githubUserId,
+      reason
     });
   }
 
@@ -369,4 +349,4 @@ export function createGitHubBrokerAuthority({
   });
 }
 
-export { SERVICE_ACTION_POLICIES, IDENTITY_SNAPSHOT_MODULE, IDENTITY_SNAPSHOT_ID };
+export { SERVICE_ACTION_POLICIES, IDENTITY_TABLE };
