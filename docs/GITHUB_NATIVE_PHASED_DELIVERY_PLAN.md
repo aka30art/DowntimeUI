@@ -162,3 +162,24 @@ No commits, pull requests, workflow runs, settings changes, deployments, Supabas
 - The core is not connected to a real GitHub Actions workflow, broker/data repositories, Data App credentials, concrete USER/role lookup, cryptographic key custody or response publisher. Ephemeral client keys are memory-only; device recovery and two-device use are open.
 - CI #487 on `19eae382` passed before the latest hardening and broker changes. Runs #506 passed `npm run check` and continued through Chromium/browser QA on earlier code. Run #508 is the first full validation attempt of the ECDH-envelope-aligned broker core; later changes add per-USER inbox ownership and need their own CI result.
 - Phase 3 remains BLOCKED pending final browser auth decision, real workflow/default-branch trigger, private broker/data infrastructure, protected secrets, two-account proof, recovery and measured throughput.
+
+
+## Broker runtime integration and primary-authority lock — 28 November 2026
+
+The local broker work has advanced beyond the earlier callback-only scaffold:
+
+- Canonical GitHub numeric actor mapping, reciprocal USER/STAFF validation, ROOTS resolution and a 96-action default-deny YARD ROLE/department policy now live in `github-broker-authority.js`.
+- DEV-only GitHub identity link/revoke operations and audit records are implemented in `github-broker-identity-admin.js`.
+- The broker creates a two-minute Central Bank-compatible service session from the trusted principal; only the token hash is persisted, and the session is revoked after the action.
+- Durable idempotency claims, leases, COMMITTED/COMPLETED states and encrypted response replay are implemented in the private data-store adapter.
+- The runtime composes the seven preserved service handlers, encrypted ECDH request/response channel, service session, authorization and response publishing.
+- The accepted service action and its idempotency COMMITTED state are staged in one GitHub data transaction.
+- A transaction-level authority-epoch precondition reads `control/authority.json` at the same Git commit SHA as the data snapshot. The commit is rejected unless the authority remains ACTIVE, the epoch is unchanged and `DOWNTIMEUI-GITHUB` is primary.
+- The Actions entry-point script pins the event to a configured private broker repository, its numeric ID and default branch, rejects PR comments, and mints a Data App token restricted to a distinct private data repository ID.
+- Browser pending-request CryptoKey context is now stored through an IndexedDB adapter. Browser reload, device loss, multi-device use and recovery still require real-browser acceptance.
+
+**Non-negotiable state:** the broker cannot perform operational actions while `YARDHUB-PRIMARY` is the active primary. No cutover is implied or authorised by this code. No production migration or authority transfer has taken place.
+
+**Remaining Phase 3 gates:** provision the dedicated private broker and data repositories, create/install the separate Inbox and Data Apps with verified least privilege, configure protected secrets and the default-branch `issue_comment` workflow, then run real two-user tests for actor isolation, role enforcement, replay, concurrency, queue limits, latency, privacy, key recovery and binary storage. The current source-only environment cannot provision those GitHub resources or secrets.
+
+CI has had repeated failures while the broker runtime and tests were being integrated. Run #599 failed because the runtime omitted the authorityEpoch argument in its execute callback; that defect is corrected in the current branch, but a passing exact-head CI plus Playwright run is still required. Do not merge or deploy.
