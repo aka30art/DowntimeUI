@@ -183,3 +183,26 @@ The local broker work has advanced beyond the earlier callback-only scaffold:
 **Remaining Phase 3 gates:** provision the dedicated private broker and data repositories, create/install the separate Inbox and Data Apps with verified least privilege, configure protected secrets and the default-branch `issue_comment` workflow, then run real two-user tests for actor isolation, role enforcement, replay, concurrency, queue limits, latency, privacy, key recovery and binary storage. The current source-only environment cannot provision those GitHub resources or secrets.
 
 CI has had repeated failures while the broker runtime and tests were being integrated. Run #599 failed because the runtime omitted the authorityEpoch argument in its execute callback; that defect is corrected in the current branch, but a passing exact-head CI plus Playwright run is still required. Do not merge or deploy.
+
+
+## Latest phase checkpoint — 28 November 2026
+
+| Phase | Current state | Evidence / remaining gate |
+|---|---|---|
+| 0 — Source census | PARTIAL | Seven service entrypoints, 96 action/read surfaces, 19 RPCs, 39 source tables, five private buckets and 45 tracked migration files inventoried. Reconcile the 49 applied migration records with tracked files; finish policy/trigger/grant/frontend caller census and full export checksums. |
+| 1 — GitHub data contract | PARTIAL | Atomic multi-table Git commit, revision/CAS checks, storage adapter and authority epoch guard exist. Three GitHub-only extension tables are separate from the 39-table source backup contract. Real private repository concurrency and clean restore are not proven. |
+| 2 — Private identity boundary | CODE PATH IMPLEMENTED / PROVISIONING BLOCKED | Canonical GitHub actor mapping, per-user issue binding, immutable DEV-only link/revoke and append-only audit exist. A dedicated private data repository, Inbox/Data Apps and secrets are not provisioned. Initial immutable DEV seed remains an out-of-band setup gate. |
+| 3 — Trusted broker | LOCAL INTEGRATION IMPLEMENTED / PRODUCTION PROOF BLOCKED | Encrypted ECDH inbox client, Actions runner, repository-restricted Data App token minting, short-lived Central Bank service sessions, YARD ROLE preflight, durable idempotency/replay and in-transaction authority epoch recheck exist. No private broker repository, default-branch workflow, real App installation/event, two-user isolation, queue/latency or secret recovery test exists. |
+| 4 — Seven service parity | PARTIAL | Seven handlers register and build. Broker runtime integration exercises a representative GATELOG action; the full action matrix still needs per-action positive/negative role tests and source-contract comparison. |
+| 5 — Module acceptance | NOT COMPLETE | DOWNTIME, R&M, GATELOG, Central Bank/ROOTS/YARD ROLE, STAFF/USER and Spectator still require full multi-role workflow acceptance against the private broker. |
+| 6 — Replication and recovery | PARTIAL | Source backup authority checks and concurrent cutover stop are tested. Source replication now preserves GitHub-only broker tables. A separate private full-twin backup repository and recovery of broker identities/audit/idempotency/binary objects remain outstanding. |
+| 7 — Authority transfer | NOT STARTED | No live replication checkpoint, write freeze, reconciliation, cutover or reverse-transfer rehearsal. |
+| 8 — Release acceptance | NOT STARTED | No merge, production deployment, production data copy or authority transfer. All security and operational gates must pass on one exact final PR head. |
+
+### Latest CI checkpoint
+
+- Run #613 passed `npm run check` on `603c15ac873cf850fd12ba9040df8e9ef8100b8c`.
+- Run #614 passed `npm run check` and Chromium installation on `6fdb71257b931d74559c5c1ed5c8d803277ce761`; Playwright browser QA and screenshot upload were still running.
+- Documentation and code have advanced after those tested commits. The newest PR head must complete its own full CI and browser QA before being considered validated.
+
+**Release rule unchanged:** PR #3 stays open and draft. YARDHUB remains primary. No production migration, merge or deployment is permitted until all Phase 0–8 acceptance gates are evidenced on the exact final head. The protected `aka30art/DOWNTIME` repository remains untouched.
