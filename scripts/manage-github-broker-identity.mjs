@@ -18,7 +18,7 @@ function requiredId(value, label) {
 
 function requiredGitHubUserId(value) {
   const id = String(value ?? "").trim();
-  if (!/^\\d{1,20}$/.test(id)) throw new TypeError("GitHub user ID must be a numeric string.");
+  if (!/^\d{1,20}$/.test(id)) throw new TypeError("GitHub user ID must be a numeric string.");
   return id;
 }
 
