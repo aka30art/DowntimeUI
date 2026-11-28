@@ -311,8 +311,10 @@ try{
 
   const offlinePage=await browser.newPage({viewport:{width:1440,height:900},deviceScaleFactor:1});
   const offlineErrors=[];
+  const offlineConsole=[];
   let githubApiRequests=0;
   offlinePage.on("pageerror",error=>offlineErrors.push(error.message));
+  offlinePage.on("console",message=>{if(message.type()==="warning"||message.type()==="error")offlineConsole.push(message.text())});
   await offlinePage.addInitScript(()=>{
     const user={username:"DEV",displayName:"DEV ROOT",tier:"DEV",role:"DEV",userId:"dev-user-1",staffId:"dev-staff-1",rootsAuthority:"DEV",yardRolePermissions:{SCPL:{view:true,enter:true,edit:true,manage:true},Management:{view:true,enter:true,edit:true,manage:true},GATELOG:{view:true,enter:true,edit:true,manage:true},"R&M":{view:true,enter:true,edit:true,manage:true}}};
     const payload={users:[{username:"DEV",displayName:"DEV ROOT",tier:"DEV",enabled:true}],appData:{},staff:[],tiers:[]};
@@ -329,7 +331,7 @@ try{
   if(!(await offlinePage.locator("#yardHubOfflineBanner").isVisible())){
     const status=await offlinePage.locator("[data-yardhub-github-status]").textContent().catch(()=> "");
     const auth=await offlinePage.locator("#authMsg").textContent().catch(()=> "");
-    throw new Error("Offline cached bootstrap did not open YARDHUB. GitHub status: "+status+"; auth: "+auth+"; page errors: "+offlineErrors.join(" | "));
+    throw new Error("Offline cached bootstrap did not open YARDHUB. GitHub status: "+status+"; auth: "+auth+"; page errors: "+offlineErrors.join(" | ")+"; console: "+offlineConsole.join(" | "));
   }
   assert.equal(await offlinePage.locator("#yardHub").isVisible(),true,"A previously connected device must reopen cached YARDHUB data when GitHub is unavailable.");
   assert.match(await offlinePage.locator("#yardHubOfflineBanner").innerText(),/READ ONLY.*NOT SAVED TO GITHUB/,"Offline mode must be visibly read-only and must not claim central saves.");
