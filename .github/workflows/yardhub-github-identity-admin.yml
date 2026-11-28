@@ -27,7 +27,7 @@ on:
         type: string
       data_branch:
         required: false
-        default: main
+        default: data/yardhub
         type: string
       bootstrap_github_user_id:
         required: false
