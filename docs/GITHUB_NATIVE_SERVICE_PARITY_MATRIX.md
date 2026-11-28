@@ -243,3 +243,28 @@ Required evidence per action:
 ## 9. Protection boundary
 
 The source inventory is derived from the preserved reference snapshot and previously recorded read-only audit. This implementation has not run workflows, commits, exports, tests or other actions against `aka30art/DOWNTIME`. Do not use `aka30art/DOWNTIME` as a test target. Do not use the unrelated `aka30art/DOP-website` repository for broker or data storage. YARDHUB remains primary; no production data has been copied, no authority transfer has occurred, and PR #3 remains open and draft.
+
+
+## 10. GitHub-only broker extension tables and runtime evidence
+
+The GitHub twin now maintains 42 tables in its private data-store schema: the 39 source tables listed in Section 4 plus three GitHub-only extension tables. These are not source Supabase tables and must not be queried from the source project.
+
+| Extension table | Primary key | Contract |
+|---|---|---|
+| `downtime_github_identities` | `github_user_id` | Active/revoked mapping from a GitHub numeric actor ID to one canonical USER/STAFF and one dedicated broker inbox issue |
+| `downtime_github_broker_requests` | `request_id` | Actor-bound request claim, processing lease, authority epoch, atomic COMMITTED marker, encrypted response and replay state |
+| `downtime_github_broker_identity_audit` | `event_id` | Append-only identity link/revoke events with immutable DEV actor and reason |
+
+The broker runtime now composes the preserved seven Edge handlers with:
+- canonical GitHub identity resolution and per-user inbox issue binding;
+- explicit service/action policy checks against YARD ROLE VIEW/ENTER/EDIT/MANAGE;
+- broker-minted short-lived Central Bank sessions (hash persisted; token revoked after each action);
+- durable idempotency claims and encrypted response replay;
+- an authority-primary/epoch gate before processing and a second epoch check inside the atomic action transaction;
+- a repository-restricted GitHub App installation token for private data access, separate from the broker-repository issue-comment token.
+
+The source backup manifest remains a 39-table source contract. Source replication explicitly preserves the three GitHub-only extension table files; source restore initializes those extensions empty. This prevents a source snapshot from deleting live broker identity or idempotency state.
+
+**Test evidence:** CI run #613 passed `npm run check` on commit `603c15ac873cf850fd12ba9040df8e9ef8100b8c`, including source-backup preservation tests. CI run #614 passed `npm run check` on `6fdb71257b931d74559c5c1ed5c8d803277ce761`, including the stricter reciprocal USER/STAFF link check; Chromium/browser QA was still in progress at the time of the proof-spec update. The current PR head has advanced beyond both commits and requires its own completed run.
+
+**Not yet accepted:** these tests use an in-memory store and mocked GitHub calls. No private broker/data repositories, GitHub Apps, secrets, default-branch workflow, real event identity, two-user isolation, real five-bucket binary transport or independent full-twin backup/restore have been proven. The extension tables are preserved in source replication but still require a separate private backup repository and full recovery rehearsal.
