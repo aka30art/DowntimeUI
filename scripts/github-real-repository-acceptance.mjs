@@ -47,9 +47,53 @@ const writeProbeResponse = await fetch("https://api.github.com/repos/" + encodeU
   headers: { ...headers, "Content-Type": "application/json" },
   body: JSON.stringify({ content: "YARDHUB direct repository Contents write capability probe v1", encoding: "utf-8" })
 });
-const writeProbeBody = await writeProbeResponse.text();
+let writeProbeBody = await writeProbeResponse.text();
 let writeProbe;
 try { writeProbe = JSON.parse(writeProbeBody); } catch { writeProbe = { message: writeProbeBody.slice(0, 1000) }; }
+
+// GitHub's Git Database API returns 409 for a repository with no initial commit.
+// Initialize only the dedicated YARDHUB-DATA repository with a non-operational README,
+// then retry the exact Git Data write-permission probe.
+if (writeProbeResponse.status === 409 && writeProbe.message === "Git Repository is empty.") {
+  const readmeContent = [
+    "# YARDHUB data repository",
+    "",
+    "Private storage for the independent YARDHUB installation.",
+    "Operational database state is initialized by the YARDHUB runtime.",
+    "Do not place credentials in this repository."
+  ].join("\\n") + "\\n";
+  const initializeResponse = await fetch(
+    "https://api.github.com/repos/" + encodeURIComponent(owner) + "/" + encodeURIComponent(repo) + "/contents/README.md",
+    {
+      method: "PUT",
+      headers: { ...headers, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        message: "Initialize private YARDHUB data repository",
+        content: Buffer.from(readmeContent, "utf8").toString("base64")
+      })
+    }
+  );
+  const initializeBody = await initializeResponse.text();
+  let initializeResult;
+  try { initializeResult = JSON.parse(initializeBody); } catch { initializeResult = { message: initializeBody.slice(0, 1000) }; }
+  if (!initializeResponse.ok) {
+    console.error("YARDHUB data repository initialization failed:", JSON.stringify({
+      status: initializeResponse.status,
+      acceptedPermissions: initializeResponse.headers.get("x-accepted-github-permissions") || "not supplied",
+      message: initializeResult.message || "No GitHub error message"
+    }));
+  }
+  assert.equal(initializeResponse.ok, true, "Empty private YARDHUB repository must accept initial README commit");
+  branch = branch || initializeResult.commit?.sha && metadata.default_branch || "main";
+  const retryResponse = await fetch("https://api.github.com/repos/" + encodeURIComponent(owner) + "/" + encodeURIComponent(repo) + "/git/blobs", {
+    method: "POST",
+    headers: { ...headers, "Content-Type": "application/json" },
+    body: JSON.stringify({ content: "YARDHUB direct repository Contents write capability probe v1", encoding: "utf-8" })
+  });
+  writeProbeResponse = retryResponse;
+  writeProbeBody = await retryResponse.text();
+  try { writeProbe = JSON.parse(writeProbeBody); } catch { writeProbe = { message: writeProbeBody.slice(0, 1000) }; }
+}
 if (!writeProbeResponse.ok) {
   const acceptedPermissions = writeProbeResponse.headers.get("x-accepted-github-permissions") || "not supplied";
   console.error("Git Data blob permission probe failed:", JSON.stringify({
