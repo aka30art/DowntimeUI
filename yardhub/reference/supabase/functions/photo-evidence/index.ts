@@ -106,7 +106,7 @@ Deno.serve(async(req)=>{
       const {error:deleteError}=await admin.from("downtime_attachments").delete().eq("id",existing.id);
       if(deleteError)return json({error:"Unable to replace expired photo metadata"},503);
     }
-    const {data:upload,error:signError}=await admin.storage.from(bucket).createSignedUploadUrl(path,{upsert:false});
+    const {data:upload,error:signError}=await admin.storage.from(bucket).createSignedUploadUrl(path,{upsert:false,contentType:mime,size});
     if(signError)return json({error:signError.message},500);
     const {error:insertError}=await admin.from("downtime_attachments").insert({
       id:attachmentId,downtime_entry_key:entryKey,record_id:recordId,department,
