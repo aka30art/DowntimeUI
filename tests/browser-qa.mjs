@@ -295,6 +295,7 @@ try{
   assert.equal(await yardhubPage.locator("#yardhub-github-connect-overlay").isVisible(),true,"YARDHUB must remain locked behind the private GitHub setup gate.");
   assert.equal(await yardhubPage.locator('[name="owner"]').inputValue(),"aka30art");
   assert.equal(await yardhubPage.locator('[name="repo"]').inputValue(),"");
+  assert.equal(await yardhubPage.locator('[name="branch"]').inputValue(),"","First setup must allow GitHub to supply the repository default branch.");
   assert.equal(await yardhubPage.locator('[name="token"]').inputValue(),"");
   assert.equal(await yardhubPage.locator("[data-create-private]").isEnabled(),true,"First-run private repository creation must be available.");
   assert.equal(await yardhubPage.locator("#firstDevBootstrapPanel").isHidden(),true,"DEV bootstrap must remain hidden until a private database issues a one-time code.");
