@@ -1,0 +1,57 @@
+# Install as .github/workflows/yardhub-broker-identity-admin.yml
+# in the dedicated PRIVATE broker repository's default branch only.
+name: YARDHUB Broker Identity Administration
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: Link or revoke a GitHub account
+        required: true
+        type: choice
+        options: [link, revoke]
+      github_user_id:
+        description: Numeric GitHub account ID
+        required: true
+        type: string
+      user_id:
+        description: Canonical USER UUID (link only)
+        required: false
+        type: string
+      staff_id:
+        description: Reciprocal canonical STAFF UUID (link only)
+        required: false
+        type: string
+      broker_issue_number:
+        description: Open inbox issue number assigned to the target GitHub account (link only)
+        required: false
+        type: string
+      broker_issue_id:
+        description: Internal GitHub issue ID for that inbox issue (link only)
+        required: false
+        type: string
+      reason:
+        description: Audit reason for this identity change
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  issues: read
+
+jobs:
+  administer:
+    uses: aka30art/DowntimeUI/.github/workflows/yardhub-github-identity-admin.yml@<PINNED_DOWNTIMEUI_COMMIT_SHA>
+    with:
+      source_ref: <PINNED_DOWNTIMEUI_COMMIT_SHA>
+      broker_repository_id: "<PRIVATE_BROKER_REPOSITORY_NUMERIC_ID>"
+      data_owner: "<PRIVATE_DATA_REPOSITORY_OWNER>"
+      data_repository: "<PRIVATE_DATA_REPOSITORY_NAME>"
+      data_repository_id: "<PRIVATE_DATA_REPOSITORY_NUMERIC_ID>"
+      data_app_id: "<DATA_APP_ID>"
+      data_app_installation_id: "<DATA_APP_INSTALLATION_ID>"
+      data_branch: main
+      bootstrap_github_user_id: "<ONE_TIME_DEV_GITHUB_NUMERIC_ID>"
+      bootstrap_issue_id: "<ONE_TIME_DEV_INBOX_ISSUE_INTERNAL_ID>"
+    secrets:
+      data_app_private_key: ${{ secrets.YARDHUB_DATA_APP_PRIVATE_KEY }}
