@@ -4,7 +4,7 @@ import { ensureGitHubDatabaseReady, GITHUB_YARDHUB_TABLES } from "../src/infrast
 
 const repository = String(process.env.YARDHUB_DATA_REPOSITORY || "").trim();
 const token = String(process.env.YARDHUB_DATA_TOKEN || "").trim();
-const branch = String(process.env.YARDHUB_DATA_BRANCH || "main").trim();
+let branch = String(process.env.YARDHUB_DATA_BRANCH || "").trim();
 if (!repository || !token) {
   console.error("Real-repository acceptance requires YARDHUB_DATA_REPOSITORY=owner/repo and YARDHUB_DATA_TOKEN. No test was run.");
   process.exit(2);
@@ -42,6 +42,7 @@ assert.equal(metadataResponse.ok, true, "GitHub token must read the configured d
 assert.equal(metadata.private, true, "YARDHUB operational data repository must be private");
 assert.equal(metadata.archived, false, "YARDHUB data repository must not be archived");
 assert.equal(metadata.permissions?.push, true, "GitHub token must have write access to the private YARDHUB data repository");
+branch = branch || metadata.default_branch || "main";
 
 const cacheA = memoryStorage();
 const cacheB = memoryStorage();
