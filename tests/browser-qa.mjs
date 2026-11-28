@@ -327,8 +327,9 @@ try{
   await offlinePage.route("https://api.github.com/**",route=>{githubApiRequests++;return route.abort("internetdisconnected")});
   await offlinePage.route("https://github-native.invalid/**",route=>route.fulfill({status:503,contentType:"application/json",body:JSON.stringify({error:"Offline browser QA"})}));
   await offlinePage.goto("http://127.0.0.1:"+address.port+"/yardhub/runtime/index.html",{waitUntil:"networkidle"});
-  await offlinePage.waitForTimeout(1500);
-  if(!(await offlinePage.locator("#yardHubOfflineBanner").isVisible())){
+  try{
+    await offlinePage.locator("#yardHubOfflineBanner").waitFor({state:"visible",timeout:15000});
+  }catch{
     const status=await offlinePage.locator("[data-yardhub-github-status]").textContent().catch(()=> "");
     const auth=await offlinePage.locator("#authMsg").textContent().catch(()=> "");
     throw new Error("Offline cached bootstrap did not open YARDHUB. GitHub status: "+status+"; auth: "+auth+"; page errors: "+offlineErrors.join(" | ")+"; console: "+offlineConsole.join(" | "));
