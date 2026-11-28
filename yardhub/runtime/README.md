@@ -32,7 +32,7 @@ This is the deliberately simple direct-browser model. The fine-grained token is 
 
 ## Data and conflict behaviour
 
-The application loads the latest central data when it connects and after USER/PIN sign-in. The **REFRESH DATA** action performs an explicit read of the current central state. No background polling or realtime channel is used. Each write is checked against the current repository version; a stale write fails with a refresh-before-retry message. Git history retains prior committed JSON versions for recovery.
+The application loads the latest central data when it connects and after USER/PIN sign-in. The **REFRESH DATA** action performs an explicit read of the current central state. No background polling or realtime channel is used. Each write is checked against the current repository version; a stale write fails with a refresh-before-retry message. Git history retains prior committed JSON versions for recovery.\n\nAfter a successful connection, the browser caches the latest table snapshot and small binary objects (up to 512 KB each) in local storage. If GitHub becomes unreachable, the app can reopen that last cached state in **read-only offline mode**. The cached user session is restored locally; write operations return an explicit offline/not-saved error, and manual refresh is unavailable until the device reconnects. Larger binary attachments may not be available offline, and local browser storage quotas can limit cache size. Offline mode is only available after that device has successfully loaded the repository at least once.
 
 ## Scope and limits
 
