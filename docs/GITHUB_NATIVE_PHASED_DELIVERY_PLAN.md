@@ -29,6 +29,13 @@ Run syntax checks, all unit/service tests, service bundle builds and Chromium br
 ### Phase 4 — Real repository provisioning
 Create a dedicated private repository (suggested name `YARDHUB-DATA`). Connect a fine-grained PAT with Contents read/write and Metadata read. Verify private visibility, repository identity and forbidden-repository protection. Initialize the empty schema and DEV ROOT.
 
+The branch includes a manual `YARDHUB Real GitHub Acceptance` Actions workflow. Before running it, add these repository Actions secrets in `aka30art/DowntimeUI`:
+- `YARDHUB_DATA_REPOSITORY`: the private data repository in `owner/repo` form.
+- `YARDHUB_DATA_TOKEN`: fine-grained PAT scoped only to that private repository, with Contents read/write and Metadata read.
+- `YARDHUB_DATA_BRANCH`: optional branch name (defaults to `main`).
+
+Then run **Actions → YARDHUB Real GitHub Acceptance → Run workflow** on this PR branch. The workflow verifies repository privacy, initializes the empty 39-table schema if needed, checks two independent store sessions, refresh visibility, stale-write rejection, binary object transport and offline cached reads. It removes its temporary test records and object. Run this before creating DEV ROOT; the first-run assertion expects an empty USER directory.
+
 ### Phase 5 — Multi-device acceptance
 Connect two independent browser/device profiles to the same private repository. Commit a change on device A, manually refresh device B, and verify that B reads the new central version. Test stale concurrent writes and confirm conflict rejection.
 
