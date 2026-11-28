@@ -325,7 +325,12 @@ try{
   await offlinePage.route("https://api.github.com/**",route=>{githubApiRequests++;return route.abort("internetdisconnected")});
   await offlinePage.route("https://github-native.invalid/**",route=>route.fulfill({status:503,contentType:"application/json",body:JSON.stringify({error:"Offline browser QA"})}));
   await offlinePage.goto("http://127.0.0.1:"+address.port+"/yardhub/runtime/index.html",{waitUntil:"networkidle"});
-  await offlinePage.locator("#yardHubOfflineBanner").waitFor({state:"visible",timeout:15000});
+  await offlinePage.waitForTimeout(1500);
+  if(!(await offlinePage.locator("#yardHubOfflineBanner").isVisible())){
+    const status=await offlinePage.locator("[data-yardhub-github-status]").textContent().catch(()=> "");
+    const auth=await offlinePage.locator("#authMsg").textContent().catch(()=> "");
+    throw new Error("Offline cached bootstrap did not open YARDHUB. GitHub status: "+status+"; auth: "+auth+"; page errors: "+offlineErrors.join(" | "));
+  }
   assert.equal(await offlinePage.locator("#yardHub").isVisible(),true,"A previously connected device must reopen cached YARDHUB data when GitHub is unavailable.");
   assert.match(await offlinePage.locator("#yardHubOfflineBanner").innerText(),/READ ONLY.*NOT SAVED TO GITHUB/,"Offline mode must be visibly read-only and must not claim central saves.");
   const requestsBeforeOfflineRefresh=githubApiRequests;
