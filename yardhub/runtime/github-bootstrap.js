@@ -1,5 +1,4 @@
 import { createGitHubDataStore } from "../../src/infrastructure/github-data-store.js";
-import { createPrivateGitHubDataRepository } from "../../src/infrastructure/github-connection.js";
 import { installGitHubEdgeRuntime } from "./github-edge-runtime.js";
 
 const STORAGE_KEY="yardhub:github-data-connection:v1";
@@ -154,23 +153,6 @@ async function connectFromForm(){
   }finally{if(submit)submit.disabled=false}
 }
 form?.addEventListener("submit",event=>{event.preventDefault();void connectFromForm()});
-const createButton=form?.querySelector("[data-create-private]");
-createButton?.addEventListener("click",async()=>{
-  const connection=valuesFromForm();
-  if(!connection.owner||!connection.repo||!connection.token){status("Enter the GitHub owner, new repository name and one-time repository-creation token.",true);return}
-  createButton.disabled=true;
-  try{
-    status("Creating the private YARDHUB data repository…");
-    const created=await createPrivateGitHubDataRepository({
-      owner:connection.owner,repo:connection.repo,token:connection.token,
-      fetchImpl:nativeFetch
-    });
-    const branch=form.querySelector('[name="branch"]');if(branch)branch.value=created.defaultBranch||"main";
-    const token=form.querySelector('[name="token"]');if(token)token.value="";
-    status("Private repository created. Replace the one-time token with a fine-grained token limited to this repository (Contents read/write, Metadata read), then select CONNECT.");
-  }catch(error){status(error?.message||"Private repository creation failed.",true)}
-  finally{createButton.disabled=false}
-});
 const saved=readSaved();
 if(saved){
   showOverlay();
@@ -186,7 +168,7 @@ if(saved){
   });
 }else{
   showOverlay();
-  status("First setup: create a private GitHub repository, then connect its fine-grained token.");
+  status("Connect your existing private YARDHUB-DATA repository using its fine-grained token.");
 }
 window.YARDHUB_GITHUB_READY=()=>Boolean(window.YARDHUB_GITHUB_CONNECTED);
 window.YARDHUB_GITHUB_REFRESH=async()=>{

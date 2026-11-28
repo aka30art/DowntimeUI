@@ -294,10 +294,11 @@ try{
   await yardhubPage.getByRole("heading",{name:"Connect YARDHUB to GitHub"}).waitFor();
   assert.equal(await yardhubPage.locator("#yardhub-github-connect-overlay").isVisible(),true,"YARDHUB must remain locked behind the private GitHub setup gate.");
   assert.equal(await yardhubPage.locator('[name="owner"]').inputValue(),"aka30art");
-  assert.equal(await yardhubPage.locator('[name="repo"]').inputValue(),"");
+  assert.equal(await yardhubPage.locator('[name="repo"]').inputValue(),"YARDHUB-DATA");
+  assert.equal(await yardhubPage.getByRole("button",{name:"CONNECT TO EXISTING REPOSITORY"}).count(),1,"First setup must clearly connect to the existing data repository.");
+  assert.equal(await yardhubPage.locator("[data-create-private]").count(),0,"The application must not require or offer repository creation.");
   assert.equal(await yardhubPage.locator('[name="branch"]').inputValue(),"","First setup must allow GitHub to supply the repository default branch.");
   assert.equal(await yardhubPage.locator('[name="token"]').inputValue(),"");
-  assert.equal(await yardhubPage.locator("[data-create-private]").isEnabled(),true,"First-run private repository creation must be available.");
   assert.equal(await yardhubPage.locator("#firstDevBootstrapPanel").isHidden(),true,"DEV bootstrap must remain hidden until a private database issues a one-time code.");
   assert.equal(yardhubRequests.some(url=>url.startsWith("https://github-native.invalid/")),false,"YARDHUB must wait for the private GitHub runtime before querying central login data.");
   assert.equal(yardhubRequests.some(url=>url.includes("supabase.co")),false,"The YARDHUB runtime must not call any original Supabase endpoint.");
@@ -319,6 +320,8 @@ try{
   await publishedPage.goto("http://127.0.0.1:"+address.port+"/dist/index.html",{waitUntil:"networkidle"});
   await publishedPage.getByRole("heading",{name:"Connect YARDHUB to GitHub"}).waitFor();
   assert.equal(await publishedPage.locator("#yardhub-github-connect-overlay").isVisible(),true,"The published Pages root must open the GitHub connection gate.");
+  assert.equal(await publishedPage.locator('[name="repo"]').inputValue(),"YARDHUB-DATA","Published root must default to the existing private data repository.");
+  assert.equal(await publishedPage.locator("[data-create-private]").count(),0,"Published root must not show a repository-creation installer action.");
   assert.equal(await publishedPage.locator("#authGate").count(),1,"The original YARDHUB central login must be present behind the connection gate.");
   assert.equal(await publishedPage.locator("#yardHub").count(),1,"The original YARDHUB launcher must be present.");
   assert.equal(await publishedPage.locator("#installerRoot").count(),0,"The generic installer must not be part of the published site.");

@@ -12,6 +12,10 @@ test("GitHub Pages root is the original YARDHUB application, not the generic ins
   assert.match(entry, /id="yardHub"/);
   assert.match(entry, /id="launchDowntimeBtn"/);
   assert.match(entry, /id="yardhub-github-connect-overlay"/);
+  assert.match(entry, /YARDHUB · GITHUB DATA CONNECTION/);
+  assert.match(entry, /value="YARDHUB-DATA"/);
+  assert.match(entry, /CONNECT TO EXISTING REPOSITORY/);
+  assert.doesNotMatch(entry, /CREATE PRIVATE DATA REPOSITORY|Repository creation \(write\)|data-create-private/);
   assert.match(entry, /github-bootstrap\.js/);
   assert.doesNotMatch(entry, /installerRoot|src\/installer\.js|DOWNTIMEUI — Universal Operations/);
 });
