@@ -866,7 +866,7 @@ export function createGitHubDataStore({
         if (!file) throw new GitHubStoreError("Storage object not found: " + bucket + "/" + objectName, 404);
         const blob = await request("/git/blobs/" + encodeURIComponent(file.sha));
         if (blob.encoding !== "base64" || typeof blob.content !== "string") throw new GitHubStoreError("GitHub returned an unsupported storage blob encoding.");
-        const binary = globalThis.atob(blob.content.replace(/\\s/g, ""));
+        const binary = globalThis.atob(blob.content.replace(/\s/g, ""));
         const bytes = Uint8Array.from(binary, character => character.charCodeAt(0));
         const metadata = await readJsonAt(metadataPath, headSha);
         const mimeType = metadata?.mimeType || "application/octet-stream";
