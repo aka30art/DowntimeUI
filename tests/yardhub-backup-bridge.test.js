@@ -25,7 +25,8 @@ function createMockServices({
   privateRepository = true,
   authority = { status: "ACTIVE", primarySystemId: "YARDHUB-PRIMARY", secondarySystemId: "DOWNTIMEUI-GITHUB", epoch: 1 },
   flipAuthorityOnFirstSourceRead = false,
-  authorityAfterFirstSourceRead = { status: "ACTIVE", primarySystemId: "DOWNTIMEUI-GITHUB", secondarySystemId: "YARDHUB-PRIMARY", epoch: 2 }
+  authorityAfterFirstSourceRead = { status: "ACTIVE", primarySystemId: "DOWNTIMEUI-GITHUB", secondarySystemId: "YARDHUB-PRIMARY", epoch: 2 },
+  includeBrokerTables = false
 } = {}) {
   let head = "commit-0";
   let currentTree = new Map();
@@ -35,6 +36,15 @@ function createMockServices({
   const blobs = new Map();
   const trees = new Map([["tree-0", currentTree]]);
   const tableCalls = new Map();
+  if (includeBrokerTables) {
+    for (const table of ["downtime_github_identities", "downtime_github_broker_requests", "downtime_github_broker_identity_audit"]) {
+      const path = "data/yardhub/tables/" + table + ".json";
+      const bytes = Buffer.from(JSON.stringify({ schemaVersion: 1, table, rows: [{ preserved: true }] }) + "\n", "utf8");
+      const sha = gitSha(bytes);
+      blobs.set(sha, bytes);
+      currentTree.set(path, { sha, bytes });
+    }
+  }
 
   if (authority) {
     const bytes = Buffer.from(JSON.stringify(authority) + "\n", "utf8");
@@ -205,6 +215,15 @@ test("backup fails closed when the private GitHub data repository has no authori
   assert.match(result.reason, /authority manifest is missing/i);
   assert.equal(mock.tableCalls.size, 0);
   assert.equal(mock.commits, 0);
+});
+
+test("source backup preserves GitHub-only broker identity, request and audit tables", async () => {
+  const mock = createMockServices({ includeBrokerTables: true });
+  const runner = createYardHubBackupRunner({ fetchImpl: mock.fetchImpl, now: () => new Date("2026-11-27T12:00:00.000Z") });
+  await runner.run({ env });
+  for (const table of ["downtime_github_identities", "downtime_github_broker_requests", "downtime_github_broker_identity_audit"]) {
+    assert.equal(mock.currentTree.has("data/yardhub/tables/" + table + ".json"), true, table + " must survive source replication");
+  }
 });
 
 test("backup stops before reading source records when GitHub already owns primary authority", async () => {
