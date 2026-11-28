@@ -336,6 +336,13 @@ try{
   }
   assert.equal(await offlinePage.locator("#yardHub").isVisible(),true,"A previously connected device must reopen cached YARDHUB data when GitHub is unavailable.");
   assert.match(await offlinePage.locator("#yardHubOfflineBanner").innerText(),/READ ONLY.*NOT SAVED TO GITHUB/,"Offline mode must be visibly read-only and must not claim central saves.");
+  const freshInstall=await offlinePage.evaluate(()=>window.centralAppData({appData:{}}));
+  assert.deepEqual(freshInstall.areas,[],"A fresh install must not import plant checkpoints.");
+  assert.deepEqual(freshInstall.reasons,[],"A fresh install must not import reason presets.");
+  assert.deepEqual(freshInstall.staffRoster,[],"A fresh install must not import staff.");
+  assert.deepEqual(freshInstall.stationConfig,[],"A fresh install must not import station presets.");
+  assert.deepEqual(freshInstall.dailyTaskPresets,[],"A fresh install must not import task presets.");
+  assert.deepEqual(freshInstall.operatorProfiles,{},"A fresh install must not import operator profiles.");
   const requestsBeforeOfflineRefresh=githubApiRequests;
   await offlinePage.locator("#yardHubRefreshBtn").click();
   assert.match(await offlinePage.locator("#cloudStatus").textContent(),/REFRESH UNAVAILABLE/,"Manual refresh must report unavailable while offline.");
