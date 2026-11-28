@@ -1,7 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { webcrypto } from "node:crypto";
-import { createEncryptedBrokerRequest } from "../src/infrastructure/github-app-broker-client.js";
+import { createEncryptedBrokerRequest, decryptBrokerResponse, parseBrokerResponseComment } from "../src/infrastructure/github-app-broker-client.js";
+import { installGitHubEdgeRuntime } from "../yardhub/runtime/github-edge-runtime.js";
+import { GITHUB_YARDHUB_TABLES } from "../src/infrastructure/github-database-bootstrap.js";
 import { createGitHubYardHubBroker } from "../src/infrastructure/github-actions-broker-runtime.js";
 
 const SERVICE_NAMES = [
@@ -196,4 +198,107 @@ test("GitHub YARDHUB broker runtime requires a broker-repository response creden
     () => createGitHubYardHubBroker(makeRuntimeOptions({ githubToken: "" })),
     /broker-repository issue-comment token and repository identity/
   );
+});
+
+
+test("encrypted broker action uses canonical USER YARD ROLE, broker session, atomic commit and replay ledger", async () => {
+  const githubUserId = "987654";
+  const userId = "00000000-0000-4000-8000-000000000002";
+  const staffId = "00000000-0000-4000-8000-000000000003";
+  const roleId = "00000000-0000-4000-8000-000000000004";
+  const issueId = 3001;
+  const repositoryId = 123456;
+  let revision = 0;
+  let tables = Object.fromEntries(GITHUB_YARDHUB_TABLES.map(name => [name, []]));
+  tables.downtime_github_identities = [{
+    github_user_id: githubUserId, user_id: userId, staff_id: staffId,
+    broker_issue_id: issueId, status: "ACTIVE"
+  }];
+  tables.downtime_central_bank = [{
+    id: 1,
+    payload: {
+      users: [{ userId, staffId, username: "operator", enabled: true, status: "ACTIVE", tier: "USER" }],
+      staff: { profiles: { operator: { staffId, linkedUserId: userId, displayName: "Operator" } } }
+    }
+  }];
+  tables.yard_role_assignments = [{ user_id: userId, staff_id: staffId, yard_role_id: roleId, status: "ACTIVE" }];
+  tables.yard_roles = [{ id: roleId, name: "YARD OPERATOR", status: "ACTIVE" }];
+  tables.yard_role_department_permissions = [
+    { yard_role_id: roleId, department: "Traffic", can_view: true, can_enter: true, can_edit: false, can_manage: false }
+  ];
+  const authorityState = { status: "ACTIVE", primarySystemId: "DOWNTIMEUI-GITHUB", secondarySystemId: "YARDHUB-PRIMARY", epoch: 3 };
+  const store = {
+    async readDatabase() { return { revision, tables: structuredClone(tables), manifest: { revision } }; },
+    async readTable(name) { return structuredClone(tables[name] || []); },
+    async readAuthority() { return structuredClone(authorityState); },
+    async transactDatabase({ expectedRevision, mutate }) {
+      if (expectedRevision !== revision) { const error = new Error("revision conflict"); error.status = 409; throw error; }
+      const draft = structuredClone(tables);
+      const result = await mutate(draft);
+      tables = draft;
+      revision += 1;
+      return { committed: true, revision, commitSha: "broker-test-" + revision, result };
+    },
+    get tables() { return structuredClone(tables); }
+  };
+  const edgeRuntime = await installGitHubEdgeRuntime({ store, functionNames: [] });
+  const brokerKeys = await webcrypto.subtle.generateKey({ name: "ECDH", namedCurve: "P-256" }, true, ["deriveBits"]);
+  const brokerPublicKey = Buffer.from(await webcrypto.subtle.exportKey("raw", brokerKeys.publicKey)).toString("base64url");
+  const request = await createEncryptedBrokerRequest({
+    payload: { service: "gatelog-api", action: "customer-arrival", args: { customer: "Encrypted customer" } },
+    brokerPublicKey, cryptoProvider: webcrypto, requestId: "10fd938a-2107-4b8a-ade1-ba77bc542182"
+  });
+  let handlerCalls = 0;
+  const gatelogHandler = async incoming => {
+    handlerCalls += 1;
+    assert.match(incoming.headers.get("x-downtime-session") || "", /^[a-f0-9]{64}$/);
+    const db = globalThis.__YARDHUB_GITHUB_COMPAT__.createClient();
+    const inserted = await db.from("gatelog_customers")
+      .insert({ id: "broker-customer-01", customer_name: "Encrypted customer" })
+      .select("*").single();
+    assert.equal(inserted.error, null);
+    return new Response(JSON.stringify({ ok: true, customerId: inserted.data.id }), {
+      status: 200, headers: { "content-type": "application/json" }
+    });
+  };
+  const handlers = Object.fromEntries(SERVICE_NAMES.map(name => [
+    name, name === "gatelog-api" ? gatelogHandler : async () => new Response("{}", { status: 200 })
+  ]));
+  const published = [];
+  const broker = createGitHubYardHubBroker({
+    store, handlers, expectedRepositoryId: repositoryId,
+    brokerPrivateKey: brokerKeys.privateKey, githubToken: "test-token",
+    brokerOwner: "test-owner", brokerRepository: "test-inbox", cryptoProvider: webcrypto,
+    fetchImpl: async (url, options) => {
+      published.push(JSON.parse(options.body).body);
+      return new Response(JSON.stringify({ id: 9001 }), { status: 201 });
+    }
+  });
+  const event = {
+    action: "created", repository: { id: repositoryId },
+    sender: { id: Number(githubUserId), login: "operator", type: "User" },
+    issue: { id: issueId, number: 77, pull_request: null },
+    comment: { id: 88, user: { id: Number(githubUserId) }, body: request.commentBody }
+  };
+  try {
+    const first = await broker.handleIssueComment(event);
+    assert.equal(first.accepted, true);
+    assert.equal(first.replayed, false);
+    assert.equal(handlerCalls, 1);
+    assert.equal(store.tables.gatelog_customers.length, 1);
+    assert.equal(store.tables.downtime_central_sessions.length, 0);
+    assert.equal(store.tables.downtime_github_broker_requests[0].state, "COMPLETED");
+    assert.equal(published.length, 1);
+    assert.equal(published[0].includes("Encrypted customer"), false);
+    const reply = await decryptBrokerResponse(request, parseBrokerResponseComment(published[0]), webcrypto);
+    assert.equal(reply.ok, true);
+    assert.equal(reply.result.body.customerId, "broker-customer-01");
+
+    const replay = await broker.handleIssueComment(event);
+    assert.equal(replay.replayed, true);
+    assert.equal(handlerCalls, 1);
+    assert.equal(published.length, 2);
+  } finally {
+    await edgeRuntime.dispose();
+  }
 });
