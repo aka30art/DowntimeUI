@@ -18,13 +18,23 @@ export async function installGitHubEdgeRuntime({
   rpcHandlers = GITHUB_YARDHUB_RPC_HANDLERS,
   actorId = "YARDHUB-EDGE-SERVICE",
   env = {},
+  offline = false,
   functionNames = DEFAULT_FUNCTIONS,
   importFunction = (name) => import("./functions/" + name + ".js"),
   fetchImpl = globalThis.fetch
 } = {}) {
   if (!store) throw new TypeError("A GitHub data store is required.");
   if (typeof store.ensureAuthority === "function") await store.ensureAuthority();
-  const databaseStatus = await ensureGitHubDatabaseReady({ store });
+  let databaseStatus;
+  if (offline) {
+    const cached = await store.readDatabase();
+    if (!cached?.manifest || !cached?.tables) throw new Error("No cached YARDHUB database is available for offline viewing.");
+    databaseStatus = { bootstrapCode: null, bootstrapCodeExpiresAt: null, offline: true };
+  } else {
+    databaseStatus = await ensureGitHubDatabaseReady({ store });
+  }
+  const previousOffline = globalThis.__YARDHUB_GITHUB_OFFLINE__;
+  globalThis.__YARDHUB_GITHUB_OFFLINE__ = Boolean(offline);
   globalThis.__YARDHUB_BOOTSTRAP_CODE__ = databaseStatus.bootstrapCode || null;
   const handlers = globalThis.__YARDHUB_EDGE_HANDLERS__ || (globalThis.__YARDHUB_EDGE_HANDLERS__ = {});
   const previousSharedStorage = globalThis.__YARDHUB_GITHUB_STORAGE__;
@@ -40,6 +50,7 @@ export async function installGitHubEdgeRuntime({
     SUPABASE_URL: "https://github-native.invalid",
     SUPABASE_SERVICE_ROLE_KEY: "GITHUB_NATIVE_COMPAT_ADAPTER",
     DOWNTIME_CANONICAL_AUTH_READY: "false",
+    YARDHUB_OFFLINE_MODE: offline ? "true" : "false",
     ...env
   };
 
@@ -105,6 +116,8 @@ export async function installGitHubEdgeRuntime({
       delete globalThis.__YARDHUB_GITHUB_COMPAT__;
       delete globalThis.__YARDHUB_CURRENT_FUNCTION__;
       globalThis.__YARDHUB_BOOTSTRAP_CODE__ = null;
+      if (previousOffline === undefined) delete globalThis.__YARDHUB_GITHUB_OFFLINE__;
+      else globalThis.__YARDHUB_GITHUB_OFFLINE__ = previousOffline;
       if (previousSharedStorage === undefined) delete globalThis.__YARDHUB_GITHUB_STORAGE__;
       else globalThis.__YARDHUB_GITHUB_STORAGE__ = previousSharedStorage;
       if (previousSupabase === undefined) delete globalThis.supabase;
