@@ -1,6 +1,8 @@
 name: YARDHUB Real GitHub Acceptance
 
 on:
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -12,15 +14,34 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
+      - name: Check private-repository credentials
+        id: credentials
+        shell: bash
+        env:
+          YARDHUB_DATA_REPOSITORY: ${{ secrets.YARDHUB_DATA_REPOSITORY }}
+          YARDHUB_DATA_TOKEN: ${{ secrets.YARDHUB_DATA_TOKEN }}
+        run: |
+          if [[ -n "$YARDHUB_DATA_REPOSITORY" && -n "$YARDHUB_DATA_TOKEN" ]]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+            echo "Private YARDHUB repository credentials are configured." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "SKIPPED — configure repository secrets YARDHUB_DATA_REPOSITORY and YARDHUB_DATA_TOKEN to run real private-repository acceptance. No mocked test is substituted." >> "$GITHUB_STEP_SUMMARY"
+            echo "::notice::Real private-repository acceptance skipped: required repository secrets are not configured."
+          fi
       - name: Checkout selected PR branch
+        if: steps.credentials.outputs.configured == 'true'
         uses: actions/checkout@v4
       - name: Set up Node.js
+        if: steps.credentials.outputs.configured == 'true'
         uses: actions/setup-node@v4
         with:
           node-version: 22
       - name: Install test dependencies
+        if: steps.credentials.outputs.configured == 'true'
         run: npm install --no-audit --no-fund
       - name: Run real GitHub repository acceptance
+        if: steps.credentials.outputs.configured == 'true'
         run: npm run test:github-real
         env:
           YARDHUB_DATA_REPOSITORY: ${{ secrets.YARDHUB_DATA_REPOSITORY }}
