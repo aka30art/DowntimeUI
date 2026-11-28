@@ -53,6 +53,7 @@ async function verifyPrivateRepository(connection){
   if(!response.ok){const error=new Error(metadata.message||"GitHub could not open the configured data repository.");error.status=response.status;throw error}
   if(metadata.private!==true){const error=new Error("The YARDHUB operational data repository must be private.");error.status=403;throw error}
   if(metadata.archived===true){const error=new Error("The YARDHUB operational data repository is archived and cannot be changed.");error.status=403;throw error}
+  if(metadata.permissions?.push!==true){const error=new Error("The GitHub token must have read and write (Contents) access to the private YARDHUB data repository.");error.status=403;throw error}
   return metadata;
 }
 async function connect(connection){
