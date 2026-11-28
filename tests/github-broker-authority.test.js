@@ -176,7 +176,7 @@ test("only immutable DEV can link or revoke GitHub identities", async () => {
   const linked = await rootAuthority.linkIdentity({
     actorPrincipal: dev,
     githubUserId: "444444",
-    userId: "00000000-0000-4000-8000-000000000099",
+    userId: "00000000-0000-4000-8000-000000000005",
     issueId: 1003
   });
   assert.equal(linked.ok, true);
