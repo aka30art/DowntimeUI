@@ -594,7 +594,7 @@ test("broker database writes are denied until GitHub is the active primary at th
       mutate() { mutated = true; }
     }),
     error => error instanceof GitHubStoreError && error.status === 409 &&
-      /authority changed or GitHub is not primary/.test(error.message)
+      /data authority changed or GitHub is not the active writer/.test(error.message)
   );
   assert.equal(mutated, false, "the service mutator must not run while YARDHUB remains primary");
   assert.equal(server.getHead(), before, "no Git ref may be committed while the GitHub twin is secondary");
