@@ -47,6 +47,9 @@ jobs:
           YARDHUB_DATA_REPOSITORY: ${{ secrets.YARDHUB_DATA_REPOSITORY }}
           YARDHUB_DATA_TOKEN: ${{ secrets.YARDHUB_DATA_TOKEN }}
           YARDHUB_DATA_BRANCH: ${{ secrets.YARDHUB_DATA_BRANCH }}
+      - name: Build all seven GitHub-native YARDHUB service bundles
+        if: steps.credentials.outputs.configured == 'true'
+        run: npm run build:yardhub
       - name: Install Chromium for real browser acceptance
         if: steps.credentials.outputs.configured == 'true'
         run: npx playwright install --with-deps chromium
