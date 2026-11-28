@@ -12,7 +12,7 @@ jobs:
   private-repository-acceptance:
     name: Verify the configured private YARDHUB data repository
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 25
     steps:
       - name: Check private-repository credentials
         id: credentials
@@ -43,6 +43,16 @@ jobs:
       - name: Run real GitHub repository acceptance
         if: steps.credentials.outputs.configured == 'true'
         run: npm run test:github-real
+        env:
+          YARDHUB_DATA_REPOSITORY: ${{ secrets.YARDHUB_DATA_REPOSITORY }}
+          YARDHUB_DATA_TOKEN: ${{ secrets.YARDHUB_DATA_TOKEN }}
+          YARDHUB_DATA_BRANCH: ${{ secrets.YARDHUB_DATA_BRANCH }}
+      - name: Install Chromium for real browser acceptance
+        if: steps.credentials.outputs.configured == 'true'
+        run: npx playwright install --with-deps chromium
+      - name: Run real two-browser repository acceptance
+        if: steps.credentials.outputs.configured == 'true'
+        run: npm run test:github-real-browser
         env:
           YARDHUB_DATA_REPOSITORY: ${{ secrets.YARDHUB_DATA_REPOSITORY }}
           YARDHUB_DATA_TOKEN: ${{ secrets.YARDHUB_DATA_TOKEN }}
