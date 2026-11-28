@@ -23,7 +23,6 @@ export async function installGitHubEdgeRuntime({
   fetchImpl = globalThis.fetch
 } = {}) {
   if (!store) throw new TypeError("A GitHub data store is required.");
-  if (typeof store.ensureAuthority === "function") await store.ensureAuthority();
   let databaseStatus;
   if (offline) {
     const cached = await store.readDatabase();
