@@ -45,7 +45,9 @@ try {
     const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
     contexts.push(context);
     const page = await context.newPage();
-    page.on("pageerror", error => { throw error; });
+    const pageErrors = [];
+    page.on("pageerror", error => pageErrors.push(error.message));
+    page.__acceptanceErrors = pageErrors;
     await page.goto("http://127.0.0.1:" + address.port + "/yardhub/runtime/index.html", { waitUntil: "networkidle" });
     await page.locator("#yardhub-github-connect-overlay").waitFor({ state: "visible" });
     await page.locator('#yardhub-github-connect-form [name="owner"]').fill(owner);
@@ -92,12 +94,8 @@ try {
   });
   const refreshed = await pageB.evaluate(async () => {
     const result = await window.YARDHUB_GITHUB_REFRESH();
-    return {
-      revision: result.revision,
-      offline: result.offline,
-      containsProbe: result.tables.downtime_reports.some(row => row.id === window.__yardhubExpectedProbe)
-    };
-  }).catch(async error => { throw error; });
+    return { revision: result.revision, offline: result.offline };
+  });
   assert.equal(refreshed.offline, false, "Manual browser refresh must retrieve live GitHub state.");
   assert.ok(refreshed.revision >= firstCommit.revision, "Browser B must advance to browser A's committed revision.");
   const visibleOnB = await pageB.evaluate(async id => {
@@ -105,6 +103,9 @@ try {
     return result.tables.downtime_reports.some(row => row.id === id);
   }, probeId);
   assert.equal(visibleOnB, true, "A real independent browser profile must see browser A's committed record after manual refresh.");
+  for (const page of [pageA, pageB]) {
+    assert.deepEqual(page.__acceptanceErrors, [], "YARDHUB browser runtime errors: " + page.__acceptanceErrors.join(" | "));
+  }
 
   const staleBaseline = await pageB.evaluate(async () => {
     const result = await window.YARDHUB_GITHUB_STORE.readDatabase();
