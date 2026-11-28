@@ -80,8 +80,8 @@ export async function installGitHubEdgeRuntime({
   }
   delete globalThis.__YARDHUB_CURRENT_FUNCTION__;
 
-  const routePattern = /\\/functions\\/v1\\/([a-z0-9-]+)(?:[/?#]|$)/i;
-  const storageUploadPattern = /\\/storage-upload\\//i;
+  const routePattern = /\/functions\/v1\/([a-z0-9-]+)(?:[/?#]|$)/i;
+  const storageUploadPattern = /\/storage-upload\//i;
   globalThis.fetch = async (input, init) => {
     const url = typeof input === "string" ? input : input?.url;
     const request = input instanceof Request && !init ? input : new Request(url, init);
