@@ -68,7 +68,7 @@ async function connect(connection){
   });
   status("Preparing the empty YARDHUB data structure…");
   await store.ensureAuthority();
-  const runtime=await installGitHubEdgeRuntime({store,fetchImpl:nativeFetch});
+  const runtime=await installGitHubEdgeRuntime({store,fetchImpl:nativeFetch,env:{DOWNTIME_CANONICAL_AUTH_READY:"true",DOWNTIME_IDENTITY_FINGERPRINT_SECRET:connection.token}});
   activeStore=store;activeRuntime=runtime;
   await window.DowntimeCentral.configureGitHubRuntime(runtime);
   setEndpoints();
