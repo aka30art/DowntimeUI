@@ -1,33 +1,50 @@
-# DOWNTIMEUI YARDHUB Runtime — Porting Worktree
+# YARDHUB GitHub-native runtime
 
-This is the working copy of the YARDHUB runtime copied from `yardhub/reference/`.
+This directory contains the independent YARDHUB application runtime and its existing operating UI. It is developed inside the DowntimeUI repository but is not activated by the current production Pages route. The protected `aka30art/DOWNTIME` repository is not a source, destination or dependency.
 
-It is isolated inside `aka30art/DowntimeUI`. It is not linked to the DOWNTIMEUI app entry point and is not deployed.
+## Agreed architecture
 
-**Do not run or deploy this worktree yet:** the initial copy still contains Supabase endpoints. The task here is to replace those integrations with the GitHub-native data adapter, then port/verify module by module before any route is enabled.
+- GitHub Pages serves the static YARDHUB application.
+- One dedicated **private GitHub repository** stores shared operational JSON and supported file data.
+- The browser connects directly to GitHub using a fine-grained personal access token with access only to that data repository.
+- The token is stored in that browser profile so the device can reconnect after reload. Configure the same token on each device.
+- The existing YARDHUB Central Bank USER/PIN login remains the application login. The GitHub token is a separate device-level connection credential.
+- The existing Edge Function modules run locally in the browser through the GitHub-native compatibility runtime; their data operations commit to the private repository.
+- Opening the app reconnects to GitHub and loads the latest central records after USER/PIN sign-in.
+- The existing **REFRESH DATA** control retrieves the latest central state on demand.
+- Writes commit centrally. Version checks reject stale writes rather than silently replacing newer data.
+- No polling, realtime subscriptions, Supabase, external database, external server or data migration from MAIN.
+- Initial data is empty. The first account is DEV ROOT; all other users, staff, presets, machines, customers and operational records are created manually in YARDHUB.
 
-The untouched source baseline is retained in `yardhub/reference/`.
+## First-time setup
 
+1. Create a new private repository dedicated to YARDHUB data. Do not use the DOWNTIME or DowntimeUI source repository.
+2. Create a fine-grained token limited to that repository, with **Contents: Read and write** and **Metadata: Read-only**.
+3. Connect the repository and token in the YARDHUB setup gate. The app verifies that the repository is private and initializes an empty schema.
+4. Initialize the first DEV ROOT account using the one-time setup code shown by the runtime.
+5. Create the remaining users and operational records manually.
 
-## Runtime activation gate
+The optional repository-creation button uses a one-time GitHub credential with repository-creation permission. After the repository is created, replace it with the repository-limited fine-grained token before connecting.
 
-`index.html` in this working tree is intentionally a safe activation interstitial. It does not load the original application or call Supabase. The original full UI is preserved in `yardhub/reference/index.html`. Replace this interstitial only after the GitHub-native action adapters, module storage and parity tests are complete.
+## Credential and access trade-off
 
+This is the deliberately simple direct-browser model. The fine-grained token is stored in browser local storage and can be used by anyone with access to that browser profile. Every device needs the same repository token configured. YARD ROLE and USER/PIN remain application-level controls; a person who extracts the repository token can access the private data repository directly. This is not equivalent to a server-enforced security boundary.
 
-## Current GitHub-native service harness
+## Data and conflict behaviour
 
-The porting branch now includes a tested experimental compatibility harness:
-- Seven preserved YARDHUB Edge Function entrypoints are bundled by `npm run build:yardhub`.
-- The local runtime adapter routes existing `/functions/v1/*` calls to those bundled handlers.
-- GitHub table, binary storage and RPC adapters provide the service compatibility layer.
-- Tests currently verify service registration, local CORS routing, runtime teardown and the shared database adapters.
+The application loads the latest central data when it connects and after USER/PIN sign-in. The **REFRESH DATA** action performs an explicit read of the current central state. No background polling or realtime channel is used. Each write is checked against the current repository version; a stale write fails with a refresh-before-retry message. Git history retains prior committed JSON versions for recovery.
 
-This is a build/test harness only. It is not a secure deployed backend and does not yet prove parity of every service action or a production authorization boundary. The original app is still not activated from this directory.
+## Scope and limits
 
-## Data security
+The runtime preserves the original YARDHUB interface and service logic. JSON operational records are the initial persistence target. Binary staff photos, evidence and PDF archive storage require separate verification against GitHub's practical file-size and API limits before those features can be considered production-accepted. Do not claim full operational parity until those flows pass end-to-end tests.
 
-- The DOWNTIMEUI source repository is public. Its `data/yardhub` branch is metadata-only and must remain free of operational records.
-- The DOWNTIME repository is protected and blocked as a data-store destination.
-- A dedicated private data repository is required before any operational record is stored.
-- The browser-direct connector is only an administrator prototype. Its token is memory-only, but a connected user can still read or alter all data in that private repository outside YARD ROLE restrictions.
-- Do not use this worktree for live operations until a server-enforced multi-user authorization gateway and recovery tests are complete.
+## Validation and release gate
+
+- Build all seven GitHub-native service bundles.
+- Run unit, service contract and browser QA tests.
+- Verify empty first-run bootstrap and DEV ROOT creation.
+- Verify two separate browser/device sessions reading and writing the same private repository.
+- Verify manual refresh retrieves another device's committed update.
+- Verify stale concurrent writes are rejected.
+- Verify backup/recovery and supported binary storage.
+- Keep PR #3 open and do not merge or deploy until every production acceptance gate passes.
