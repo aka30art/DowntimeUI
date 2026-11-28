@@ -336,7 +336,7 @@ try{
   }
   assert.equal(await offlinePage.locator("#yardHub").isVisible(),true,"A previously connected device must reopen cached YARDHUB data when GitHub is unavailable.");
   assert.match(await offlinePage.locator("#yardHubOfflineBanner").innerText(),/READ ONLY.*NOT SAVED TO GITHUB/,"Offline mode must be visibly read-only and must not claim central saves.");
-  const freshInstall=await offlinePage.evaluate(()=>window.centralAppData({appData:{}}));
+  const freshInstall=await offlinePage.evaluate(()=>JSON.parse(localStorage.getItem("plantDowntime.v1")||"{}"));
   assert.deepEqual(freshInstall.areas,[],"A fresh install must not import plant checkpoints.");
   assert.deepEqual(freshInstall.reasons,[],"A fresh install must not import reason presets.");
   assert.deepEqual(freshInstall.staffRoster,[],"A fresh install must not import staff.");
