@@ -183,3 +183,19 @@ The following code now exists in PR #3:
 The official GitHub documentation supports the `repository_id` restriction parameter in the web application token exchange, recommends PKCE S256 for browser clients and describes Device Flow for headless/constrained clients. The local implementation follows the browser-flow recommendation, but real App configuration and permission-isolation acceptance remain open.
 
 **Phase 3 remains BLOCKED.** No operational data, production credentials or YARDHUB authority have been moved.
+
+
+## 11. Implementation delta and current release gate — 28 November 2026
+
+This section supersedes earlier statements that the broker has no concrete identity resolver, permission evaluator, session issuer or idempotency adapter. Those components now exist locally in PR #3:
+
+1. **Identity and authorization:** `github-broker-authority.js` resolves immutable numeric GitHub IDs to active canonical USER/STAFF records, reciprocal STAFF profiles, ROOTS status and YARD ROLE department capabilities. The action catalogue is default-deny and covers 96 source service actions/read surfaces. `github-broker-identity-admin.js` limits account linking/revocation to immutable DEV and writes an audit record.
+2. **Session boundary:** the broker rejects caller-provided actor/role/session/access-token fields. It mints a short-lived Central Bank-compatible session from the verified principal, stores only the SHA-256 hash, and revokes the session after the service call.
+3. **Atomicity and replay:** the broker idempotency ledger uses durable private-store rows and lease recovery. The service action and transition of the request ledger to COMMITTED occur in the same staged GitHub database transaction. Completed requests replay the saved encrypted response rather than execute twice.
+4. **Authority lock:** broker operations are disabled while `YARDHUB-PRIMARY` is primary. The data-store transaction accepts an expected authority epoch and validates the authority manifest at the same commit SHA as the data snapshot; it requires ACTIVE status, the exact epoch and `DOWNTIMEUI-GITHUB` as primary. This is a hard gate, not an authority-transfer mechanism.
+5. **Actions runner:** `run-github-actions-broker.mjs` restricts the Data App installation token to a separate configured data-repository ID and validates event name/action, repository full name/ID, private visibility, default-branch ref and non-PR issue context. The script is not installed in a dedicated broker repository workflow.
+6. **Pending response recovery:** the browser client includes an IndexedDB adapter for pending request contexts and ECDH CryptoKey persistence. Real browser persistence, reload recovery and two-device/key-loss recovery remain unaccepted.
+
+**Production proof is still incomplete.** No dedicated private broker repository or private data repository is provisioned; no Inbox/Data GitHub Apps or secrets are configured; no default-branch `issue_comment` workflow exists; no real GitHub event, App permission, two-account isolation, load/queue, latency, private-storage, or disaster-recovery proof has passed. The local tests remain mock-based and do not prove the actual GitHub trust boundary.
+
+The broker must remain fail-closed while YARDHUB is primary. PR #3 remains open/draft; no merge, deployment, production data migration or authority transfer is authorised. `aka30art/DOWNTIME` remains untouched.
