@@ -2227,7 +2227,21 @@ window.launchStaffWorkspace=launchStaffWorkspace;
 function returnToYardHub(){const shell=document.querySelector('.shell');if(shell)shell.classList.remove('staff-workspace-active');setStaffWorkspaceNavigation(false);window.closeYardHubStaffManagement?.();if(shell)shell.style.display='none';const hub=$('yardHub');if(hub){hub.hidden=false;hub.style.display='block';['.yard-hero','.yard-grid','.yard-modules-heading','.yard-hub-footer'].forEach(selector=>{const node=hub.querySelector(selector);if(node)node.hidden=false});const screen=$('yardHubSettingsScreen');if(screen)screen.hidden=true}syncStaffModuleAccess();syncDowntimeModuleAccess();window.dispatchEvent(new Event('yard-hub:shown'))}
 window.returnToYardHub=returnToYardHub;
 async function unlockTracker(){const pin=$('teamPin').value,username=$('centralUsername').value;if(Date.now()<centralPinLockUntil){$('authMsg').textContent='Too many attempts. Try again in 30 seconds.';return}if(!username||!centralUsers.some(user=>user.username.toLocaleLowerCase('en-GB')===username.toLocaleLowerCase('en-GB'))||!pin){$('authMsg').textContent='Select a USER and enter your PIN.';return}if(pin.length<4||pin.length>8||!/^[0-9]{4,8}$/.test(pin)){$('authMsg').textContent='PIN must contain 4–8 digits.';return}$('unlockBtn').disabled=true;$('authMsg').textContent='Verifying central account…';try{centralUser=await window.DowntimeCentral.login(username,pin);activeOperator=centralUser.username;await cloudInit();if(!centralReady)throw new Error('Central state could not be loaded.');centralPinAttempts=0;$('teamPin').value='';showCentralApp();cloudStatus('CENTRAL · connected');legacyCloudClient().catch(()=>null)}catch(error){centralPinAttempts++;$('teamPin').value='';$('authMsg').textContent=error.message||'Central sign-in failed.';if(centralPinAttempts>=5){centralPinLockUntil=Date.now()+30000;centralPinAttempts=0;$('authMsg').textContent='Too many sign-in attempts. Locked for 30 seconds.'}}finally{$('unlockBtn').disabled=centralUsers.length===0}}
-async function resumeCentralSession(){if(!window.DowntimeCentral.session?.token)return;try{centralUser=window.DowntimeCentral.session.user;activeOperator=centralUser?.username||'';await cloudInit();if(centralReady){showCentralApp();if(window.YARDHUB_GITHUB_OFFLINE===true)cloudStatus('OFFLINE · CACHED DATA · READ ONLY · NOT SAVED TO GITHUB');else legacyCloudClient().catch(()=>null)}}catch(error){console.warn('Stored central session could not be resumed.',error);await window.DowntimeCentral.logout().catch(()=>{});centralUser=null;activeOperator='';loadCentralUsers().catch(()=>{})}}
+async function resumeCentralSession(){
+ if(!window.DowntimeCentral.session?.token)return false;
+ const offline=window.YARDHUB_GITHUB_OFFLINE===true||globalThis.__YARDHUB_GITHUB_OFFLINE__===true;
+ if(window.YARDHUB_GITHUB_CONNECTED!==true&&!offline)return false;
+ try{
+  centralUser=window.DowntimeCentral.session.user;activeOperator=centralUser?.username||'';
+  await cloudInit();
+  if(centralReady){showCentralApp();if(offline)cloudStatus('OFFLINE · CACHED DATA · READ ONLY · NOT SAVED TO GITHUB');else legacyCloudClient().catch(()=>null)}
+  return centralReady;
+ }catch(error){
+  console.warn('Stored central session could not be resumed.',error);
+  if(offline||error?.code==='YARDHUB_OFFLINE_NOT_SAVED'||error?.status===503)return false;
+  await window.DowntimeCentral.logout().catch(()=>{});centralUser=null;activeOperator='';loadCentralUsers().catch(()=>{});return false;
+ }
+}
 $('unlockBtn').onclick=unlockTracker;$('teamPin').addEventListener('keydown',e=>{if(e.key==='Enter')unlockTracker()});
 $('refreshAppBtn').onclick=()=>{loadCentralUsers().catch(()=>{})};
 async function logoutCentralSession(){try{stopCentralRealtimeSync();await window.DowntimeCentral.logout()}finally{if(managementPollTimer)clearInterval(managementPollTimer);centralReady=false;cloudReady=false;centralUser=null;window.DOWNTIME_ROOTS_AUTHORITY=null;syncStaffModuleAccess();centralBankPayload=null;activeOperator='';operatorReadOnly=false;const hub=$('yardHub');if(hub){hub.hidden=true;hub.style.display='none'}const shell=document.querySelector('.shell');if(shell)shell.style.display='none';$('authGate').style.display='grid';const centralAdminNav=$('centralAdminNav');if(centralAdminNav)centralAdminNav.style.display='none';$('teamPin').value='';loadCentralUsers().catch(()=>{})}}
