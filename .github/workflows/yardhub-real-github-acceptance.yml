@@ -25,9 +25,9 @@ jobs:
             echo "configured=true" >> "$GITHUB_OUTPUT"
             echo "Private YARDHUB repository credentials are configured." >> "$GITHUB_STEP_SUMMARY"
           else
-            echo "configured=false" >> "$GITHUB_OUTPUT"
-            echo "SKIPPED — configure repository secrets YARDHUB_DATA_REPOSITORY and YARDHUB_DATA_TOKEN to run real private-repository acceptance. No mocked test is substituted." >> "$GITHUB_STEP_SUMMARY"
-            echo "::notice::Real private-repository acceptance skipped: required repository secrets are not configured."
+            echo "BLOCKED — configure repository secrets YARDHUB_DATA_REPOSITORY and YARDHUB_DATA_TOKEN to run real private-repository acceptance. No mocked test is substituted." >> "$GITHUB_STEP_SUMMARY"
+            echo "::error::Real private-repository acceptance cannot run until YARDHUB_DATA_REPOSITORY and YARDHUB_DATA_TOKEN are configured."
+            exit 1
           fi
       - name: Checkout selected PR branch
         if: steps.credentials.outputs.configured == 'true'
