@@ -93,10 +93,38 @@ export async function runGitHubActionsBroker({
   if (!Number.isSafeInteger(brokerRepositoryId) || brokerRepositoryId <= 0) {
     throw new TypeError("YARDHUB_BROKER_REPOSITORY_ID must be a positive numeric repository ID.");
   }
+  if (requiredEnv(env, "GITHUB_EVENT_NAME") !== "issue_comment" ||
+      event.action !== "created" || event.issue?.pull_request) {
+    throw new Error("Only newly created issue comments in the dedicated broker repository are accepted.");
+  }
+  if (Number(event.repository?.id) !== brokerRepositoryId ||
+      String(event.repository?.full_name || "").toLowerCase() !== repository.toLowerCase()) {
+    throw new Error("The GitHub event repository does not match the configured private broker repository.");
+  }
+  if (event.repository?.private !== true) {
+    throw new Error("The broker inbox must be private until a separate public-inbox privacy and abuse approval is recorded.");
+  }
+  const defaultBranch = String(event.repository?.default_branch || "");
+  const workflowRef = String(env.GITHUB_REF || "");
+  if (!defaultBranch || workflowRef !== "refs/heads/" + defaultBranch) {
+    throw new Error("The broker workflow must execute from the configured repository default branch.");
+  }
+
+  const bootstrapGitHubUserId = String(env.YARDHUB_BROKER_BOOTSTRAP_GITHUB_USER_ID || "").trim() || null;
+  const bootstrapIssueRaw = String(env.YARDHUB_BROKER_BOOTSTRAP_ISSUE_ID || "").trim();
+  const bootstrapIssueId = bootstrapIssueRaw ? Number(bootstrapIssueRaw) : null;
+  if (Boolean(bootstrapGitHubUserId) !== Boolean(bootstrapIssueRaw) ||
+      (bootstrapIssueId !== null && (!Number.isSafeInteger(bootstrapIssueId) || bootstrapIssueId < 1))) {
+    throw new TypeError("The one-time DEV bootstrap GitHub user ID and inbox issue ID must be configured together.");
+  }
 
   const dataOwner = requiredEnv(env, "YARDHUB_DATA_OWNER");
   const dataRepository = requiredEnv(env, "YARDHUB_DATA_REPOSITORY");
   const dataRepositoryId = requiredEnv(env, "YARDHUB_DATA_REPOSITORY_ID");
+  if (Number(dataRepositoryId) === brokerRepositoryId ||
+      (dataOwner + "/" + dataRepository).toLowerCase() === repository.toLowerCase()) {
+    throw new Error("The private YARDHUB data repository must be distinct from the broker inbox repository.");
+  }
   const dataAppId = requiredEnv(env, "YARDHUB_DATA_APP_ID");
   const dataInstallationId = requiredEnv(env, "YARDHUB_DATA_APP_INSTALLATION_ID");
   const dataAppPrivateKey = requiredEnv(env, "YARDHUB_DATA_APP_PRIVATE_KEY");
@@ -126,6 +154,8 @@ export async function runGitHubActionsBroker({
       store,
       handlers: runtime.handlers,
       expectedRepositoryId: brokerRepositoryId,
+      bootstrapGitHubUserId,
+      bootstrapIssueId,
       brokerPrivateKey,
       githubToken: workflowToken,
       brokerOwner,
