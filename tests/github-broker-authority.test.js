@@ -80,7 +80,7 @@ function makeStore() {
       };
       return { ok: true, snapshot: structuredClone(state.snapshot) };
     },
-    async readAuthority() { return { status: "ACTIVE", epoch: 4 }; },
+    async readAuthority() { return { status: "ACTIVE", primarySystemId: "DOWNTIMEUI-GITHUB", epoch: 4 }; },
     state
   };
 }
@@ -224,3 +224,20 @@ test("broker policy table explicitly lists all 96 source action/read surfaces", 
 });
 
 console.log("PASS: GitHub broker authority — actor mapping, DEV bootstrap, inbox ownership, YARD ROLE checks and 96-action default-deny policy");
+
+
+test("broker refuses to issue an authority epoch or authorize actions while YARDHUB remains primary", async () => {
+  const store = makeStore();
+  store.readAuthority = async () => ({
+    status: "ACTIVE",
+    primarySystemId: "YARDHUB-PRIMARY",
+    secondarySystemId: "DOWNTIMEUI-GITHUB",
+    epoch: 4
+  });
+  const authority = createGitHubBrokerAuthority({ store, brokerRepositoryId: BROKER_REPOSITORY_ID });
+  const principal = await authority.resolvePrincipal(USER_GITHUB_ID);
+  await assert.rejects(authority.getAuthorityEpoch(), /not the active YARDHUB primary/);
+  assert.equal(await authority.authorize({
+    principal, service: "gatelog-api", action: "customer-arrival", args: {}, authorityEpoch: 4
+  }), false);
+});
