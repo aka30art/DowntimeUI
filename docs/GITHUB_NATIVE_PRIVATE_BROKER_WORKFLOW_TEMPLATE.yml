@@ -1,0 +1,34 @@
+# Install this file as .github/workflows/yardhub-broker-inbox.yml
+# in the dedicated PRIVATE broker repository only. Replace every placeholder.
+name: YARDHUB Broker Inbox
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: yardhub-inbox-comment-${{ github.event.comment.id }}
+  cancel-in-progress: false
+
+jobs:
+  process:
+    uses: aka30art/DowntimeUI/.github/workflows/yardhub-github-broker.yml@<PINNED_DOWNTIMEUI_COMMIT_SHA>
+    with:
+      source_ref: <PINNED_DOWNTIMEUI_COMMIT_SHA>
+      broker_repository_id: "<PRIVATE_BROKER_REPOSITORY_NUMERIC_ID>"
+      data_owner: "<PRIVATE_DATA_REPOSITORY_OWNER>"
+      data_repository: "<PRIVATE_DATA_REPOSITORY_NAME>"
+      data_repository_id: "<PRIVATE_DATA_REPOSITORY_NUMERIC_ID>"
+      data_app_id: "<DATA_APP_ID>"
+      data_app_installation_id: "<DATA_APP_INSTALLATION_ID>"
+      data_branch: main
+      edge_origin: https://aka30art.github.io
+      bootstrap_github_user_id: "<ONE_TIME_DEV_GITHUB_NUMERIC_ID>"
+      bootstrap_issue_id: "<ONE_TIME_DEV_INBOX_ISSUE_INTERNAL_ID>"
+    secrets:
+      data_app_private_key: ${{ secrets.YARDHUB_DATA_APP_PRIVATE_KEY }}
+      broker_ecdh_private_key: ${{ secrets.YARDHUB_BROKER_ECDH_PRIVATE_KEY }}

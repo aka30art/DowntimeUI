@@ -1,0 +1,89 @@
+name: YARDHUB Private Broker Runtime
+
+on:
+  workflow_call:
+    inputs:
+      source_ref:
+        description: Immutable DowntimeUI source commit SHA
+        required: true
+        type: string
+      broker_repository_id:
+        required: true
+        type: string
+      data_owner:
+        required: true
+        type: string
+      data_repository:
+        required: true
+        type: string
+      data_repository_id:
+        required: true
+        type: string
+      data_app_id:
+        required: true
+        type: string
+      data_app_installation_id:
+        required: true
+        type: string
+      data_branch:
+        required: false
+        default: main
+        type: string
+      edge_origin:
+        required: false
+        default: https://aka30art.github.io
+        type: string
+      bootstrap_github_user_id:
+        required: false
+        default: ""
+        type: string
+      bootstrap_issue_id:
+        required: false
+        default: ""
+        type: string
+    secrets:
+      data_app_private_key:
+        required: true
+      broker_ecdh_private_key:
+        required: true
+
+jobs:
+  process-encrypted-inbox-request:
+    if: >-
+      github.event_name == 'issue_comment' &&
+      github.event.action == 'created' &&
+      startsWith(github.event.comment.body, 'YARDHUB_REQUEST_V1:')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    concurrency:
+      group: yardhub-broker-comment-${{ github.event.comment.id }}
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - name: Checkout immutable YARDHUB broker source
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: aka30art/DowntimeUI
+          ref: ${{ inputs.source_ref }}
+          path: yardhub-source
+          persist-credentials: false
+
+      - name: Execute encrypted broker request
+        working-directory: yardhub-source
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          YARDHUB_BROKER_REPOSITORY_ID: ${{ inputs.broker_repository_id }}
+          YARDHUB_DATA_OWNER: ${{ inputs.data_owner }}
+          YARDHUB_DATA_REPOSITORY: ${{ inputs.data_repository }}
+          YARDHUB_DATA_REPOSITORY_ID: ${{ inputs.data_repository_id }}
+          YARDHUB_DATA_APP_ID: ${{ inputs.data_app_id }}
+          YARDHUB_DATA_APP_INSTALLATION_ID: ${{ inputs.data_app_installation_id }}
+          YARDHUB_DATA_APP_PRIVATE_KEY: ${{ secrets.data_app_private_key }}
+          YARDHUB_BROKER_ECDH_PRIVATE_KEY: ${{ secrets.broker_ecdh_private_key }}
+          YARDHUB_DATA_BRANCH: ${{ inputs.data_branch }}
+          YARDHUB_EDGE_ORIGIN: ${{ inputs.edge_origin }}
+          YARDHUB_BROKER_BOOTSTRAP_GITHUB_USER_ID: ${{ inputs.bootstrap_github_user_id }}
+          YARDHUB_BROKER_BOOTSTRAP_ISSUE_ID: ${{ inputs.bootstrap_issue_id }}
+        run: node scripts/run-github-actions-broker.mjs
