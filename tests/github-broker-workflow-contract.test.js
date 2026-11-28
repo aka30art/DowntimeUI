@@ -17,6 +17,7 @@ test("broker reusable workflow is workflow_call-only and accepts only encrypted 
   assert.match(brokerWorkflow, /issues: write/);
   assert.match(brokerWorkflow, /cancel-in-progress: false/);
   assert.match(brokerWorkflow, /\^\[0-9a-f\]\{40\}\$/);
+  assert.match(brokerWorkflow, /default: data\/yardhub/);
   assert.match(brokerWorkflow, /YARDHUB_BROKER_ECDH_PRIVATE_KEY:/);
   assert.match(brokerWorkflow, /YARDHUB_DATA_APP_PRIVATE_KEY:/);
   assert.match(brokerWorkflow, /GITHUB_TOKEN: \$\{\{ github\.token \}\}/);
@@ -31,6 +32,7 @@ test("identity administration reusable workflow is workflow_call-only and read-o
   assert.match(identityWorkflow, /issues: read/);
   assert.doesNotMatch(identityWorkflow, /issues: write/);
   assert.match(identityWorkflow, /node scripts\/manage-github-broker-identity\.mjs/);
+  assert.match(identityWorkflow, /default: data\/yardhub/);
   assert.match(identityWorkflow, /YARDHUB_DATA_APP_PRIVATE_KEY:/);
 });
 
