@@ -45,7 +45,7 @@ function makeStore(initialLinks = []) {
   };
 }
 
-function setup({ action = "link", actorId = DEV_GITHUB_ID, isPrivate = true, assigneeId = TARGET_GITHUB_ID, links = [] } = {}) {
+function setup({ action = "link", actorId = DEV_GITHUB_ID, isPrivate = true, assigneeId = TARGET_GITHUB_ID, assignees = null, links = [] } = {}) {
   const store = makeStore(links);
   const calls = { token: [], issue: [] };
   const event = {
@@ -93,7 +93,7 @@ function setup({ action = "link", actorId = DEV_GITHUB_ID, isPrivate = true, ass
       return new Response(JSON.stringify({
         id: 333,
         state: "open",
-        assignees: [{ id: Number(assigneeId) }]
+        assignees: assignees || [{ id: Number(assigneeId) }]
       }), { status: 200, headers: { "content-type": "application/json" } });
     }
   });
@@ -123,7 +123,7 @@ test("only the authenticated immutable DEV actor can administer broker identitie
   assert.equal(h.store.state.tables.downtime_github_identities.length, 0);
 });
 
-test("identity linking rejects a public broker repository or an inbox issue not assigned to the target actor", async () => {
+test("identity linking rejects a public broker repository or an inbox issue not exclusively assigned to the target actor", async () => {
   const publicRepo = setup({ isPrivate: false });
   await assert.rejects(publicRepo.run(), /configured private broker repository/);
   assert.equal(publicRepo.calls.token.length, 0);
@@ -131,6 +131,10 @@ test("identity linking rejects a public broker repository or an inbox issue not 
   const wrongAssignee = setup({ assigneeId: "999999" });
   await assert.rejects(wrongAssignee.run(), /must be open, non-PR and assigned/);
   assert.equal(wrongAssignee.store.state.tables.downtime_github_identities.length, 0);
+
+  const sharedInbox = setup({ assignees: [{ id: Number(TARGET_GITHUB_ID) }, { id: 999999 }] });
+  await assert.rejects(sharedInbox.run(), /must be open, non-PR and assigned/);
+  assert.equal(sharedInbox.store.state.tables.downtime_github_identities.length, 0);
 });
 
 test("DEV can revoke an existing GitHub identity and the operation is audited", async () => {
