@@ -823,6 +823,7 @@
     $('yardHubUserModal')?.addEventListener('click',event=>{if(event.target===$('yardHubUserModal'))closeUserModal()});
     document.addEventListener('keydown',event=>{if(event.key==='Escape'&&!$('yardHubUserModal')?.hidden)closeUserModal();if(event.key==='Escape'&&!$('yardHubRoleModal')?.hidden)closeYardRoleModal()});
     window.addEventListener('yard-hub:shown',()=>configureButton().catch(()=>{}));
+    window.addEventListener('yardhub:manual-refresh',()=>{const screen=$('yardHubSettingsScreen');if(screen&&!screen.hidden)loadState().then(()=>renderUsers()).catch(error=>setStatus(error.message||'Manual refresh failed.','error'))});
     configureButton().catch(()=>{});
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bind,{once:true});
