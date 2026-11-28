@@ -78,3 +78,6 @@ The setup must fail closed if the data repository is public, the authority manif
 - Rehearse authority cutover and reverse transfer.
 
 **These are reusable workflow and caller templates, not a production configuration.** The private repositories, Apps, keys, secrets and caller workflows have not been provisioned or installed. Real event and two-account tests must pass before Phase 3 can pass.
+
+
+The private data repository uses the dedicated `data/yardhub` branch by default. Do not point the broker at the source application's `main` branch.
