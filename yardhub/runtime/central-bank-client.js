@@ -43,7 +43,7 @@
   function persistSession(){
     try{
       if(session?.token){
-        const value=JSON.stringify(session);
+        const value=JSON.stringify({authenticated:true,token:session.token,expiresAt:session.expiresAt||null,user:session.user||null});
         sessionStorage.setItem(SESSION_KEY,value);
         localStorage.setItem(SESSION_KEY,value);
       }else{
