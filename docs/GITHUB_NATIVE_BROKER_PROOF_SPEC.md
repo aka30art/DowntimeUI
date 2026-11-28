@@ -250,3 +250,33 @@ The three broker extension tables are preserved during source replication, but a
 ### Release-control incident record
 
 An unintended push of `7561df62dacf05c52c9b8b1ac857f577fba93cd6` to `main` added a caller workflow template and triggered Pages run #26, which completed successfully. The main ref was restored to `58955b13f6a70f9da44d6ead9e409639086989a7`; rollback Pages run #27 also completed successfully. Main was verified equal to the PR base. This was an unauthorised Pages deployment followed by corrective rollback. It did not alter operational data, secrets, authority or the protected DOWNTIME repository.
+
+
+## Reusable workflow wiring and repository isolation — 28 November 2026
+
+A reusable workflow is now included at `.github/workflows/yardhub-github-broker.yml`. It is declared as `workflow_call`; it does not independently listen for comments in the public source repository. The private broker repository's default-branch caller template is `docs/templates/yardhub-private-broker.workflow.yml`.
+
+The caller template:
+- listens for new issue comments in the private broker repository;
+- invokes the reusable workflow at an immutable 40-character source commit SHA;
+- passes the broker repository ID from the caller's GitHub context;
+- passes only the required Data App and ECDH secrets;
+- is intended to be copied to the default branch of the dedicated private broker repository. The placeholder SHA must be replaced with the exact reviewed reusable-workflow commit before installation.
+
+The reusable workflow fetches the public DOWNTIMEUI source commit by unauthenticated Git transport at the pinned SHA; it does not pass the caller's broker token to source checkout. The broker runner then:
+- verifies the broker repository is private and matches its pinned numeric ID;
+- verifies the data repository is private and matches its pinned numeric ID;
+- rejects DOWNTIME, DOP-website and the public DOWNTIMEUI source repository as broker/data destinations;
+- mints a separate GitHub App installation token restricted to the single private data repository;
+- uses the caller's GITHUB_TOKEN only for encrypted response comments in the private broker repository.
+
+The setup guide and workflow are configuration artifacts only. No private broker repository, data repository, GitHub App, installation, secret or real issue_comment workflow has been provisioned or executed.
+
+### Validation update
+
+- CI #624 passed the full check, Chromium installation, Playwright browser QA and screenshot artifact upload on `09ec50ec5e6a68ad260b000b07ef36ad7f4c9996`.
+- CI #626 passed on the reusable-workflow source commit `c56ef202938629a789865174918678f3fe0865fc`.
+- CI #629 passed on `06c58ab6ea50144ed5a2f4148c05d927c5c3a012`, including the immutable unauthenticated source-fetch change.
+- CI #630 is validating the current PR head `a0146fb647b23c4689a1647cd732957e87d4e9d1`, which includes the private caller wrapper template. Its result is not yet claimed.
+
+The broker remains fail-closed until the real private repositories, Apps, secrets, workflow, two-user authorization and full recovery are tested.
