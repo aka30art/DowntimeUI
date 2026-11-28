@@ -223,7 +223,7 @@ The earlier sections describing the broker as callback-only are superseded by th
 
 **Authority boundary:** the broker deliberately refuses operational actions while `YARDHUB-PRIMARY` remains primary. This is not an authority transfer. The transaction-level epoch check prevents a stale preflight authorization from committing after a primary/epoch change.
 
-**Still blocked:** dedicated private broker/inbox and data repositories have not been provisioned; neither GitHub App has been registered/installed; protected secrets are not present; no `issue_comment` workflow exists on a dedicated broker repository's default branch; actual GitHub App permissions, real event identity, two-user isolation, queue/backpressure, latency, five-bucket binary evidence transport, backup/restore and two-device recovery remain unproven.
+**Still blocked:** dedicated private broker/inbox and data repositories have not been provisioned; neither GitHub App has been registered/installed; protected secrets are not present; reusable inbox and identity-admin workflows plus private caller templates now exist in the PR branch, but they are not installed on a dedicated broker repository's default branch; actual GitHub App permissions, real event identity, two-user isolation, queue/backpressure, latency, five-bucket binary evidence transport, backup/restore and two-device recovery remain unproven.
 
 Latest validation evidence:
 - CI #613 passed `npm run check` on `603c15ac873cf850fd12ba9040df8e9ef8100b8c`, including broker identity/idempotency, atomic backup preservation and runtime tests. Chromium/browser QA was still in progress.
@@ -235,3 +235,16 @@ Code-level broker controls now include canonical USER/STAFF resolution, immutabl
 These code paths remain locally tested with memory stores and mocked GitHub calls. They do not close production findings: no dedicated private broker/data/backup repositories, GitHub Apps, protected secrets, default-branch broker workflow, real event identity, two-user isolation, real five-bucket private storage, or full independent backup/restore rehearsal has been proven. The GitHub-only extension tables still need a separate full-twin backup and recovery plan.
 
 No production data was migrated, no authority switch occurred, PR #3 remains open/draft, and `aka30art/DOWNTIME` remains untouched.
+
+
+## Workflow packaging and release-control incident — 28 November 2026
+
+Two reusable workflows now exist in the PR branch:
+- `.github/workflows/yardhub-github-broker.yml` — caller `issue_comment` workflow path, encrypted-prefix filter, immutable source-SHA fetch, minimal caller-repository permissions and Data App token separation.
+- `.github/workflows/yardhub-github-identity-admin.yml` — DEV-only `workflow_dispatch` path with read-only issue metadata access and Data App token separation.
+
+The dedicated private broker repository must install the caller templates from `docs/templates/yardhub-private-broker.workflow.yml` and `docs/GITHUB_NATIVE_IDENTITY_ADMIN_WORKFLOW_TEMPLATE.yml` on its default branch, pinning the reviewed reusable workflow SHA. Neither private repository nor its Apps/secrets/workflows has been provisioned. The reusable workflows are not production activation.
+
+**Release-control incident:** an unintended push placed commit `7561df62dacf05c52c9b8b1ac857f577fba93cd6` on `DowntimeUI/main`. It added only a caller workflow template under `docs/templates`, but it triggered Pages run #26, which completed successfully. Main was restored with a compare-and-swap ref update to `58955b13f6a70f9da44d6ead9e409639086989a7`; corrective Pages run #27 completed successfully. Main was verified equal to the PR base afterward. This is recorded as an unauthorised Pages deployment followed by a successful rollback deployment. No production data, secrets, authority or protected DOWNTIME resources were changed.
+
+The current PR remains open/draft. No merge, operational deployment, data migration or authority transfer is authorised.
