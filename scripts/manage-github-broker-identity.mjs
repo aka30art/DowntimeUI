@@ -134,8 +134,8 @@ export async function runGitHubBrokerIdentityAdmin({
     const issue = await issueResponse.json();
     if (!issueResponse.ok || Number(issue.id) !== brokerIssueId ||
         issue.pull_request || String(issue.state).toLowerCase() !== "open" ||
-        !Array.isArray(issue.assignees) ||
-        !issue.assignees.some(assignee => String(assignee.id) === githubUserId)) {
+        !Array.isArray(issue.assignees) || issue.assignees.length !== 1 ||
+        String(issue.assignees[0]?.id) !== githubUserId) {
       throw new Error("The target inbox issue must be open, non-PR and assigned to the target GitHub account.");
     }
     await authority.linkIdentity({
