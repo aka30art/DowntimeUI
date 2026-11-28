@@ -9,7 +9,7 @@ test("GitHub compatibility channels do not start realtime polling", async () => 
     async readTable() { reads += 1; return []; },
     async transactDatabase() { throw new Error("not used"); }
   };
-  const client = createGitHubSupabaseCompat({ store });
+  const client = createGitHubSupabaseCompat({ store, storageClient: { from() { return {}; } } });
   let status = null;
   const channel = client.channel("yardhub-central")
     .on("broadcast", { event: "central_state_changed" }, () => {})
@@ -28,7 +28,7 @@ test("manual reads observe the latest central revision without a subscription", 
     async readTable() { return []; },
     async transactDatabase() { throw new Error("not used"); }
   };
-  const client = createGitHubSupabaseCompat({ store });
+  const client = createGitHubSupabaseCompat({ store, storageClient: { from() { return {}; } } });
   assert.equal((await store.readDatabase()).revision, 1);
   revision = 2;
   assert.equal((await store.readDatabase()).revision, 2);
