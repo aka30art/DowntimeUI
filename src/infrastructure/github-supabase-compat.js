@@ -14,8 +14,7 @@ export function createGitHubSupabaseCompat({
   rpcHandlers = {},
   handlers = globalThis.__YARDHUB_EDGE_HANDLERS__ || {},
   sessionProvider = () => globalThis.DowntimeCentral?.session || null,
-  originProvider = () => globalThis.location?.origin || "https://aka30art.github.io",
-  pollIntervalMs = 15000
+  originProvider = () => globalThis.location?.origin || "https://aka30art.github.io"
 } = {}) {
   if (!store) throw new TypeError("A GitHub data store is required.");
   const tables = createGitHubTableClient({ store, actorId, rpcHandlers });
