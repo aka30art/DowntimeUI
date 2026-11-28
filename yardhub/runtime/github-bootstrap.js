@@ -50,29 +50,34 @@ async function verifyPrivateRepository(connection){
     headers:{Accept:"application/vnd.github+json",Authorization:"Bearer "+connection.token,"X-GitHub-Api-Version":"2022-11-28"}
   });
   let metadata={};try{metadata=await response.json()}catch{}
-  if(!response.ok)throw new Error(metadata.message||"GitHub could not open the configured data repository.");
-  if(metadata.private!==true)throw new Error("The YARDHUB operational data repository must be private.");
-  if(metadata.archived===true)throw new Error("The YARDHUB operational data repository is archived and cannot be changed.");
+  if(!response.ok){const error=new Error(metadata.message||"GitHub could not open the configured data repository.");error.status=response.status;throw error}
+  if(metadata.private!==true){const error=new Error("The YARDHUB operational data repository must be private.");error.status=403;throw error}
+  if(metadata.archived===true){const error=new Error("The YARDHUB operational data repository is archived and cannot be changed.");error.status=403;throw error}
   return metadata;
 }
 async function connect(connection){
   if(!connection||!connection.owner||!connection.repo||!connection.token)throw new Error("Enter the private data repository and its fine-grained token.");
   const forbidden=(connection.owner+"/"+connection.repo).toLowerCase();
   if(forbidden==="aka30art/downtime"||forbidden==="aka30art/downtimeui")throw new Error("The protected DOWNTIME repository and application source repository cannot be used for operational data.");
-  connection.branch=connection.branch||"main";
-  const store=createGitHubDataStore({
-    owner:connection.owner,repo:connection.repo,branch:connection.branch,
-    token:connection.token,systemId:"YARDHUB-PRIMARY",fetchImpl:nativeFetch
-  });
-  let offline=false;
+  connection.branch=String(connection.branch||"").trim();
+  let store=null,offline=false;
   try{
     status("Checking private GitHub repository access…");
     const metadata=await verifyPrivateRepository(connection);
     connection.branch=connection.branch||metadata.default_branch||"main";
     status("Preparing the empty YARDHUB data structure…");
+    store=createGitHubDataStore({
+      owner:connection.owner,repo:connection.repo,branch:connection.branch,
+      token:connection.token,systemId:"YARDHUB-PRIMARY",fetchImpl:nativeFetch
+    });
   }catch(error){
     const networkUnavailable=!Number.isInteger(error?.status)||error.status===0||error.status>=500;
     if(!networkUnavailable)throw error;
+    connection.branch=connection.branch||"main";
+    store=createGitHubDataStore({
+      owner:connection.owner,repo:connection.repo,branch:connection.branch,
+      token:connection.token,systemId:"YARDHUB-PRIMARY",fetchImpl:nativeFetch
+    });
     status("GitHub is unavailable. Checking this device's last cached YARDHUB data…");
     const cached=await store.readDatabase();
     if(!cached?.offline||!cached.manifest||!cached.tables)throw new Error("GitHub is offline and this device has no previously loaded YARDHUB data. Reconnect to load the shared repository.");
