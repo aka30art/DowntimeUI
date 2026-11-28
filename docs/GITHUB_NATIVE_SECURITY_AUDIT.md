@@ -5,9 +5,23 @@
 **Observed head at audit start:** `235ca7f379523e9d3a980f059e57ef6aaf8b365e`  
 **Classification:** static source audit of the DOWNTIMEUI implementation and preserved YARDHUB reference. No operation was performed against `aka30art/DOWNTIME`.
 
+## Architecture decision superseding the broker proposal — 28 November 2026
+
+The earlier GitHub Actions broker, OAuth inbox, ECDH envelope and server-side authorization target is **superseded** by the user's explicit decision to use the simplest GitHub-only architecture.
+
+The selected model is GitHub Pages plus one private GitHub data repository, accessed directly by the browser with a repository-scoped fine-grained PAT. The token is stored in each browser profile so the device can reconnect. All devices use the same repository credential. Existing USER/PIN and YARD ROLE controls remain application-level workflow controls, not a security boundary against someone who extracts the PAT. The user explicitly accepts this limitation and does not want a broker or external service.
+
+This is an intentional reduction in security and architecture complexity, not a claim that the direct-token design provides production-grade authorization. The earlier SEC-001 to SEC-009 findings describe the inherent limitations of browser-held credentials and the previous broker proposal; they remain relevant as risk disclosures, but broker remediation is no longer the selected architecture.
+
+The runtime now disables background polling and realtime subscriptions. Central data loads at connection/login, writes commit to GitHub, and the user can manually refresh from YARDHUB. Version checks must still reject stale writes. Binary objects are stored in the private repository with a 10 MB object ceiling and require end-to-end tests.
+
+## Current release decision
+
+**NOT READY FOR LIVE OPERATIONS YET.** The direct GitHub runtime has been implemented as a development candidate. Do not merge or deploy until build, browser QA, empty DEV bootstrap, cross-device read/write, manual refresh, stale-write conflict, binary storage and backup/recovery gates pass. Real private-repository/two-device tests remain outstanding because no data repository or PAT has been provisioned.
+
 ## Executive decision
 
-**NOT PRODUCTION READY. Do not activate the YARDHUB runtime for operational use.**
+**NOT READY FOR LIVE OPERATIONS. Do not activate the YARDHUB runtime for operational use until the revised direct-GitHub acceptance gates pass.**
 
 The GitHub storage adapter is a useful persistence experiment, but the current browser-direct architecture does not enforce the source application's USER/STAFF, ROOTS or YARD ROLE boundaries. A successful build or browser smoke test cannot compensate for this. The direct-token path must remain isolated development/test infrastructure until replaced by a trusted request broker.
 
