@@ -1,7 +1,6 @@
 import { GITHUB_YARDHUB_RPC_HANDLERS } from "../../src/infrastructure/github-rpc-handlers.js";
 import { ensureGitHubDatabaseReady } from "../../src/infrastructure/github-database-bootstrap.js";
 import { createGitHubStorageClient } from "../../src/infrastructure/github-storage-client.js";
-import { createGitHubBrokerTransactionStore } from "../../src/infrastructure/github-supabase-compat.js";
 
 const DEFAULT_FUNCTIONS = [
   "central-bank",
@@ -74,10 +73,8 @@ export async function installGitHubEdgeRuntime({
   const { createGitHubSupabaseCompat } = await import("../../src/infrastructure/github-supabase-compat.js");
   const compatClients = new Set();
   function createCompatClient() {
-    const transactionContext = globalThis.__YARDHUB_BROKER_TRANSACTION__;
-    const activeStore = transactionContext ? createGitHubBrokerTransactionStore(transactionContext) : store;
     const client = createGitHubSupabaseCompat({
-      store: activeStore, storageClient: sharedStorage, actorId, rpcHandlers, handlers,
+      store, storageClient: sharedStorage, actorId, rpcHandlers, handlers,
       sessionProvider: () => globalThis.DowntimeCentral?.session || null
     });
     compatClients.add(client);
@@ -130,118 +127,3 @@ export async function installGitHubEdgeRuntime({
   };
 }
 
-
-/**
- * Runs one preserved YARDHUB Edge action inside a single GitHub database
- * transaction. Table/RPC operations issued by the Supabase compatibility
- * clients share the same staged table snapshot and commit together.
- */
-export async function executeGitHubEdgeAction({
-  store,
-  handlers,
-  service,
-  action,
-  args = {},
-  sessionToken = null,
-  requestId,
-  actorUserId = null,
-  expectedAuthorityEpoch = null,
-  now = () => new Date(),
-  origin = "https://aka30art.github.io"
-} = {}) {
-  if (!store || typeof store.readDatabase !== "function" || typeof store.transactDatabase !== "function") {
-    throw new TypeError("A GitHub data store is required for broker execution.");
-  }
-  if (!handlers || typeof handlers[service] !== "function") {
-    throw new Error("The requested YARDHUB service is not registered.");
-  }
-  if (typeof requestId !== "string" || !/^[0-9a-f-]{36}$/i.test(requestId)) {
-    throw new TypeError("A valid broker request ID is required for atomic execution.");
-  }
-  if (typeof action !== "string" || !/^[a-z][a-z0-9-]{1,63}$/.test(action)) {
-    throw new TypeError("A valid YARDHUB action is required.");
-  }
-  const blockedRuntimeActions = new Set([
-    "central-bank:identity-reset",
-    "central-bank:staff-original-upload",
-    "central-bank:staff-photo-url",
-    "central-bank:staff-photo-read",
-    "photo-evidence:create-upload",
-    "photo-evidence:view",
-    "photo-evidence:cleanup",
-    "repair-maintenance-api:upload",
-    "repair-maintenance-api:export-create",
-    "repair-maintenance-api:export-url"
-  ]);
-  if (blockedRuntimeActions.has(service + ":" + action)) {
-    throw new Error("This source action is blocked in the GitHub twin because its protected-repository or binary transport path is not supported.");
-  }
-  if (!args || typeof args !== "object" || Array.isArray(args)) {
-    throw new TypeError("YARDHUB action arguments must be an object.");
-  }
-
-  const baseline = await store.readDatabase();
-  const previousContext = globalThis.__YARDHUB_BROKER_TRANSACTION__;
-  let responseBody = null;
-  let responseStatus = 500;
-  try {
-    const committed = await store.transactDatabase({
-      expectedRevision: baseline.revision,
-      expectedAuthorityEpoch,
-      actorId: "YARDHUB-GITHUB-ACTIONS-BROKER",
-      operationId: "broker-" + requestId,
-      mutate: async tables => {
-        if (expectedAuthorityEpoch !== null) {
-          const currentAuthority = await store.readAuthority();
-          if (!currentAuthority || currentAuthority.status !== "ACTIVE" ||
-              currentAuthority.primarySystemId !== "DOWNTIMEUI-GITHUB" ||
-              currentAuthority.epoch !== expectedAuthorityEpoch) {
-            const error = new Error("YARDHUB authority changed before the broker action could commit.");
-            error.status = 409;
-            error.code = "BROKER_AUTHORITY_EPOCH_CHANGED";
-            throw error;
-          }
-        }
-        globalThis.__YARDHUB_BROKER_TRANSACTION__ = { tables, revision: baseline.revision };
-        const headers = {
-          origin,
-          "content-type": "application/json"
-        };
-        if (sessionToken) headers["x-downtime-session"] = String(sessionToken);
-        const request = new Request("https://github-native.invalid/functions/v1/" + service, {
-          method: "POST",
-          headers,
-          body: JSON.stringify({ ...args, action })
-        });
-        const response = await handlers[service](request);
-        responseStatus = response.status;
-        const raw = await response.text();
-        try { responseBody = raw ? JSON.parse(raw) : null; } catch { responseBody = raw; }
-        if (!response.ok) {
-          const error = new Error(responseBody?.error || "YARDHUB action failed.");
-          error.status = response.status;
-          error.response = responseBody;
-          throw error;
-        }
-        if (actorUserId) {
-          const ledger = Array.isArray(tables.downtime_github_broker_requests)
-            ? tables.downtime_github_broker_requests
-            : [];
-          const claim = ledger.find(row => row.request_id === requestId && row.actor_user_id === actorUserId);
-          if (!claim || claim.state !== "PROCESSING") {
-            throw new Error("The broker idempotency claim is missing or no longer active.");
-          }
-          claim.state = "COMMITTED";
-          claim.committed_at = now().toISOString();
-          claim.updated_at = now().toISOString();
-          claim.lease_until = null;
-        }
-        return { status: responseStatus, body: responseBody };
-      }
-    });
-    return { status: responseStatus, body: responseBody, revision: committed.revision, commitSha: committed.commitSha };
-  } finally {
-    if (previousContext === undefined) delete globalThis.__YARDHUB_BROKER_TRANSACTION__;
-    else globalThis.__YARDHUB_BROKER_TRANSACTION__ = previousContext;
-  }
-}
