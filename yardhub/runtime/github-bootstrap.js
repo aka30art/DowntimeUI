@@ -72,7 +72,7 @@ async function connect(connection){
     status("Preparing the empty YARDHUB data structure…");
     await store.ensureAuthority();
   }catch(error){
-    const networkUnavailable=!Number.isInteger(error?.status)||error.status>=500;
+    const networkUnavailable=!Number.isInteger(error?.status)||error.status===0||error.status>=500;
     if(!networkUnavailable)throw error;
     status("GitHub is unavailable. Checking this device's last cached YARDHUB data…");
     const cached=await store.readDatabase();
