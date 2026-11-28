@@ -157,8 +157,13 @@ export async function runGitHubBrokerIdentityAdmin({
       }
     );
     const issue = await issueResponse.json();
+    const issueLabels = Array.isArray(issue?.labels)
+      ? issue.labels.map(label => typeof label === "string" ? label : label?.name)
+      : [];
     if (!issueResponse.ok || Number(issue.id) !== brokerIssueId ||
+        Number(issue.number) !== brokerIssueNumber ||
         issue.pull_request || String(issue.state).toLowerCase() !== "open" ||
+        !issueLabels.includes("yardhub-inbox") ||
         !Array.isArray(issue.assignees) || issue.assignees.length !== 1 ||
         String(issue.assignees[0]?.id) !== githubUserId) {
       throw new Error("The target inbox issue must be open, non-PR and assigned to the target GitHub account.");
