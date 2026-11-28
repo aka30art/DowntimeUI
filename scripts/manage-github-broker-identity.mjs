@@ -99,6 +99,13 @@ export async function runGitHubBrokerIdentityAdmin({
     now
   });
   await verifyPrivateRepository({
+    owner: brokerOwner,
+    repository: brokerRepository,
+    token: workflowToken,
+    expectedId: brokerRepositoryId,
+    fetchImpl
+  });
+  await verifyPrivateRepository({
     owner: dataOwner,
     repository: dataRepository,
     token: dataToken,
