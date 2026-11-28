@@ -310,6 +310,30 @@ try{
   assert.ok(setupLayout.cardLeft>=0&&setupLayout.cardRight<=setupLayout.viewport+1,"YARDHUB connection card must fit the mobile viewport: "+JSON.stringify(setupLayout));
   await yardhubPage.screenshot({path:"artifacts/yardhub-private-setup-mobile.png",fullPage:true});
 
+  const publishedPage=await browser.newPage({viewport:{width:1440,height:900},deviceScaleFactor:1});
+  const publishedErrors=[];
+  const publishedRequests=[];
+  publishedPage.on("pageerror",error=>publishedErrors.push(error.message));
+  publishedPage.on("request",request=>publishedRequests.push(request.url()));
+  await publishedPage.route("https://github-native.invalid/**",route=>route.fulfill({status:503,contentType:"application/json",body:JSON.stringify({error:"Isolated published-artifact QA: no live repository token supplied"})}));
+  await publishedPage.goto("http://127.0.0.1:"+address.port+"/dist/index.html",{waitUntil:"networkidle"});
+  await publishedPage.getByRole("heading",{name:"Connect YARDHUB to GitHub"}).waitFor();
+  assert.equal(await publishedPage.locator("#yardhub-github-connect-overlay").isVisible(),true,"The published Pages root must open the GitHub connection gate.");
+  assert.equal(await publishedPage.locator("#authGate").count(),1,"The original YARDHUB central login must be present behind the connection gate.");
+  assert.equal(await publishedPage.locator("#yardHub").count(),1,"The original YARDHUB launcher must be present.");
+  assert.equal(await publishedPage.locator("#installerRoot").count(),0,"The generic installer must not be part of the published site.");
+  assert.equal(await publishedPage.locator("#launchDowntimeBtn").count(),1,"The original DOWNTIME module entry must be present.");
+  assert.equal(await publishedPage.locator("#yardHubRefreshBtn").count(),1,"The original manual refresh control must be present.");
+  assert.equal(publishedRequests.some(url=>url.includes("supabase.co")),false,"The published YARDHUB root must not request Supabase.");
+  assert.equal(publishedRequests.some(url=>url.includes("/src/installer.js")),false,"The published YARDHUB root must not load the generic installer.");
+  assert.deepEqual(publishedErrors,[],"The promoted root YARDHUB runtime must load without browser errors: "+publishedErrors.join(" | "));
+  await publishedPage.setViewportSize({width:390,height:844});
+  const publishedMobile=await publishedPage.evaluate(()=>({viewport:innerWidth,document:document.documentElement.scrollWidth,card:(()=>{const r=document.querySelector(".yardhub-github-connect-card").getBoundingClientRect();return {left:r.left,right:r.right}})()}));
+  assert.ok(publishedMobile.document<=publishedMobile.viewport+1,"Published YARDHUB connection gate must not overflow mobile width: "+JSON.stringify(publishedMobile));
+  assert.ok(publishedMobile.card.left>=0&&publishedMobile.card.right<=publishedMobile.viewport+1,"Published YARDHUB connection card must fit the mobile viewport: "+JSON.stringify(publishedMobile));
+  await publishedPage.screenshot({path:"artifacts/yardhub-published-root-mobile.png",fullPage:true});
+  await publishedPage.close();
+
   const offlinePage=await browser.newPage({viewport:{width:1440,height:900},deviceScaleFactor:1});
   const offlineErrors=[];
   const offlineConsole=[];
