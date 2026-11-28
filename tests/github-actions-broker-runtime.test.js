@@ -34,6 +34,17 @@ function makeRuntimeOptions(overrides = {}) {
     async readSnapshot() { return null; },
     async writeSnapshot() { return { ok: true, version: 1 }; },
     async readTable() { return []; },
+    async uploadObject({ bucket, path }) {
+      return { bucket, path, sha: "runtime-test-object" };
+    },
+    async downloadObject() {
+      const error = new Error("Runtime fixture object not found.");
+      error.status = 404;
+      throw error;
+    },
+    async deleteObject({ bucket, path }) {
+      return { deleted: true, bucket, path };
+    },
     async readAuthority() {
       return { status: "ACTIVE", primarySystemId: "YARDHUB-PRIMARY", epoch: 1 };
     },
