@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { GITHUB_YARDHUB_BROKER_TABLES } from "../src/infrastructure/github-database-bootstrap.js";
 
 export const YARDHUB_TABLES = [
   "downtime_shared_state", "downtime_reports", "downtime_attachments",
@@ -366,8 +367,14 @@ export function createYardHubBackupRunner({
 
     const current = await fetchGitHubHead({ api, repository, token, branch });
     const expectedPaths = new Set(files.map(file => file.path));
+    const protectedBrokerPaths = new Set(GITHUB_YARDHUB_BROKER_TABLES.map(
+      table => ROOT + "/tables/" + table + ".json"
+    ));
     const stale = [...current.entries.keys()].filter(path =>
-      path.startsWith(ROOT + "/") && !expectedPaths.has(path) && path !== ROOT + "/manifest.json"
+      path.startsWith(ROOT + "/") &&
+      !expectedPaths.has(path) &&
+      !protectedBrokerPaths.has(path) &&
+      path !== ROOT + "/manifest.json"
     );
     const dataChanged = files.some(file => current.entries.get(file.path) !== gitBlobSha(file.bytes)) || stale.length > 0;
     if (!dataChanged) return { changed: false, message: "No source data changes; existing GitHub backup remains current.", tableCounts, storageObjectCount: storageObjects.length };
