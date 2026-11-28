@@ -215,3 +215,17 @@ CI has had repeated failures while the broker runtime and tests were being integ
 - Added private caller workflow templates for both the encrypted inbox and identity administration. They require immutable source-SHA pinning. They are not installed in a dedicated private broker repository.
 - Local CI run #629 passed the complete check suite, Chromium install, Playwright browser QA and screenshot upload on commit `06c58ab6ea50144ed5a2f4148c05d927c5c3a012`. The PR subsequently advanced to `0f5c63ed0aad9e0015c9222a12d2e5a27f76ec8a` for a documentation-only pinning clarification; no exact-head run was present at this checkpoint.
 - A release-control incident occurred: commit `7561df62dacf05c52c9b8b1ac857f577fba93cd6` was unintentionally pushed to `main`, adding only a workflow template under `docs/templates`. The Pages workflow run #26 completed successfully. The main ref was immediately restored to its recorded pre-push/base SHA `58955b13f6a70f9da44d6ead9e409639086989a7`; corrective Pages run #27 completed successfully. The branch now matches the PR base. This accidental Pages deployment is recorded as an incident; no operational data or authority was changed.
+
+
+## Binary evidence transport is a production blocker — 28 November 2026
+
+The GitHub repository/object adapter can store and retrieve bytes inside the Actions runtime, but the browser-to-broker and broker-to-browser file transport is not implemented. This is not full storage parity.
+
+- The encrypted issue-comment envelope is capped at approximately 11 KiB by the browser client; the broker parser caps the comment at 16 KiB.
+- The preserved source services accept evidence uploads up to multiple megabytes, and R&M PDF exports can be much larger. These payloads cannot be carried through the current comment envelope.
+- The old storage adapter's runner-local `blob:` URLs are not accessible from the user's browser or another workflow run. Signed upload URLs also depended on in-memory tickets that do not survive a separate Actions invocation.
+- The storage adapter now fails closed for browser signed upload/download URL requests. It no longer returns a misleading runner-local blob URL or upload ticket as though it were a usable browser endpoint.
+- The broker action policy now denies unsupported binary paths: Central Bank staff photo upload/read, Photo Evidence create/view/cleanup, R&M upload/export-create/export-url. Deletion and metadata operations that are server-side and supported remain separately permissioned.
+- The GitHub edge runtime independently blocks Central Bank `identity-reset` and `staff-original-upload`. Those copied source actions contain paths that read/write/delete staff originals in `aka30art/DOWNTIME`; the GitHub twin must never invoke them. This defense-in-depth guard is in DowntimeUI only. The protected DOWNTIME repository has not been changed.
+
+**Phase 4 remains BLOCKED.** A production decision is required between (a) a measured, secure chunked broker transport with durable staging, replay handling, and acceptable GitHub Actions/API throughput, or (b) a separate private object-storage transport. No external provider has been selected and no production files have been migrated. Do not claim photo-evidence, staff-photo or R&M binary parity until end-to-end browser upload/download and recovery tests pass.
