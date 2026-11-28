@@ -148,7 +148,7 @@ export function createGitHubStorageClient({ store, now = () => new Date(), ticke
       const token = url.searchParams.get("token") || "";
       const bytes = new Uint8Array(await request.arrayBuffer());
       const result = await from(bucket).uploadToSignedUrl(path, token, bytes, { contentType: request.headers.get("content-type") || "application/octet-stream" });
-      if (result.error) return new Response(JSON.stringify({ error: result.error.message || "GitHub storage upload failed." }), { status: 400, headers: { "Content-Type": "application/json" } });
+      if (result.error) return new Response(JSON.stringify({ error: globalThis.__YARDHUB_GITHUB_OFFLINE__ ? "OFFLINE — cached data is read-only. This upload was not saved to GitHub." : (result.error.message || "GitHub storage upload failed.") }), { status: globalThis.__YARDHUB_GITHUB_OFFLINE__ ? 503 : 400, headers: { "Content-Type": "application/json" } });
       return new Response(JSON.stringify({ ok: true, path: result.data.path }), { status: 200, headers: { "Content-Type": "application/json" } });
     } catch (error) {
       return new Response(JSON.stringify({ error: error?.message || "GitHub storage upload failed." }), { status: 400, headers: { "Content-Type": "application/json" } });
