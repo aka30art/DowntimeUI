@@ -328,3 +328,59 @@ test("broker default-denies binary operations and protected DOWNTIME write paths
     assert.equal(await authority.authorize({ principal: dev, service, action, args: {}, authorityEpoch: 4 }), false, service + ":" + action);
   }
 });
+
+
+test("MANAGER receives Traffic MANAGE without inheriting Management or R&M privileges", async () => {
+  const store = makeStore();
+  const managerUserId = "00000000-0000-4000-8000-000000000010";
+  const managerStaffId = "00000000-0000-4000-8000-000000000011";
+  const managerRoleId = "00000000-0000-4000-8000-000000000012";
+  const managerGitHubId = "333333";
+  const managerIssueId = 1003;
+  const bank = store.state.tables.downtime_central_bank[0].payload;
+  bank.users.push({
+    userId: managerUserId, username: "MANAGER", enabled: true,
+    status: "ACTIVE", staffId: managerStaffId, tier: "MANAGER"
+  });
+  bank.staff.profiles.MANAGER = {
+    staffId: managerStaffId, linkedUserId: managerUserId, displayName: "Manager"
+  };
+  store.state.tables.downtime_github_identities.push({
+    github_user_id: managerGitHubId,
+    user_id: managerUserId,
+    staff_id: managerStaffId,
+    broker_issue_id: managerIssueId,
+    status: "ACTIVE"
+  });
+  store.state.tables.yard_roles.push({ id: managerRoleId, name: "MANAGER", status: "ACTIVE" });
+  store.state.tables.yard_role_assignments.push({
+    user_id: managerUserId, staff_id: managerStaffId,
+    yard_role_id: managerRoleId, status: "ACTIVE"
+  });
+  store.state.tables.yard_role_department_permissions.push(
+    ...[
+      ["SCPL", false, false, false, false],
+      ["R&M", false, false, false, false],
+      ["Management", false, false, false, false],
+      ["SCFL", false, false, false, false],
+      ["Traffic", true, true, true, true]
+    ].map(([department, can_view, can_enter, can_edit, can_manage]) => ({
+      yard_role_id: managerRoleId, department, can_view, can_enter, can_edit, can_manage
+    }))
+  );
+  const authority = createGitHubBrokerAuthority({ store, brokerRepositoryId: BROKER_REPOSITORY_ID });
+  const principal = await authority.resolvePrincipal(managerGitHubId);
+  assert.equal(principal.tier, "MANAGER");
+  assert.equal(principal.departments.Traffic.manage, true);
+  assert.equal(principal.departments.Management.manage, false);
+  assert.equal(principal.departments["R&M"].edit, false);
+  assert.equal(await authority.authorize({
+    principal, service: "gatelog-api", action: "visit-delete", args: {}, authorityEpoch: 4
+  }), true);
+  assert.equal(await authority.authorize({
+    principal, service: "central-bank", action: "user-delete", args: {}, authorityEpoch: 4
+  }), false);
+  assert.equal(await authority.authorize({
+    principal, service: "repair-maintenance-api", action: "update", args: {}, authorityEpoch: 4
+  }), false);
+});
