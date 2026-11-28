@@ -78,70 +78,122 @@ export async function ensureGitHubDatabaseReady({
   if (!store || typeof store.readDatabase !== "function" || typeof store.transactDatabase !== "function") {
     throw new TypeError("A GitHub data store is required.");
   }
-  const current = await store.readDatabase();
-  const missing = TABLES.filter(name => !Object.prototype.hasOwnProperty.call(current.tables, name));
-  const bootstrapRow = (current.tables.downtime_roots_bootstrap || []).find(row => row.singleton === true);
-  const bootstrapMissing = !bootstrapRow;
-  const singletonMissing = [
-    ["downtime_shared_state", row => Number(row.id) === 1],
-    ["downtime_central_bank", row => Number(row.id) === 1],
-    ["downtime_central_config_state", row => Number(row.id) === 1],
-    ["yard_hub_tier_config", row => Number(row.id) === 1]
-  ].some(([name, predicate]) => !(current.tables[name] || []).some(predicate));
-  const bank = (current.tables.downtime_central_bank || []).find(row => Number(row.id) === 1);
-  const hasDevUser = Array.isArray(bank?.payload?.users) && bank.payload.users.length > 0;
-  const existingExpiry = Date.parse(bootstrapRow?.bootstrap_code_expires_at || "");
-  const existingCode = globalThis.__YARDHUB_BOOTSTRAP_CODE__;
-  const reuseCode = !hasDevUser && existingCode && bootstrapRow?.bootstrap_code_hash &&
-    Number.isFinite(existingExpiry) && existingExpiry > now().getTime() &&
-    await hashBootstrapCode(existingCode) === bootstrapRow.bootstrap_code_hash;
-  const bootstrapCode = !hasDevUser ? (reuseCode ? existingCode : generateBootstrapCode()) : null;
-  if (hasDevUser) globalThis.__YARDHUB_BOOTSTRAP_CODE__ = null;
-  const bootstrapCodeHash = bootstrapCode ? await hashBootstrapCode(bootstrapCode) : null;
-  const bootstrapCodeExpiresAt = bootstrapCode ? new Date(now().getTime() + 15 * 60 * 1000).toISOString() : null;
-  const needsBootstrapCodeUpdate = Boolean(bootstrapCode && !reuseCode);
-  const needsChange = missing.length || bootstrapMissing || singletonMissing || needsBootstrapCodeUpdate;
-  if (!needsChange) {
-    globalThis.__YARDHUB_BOOTSTRAP_CODE__ = bootstrapCode;
-    return {
-      ready: true, initialized: false, revision: current.revision,
-      tableCount: Object.keys(current.tables).length, bootstrapCode,
-      bootstrapCodeExpiresAt
-    };
+
+  let candidateBootstrapCode = null;
+  let lastConflict = null;
+  const maxBootstrapAttempts = 5;
+
+  for (let attempt = 0; attempt < maxBootstrapAttempts; attempt += 1) {
+    const current = await store.readDatabase();
+    const missing = TABLES.filter(name => !Object.prototype.hasOwnProperty.call(current.tables, name));
+    const bootstrapRow = (current.tables.downtime_roots_bootstrap || []).find(row => row.singleton === true);
+    const bootstrapMissing = !bootstrapRow;
+    const singletonMissing = [
+      ["downtime_shared_state", row => Number(row.id) === 1],
+      ["downtime_central_bank", row => Number(row.id) === 1],
+      ["downtime_central_config_state", row => Number(row.id) === 1],
+      ["yard_hub_tier_config", row => Number(row.id) === 1]
+    ].some(([name, predicate]) => !(current.tables[name] || []).some(predicate));
+    const bank = (current.tables.downtime_central_bank || []).find(row => Number(row.id) === 1);
+    const hasDevUser = Array.isArray(bank?.payload?.users) && bank.payload.users.length > 0;
+
+    const existingExpiry = Date.parse(bootstrapRow?.bootstrap_code_expires_at || "");
+    const existingHash = bootstrapRow?.bootstrap_code_hash;
+    const existingCode = globalThis.__YARDHUB_BOOTSTRAP_CODE__;
+    const existingCodeIsActive = !hasDevUser &&
+      typeof existingHash === "string" &&
+      /^[a-f0-9]{64}$/i.test(existingHash) &&
+      Number.isFinite(existingExpiry) &&
+      existingExpiry > now().getTime();
+    const reuseCode = existingCodeIsActive &&
+      existingCode &&
+      await hashBootstrapCode(existingCode) === existingHash;
+
+    let bootstrapCode = null;
+    let bootstrapCodeHash = null;
+    let bootstrapCodeExpiresAt = null;
+    let needsBootstrapCodeUpdate = false;
+
+    if (!hasDevUser) {
+      if (existingCodeIsActive) {
+        // The hash proves that a one-time code is already active. A different browser
+        // cannot recover its plaintext, so it must not rotate the shared code at startup.
+        bootstrapCode = reuseCode ? existingCode : null;
+        bootstrapCodeHash = existingHash;
+        bootstrapCodeExpiresAt = bootstrapRow.bootstrap_code_expires_at;
+        candidateBootstrapCode = null;
+      } else {
+        // Keep the candidate across CAS retries. If another browser wins the first
+        // initialisation, the next read observes its active hash and stops rotating it.
+        if (!candidateBootstrapCode) candidateBootstrapCode = generateBootstrapCode();
+        bootstrapCode = candidateBootstrapCode;
+        bootstrapCodeHash = await hashBootstrapCode(bootstrapCode);
+        bootstrapCodeExpiresAt = new Date(now().getTime() + 15 * 60 * 1000).toISOString();
+        needsBootstrapCodeUpdate = true;
+      }
+    }
+
+    const needsChange = missing.length || bootstrapMissing || singletonMissing || needsBootstrapCodeUpdate;
+    if (!needsChange) {
+      globalThis.__YARDHUB_BOOTSTRAP_CODE__ = bootstrapCode;
+      return {
+        ready: true,
+        initialized: false,
+        revision: current.revision,
+        tableCount: Object.keys(current.tables).length,
+        bootstrapCode,
+        bootstrapCodeExpiresAt
+      };
+    }
+
+    const bootstrapUserId = bootstrapRow?.user_id || makeId();
+    try {
+      const result = await store.transactDatabase({
+        expectedRevision: current.revision,
+        actorId: "GITHUB-INSTALLER",
+        operationId: "gh-db-bootstrap-" + bootstrapUserId + "-" + (bootstrapCodeHash || "schema"),
+        mutate(tables) {
+          for (const name of TABLES) {
+            if (!Array.isArray(tables[name])) tables[name] = [];
+            const seeded = initialRows(name, bootstrapUserId, now);
+            for (const row of seeded) {
+              const exists = name === "downtime_roots_bootstrap"
+                ? tables[name].some(current => current.singleton === true)
+                : tables[name].some(current => current.id !== undefined && Number(current.id) === Number(row.id));
+              if (!exists) tables[name].push(row);
+            }
+          }
+          const root = tables.downtime_roots_bootstrap.find(row => row.singleton === true);
+          if (!root) throw new Error("Immutable DEV bootstrap record could not be created.");
+          if (needsBootstrapCodeUpdate && bootstrapCode) {
+            root.bootstrap_code_hash = bootstrapCodeHash;
+            root.bootstrap_code_expires_at = bootstrapCodeExpiresAt;
+            root.bootstrap_code_created_at = now().toISOString();
+          }
+          return { tableCount: TABLES.length, bootstrapIdentityPrepared: true, bootstrapCodeRotated: needsBootstrapCodeUpdate };
+        }
+      });
+
+      globalThis.__YARDHUB_BOOTSTRAP_CODE__ = bootstrapCode;
+      return {
+        ready: true,
+        initialized: true,
+        revision: result.revision,
+        tableCount: TABLES.length,
+        bootstrapIdentityPrepared: true,
+        bootstrapCode,
+        bootstrapCodeExpiresAt
+      };
+    } catch (error) {
+      if (error?.status === 409 && attempt < maxBootstrapAttempts - 1) {
+        lastConflict = error;
+        await new Promise(resolve => setTimeout(resolve, Math.min(100 * (2 ** attempt), 1200)));
+        continue;
+      }
+      throw error;
+    }
   }
 
-  const bootstrapUserId = bootstrapRow?.user_id || makeId();
-  const result = await store.transactDatabase({
-    expectedRevision: current.revision,
-    actorId: "GITHUB-INSTALLER",
-    operationId: "gh-db-bootstrap-" + bootstrapUserId + "-" + (bootstrapCodeHash || "schema"),
-    mutate(tables) {
-      for (const name of TABLES) {
-        if (!Array.isArray(tables[name])) tables[name] = [];
-        const seeded = initialRows(name, bootstrapUserId, now);
-        for (const row of seeded) {
-          const exists = name === "downtime_roots_bootstrap"
-            ? tables[name].some(current => current.singleton === true)
-            : tables[name].some(current => current.id !== undefined && Number(current.id) === Number(row.id));
-          if (!exists) tables[name].push(row);
-        }
-      }
-      const root = tables.downtime_roots_bootstrap.find(row => row.singleton === true);
-      if (!root) throw new Error("Immutable DEV bootstrap record could not be created.");
-      if (bootstrapCode) {
-        root.bootstrap_code_hash = bootstrapCodeHash;
-        root.bootstrap_code_expires_at = bootstrapCodeExpiresAt;
-        root.bootstrap_code_created_at = now().toISOString();
-      }
-      return { tableCount: TABLES.length, bootstrapIdentityPrepared: true, bootstrapCodeRotated: Boolean(bootstrapCode) };
-    }
-  });
-  globalThis.__YARDHUB_BOOTSTRAP_CODE__ = bootstrapCode;
-  return {
-    ready: true, initialized: true, revision: result.revision,
-    tableCount: TABLES.length, bootstrapIdentityPrepared: true,
-    bootstrapCode, bootstrapCodeExpiresAt
-  };
+  throw lastConflict || Object.assign(new Error("GitHub database bootstrap conflicted repeatedly. Refresh and retry."), { status: 409 });
 }
-
 export { TABLES as GITHUB_YARDHUB_TABLES };
