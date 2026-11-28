@@ -501,7 +501,7 @@ export function createGitHubDataStore({
         }
         const authority = validateAuthority(await readJsonAt(AUTHORITY_PATH, headSha));
         if (authority.status !== "ACTIVE" ||
-            authority.primarySystemId !== "DOWNTIMEUI-GITHUB" ||
+            authority.primarySystemId !== systemId ||
             authority.epoch !== expectedAuthorityEpoch) {
           throw new GitHubStoreError("YARDHUB data authority changed or GitHub is not the active writer. Write rejected.", 409, {
             expectedAuthorityEpoch,
