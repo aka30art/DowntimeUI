@@ -59,27 +59,45 @@ async function connect(connection){
   if(!connection||!connection.owner||!connection.repo||!connection.token)throw new Error("Enter the private data repository and its fine-grained token.");
   const forbidden=(connection.owner+"/"+connection.repo).toLowerCase();
   if(forbidden==="aka30art/downtime"||forbidden==="aka30art/downtimeui")throw new Error("The protected DOWNTIME repository and application source repository cannot be used for operational data.");
-  status("Checking private GitHub repository access…");
-  const metadata=await verifyPrivateRepository(connection);
-  connection.branch=connection.branch||metadata.default_branch||"main";
+  connection.branch=connection.branch||"main";
   const store=createGitHubDataStore({
     owner:connection.owner,repo:connection.repo,branch:connection.branch,
     token:connection.token,systemId:"YARDHUB-PRIMARY",fetchImpl:nativeFetch
   });
-  status("Preparing the empty YARDHUB data structure…");
-  await store.ensureAuthority();
-  const runtime=await installGitHubEdgeRuntime({store,fetchImpl:nativeFetch,env:{DOWNTIME_CANONICAL_AUTH_READY:"true",DOWNTIME_IDENTITY_FINGERPRINT_SECRET:connection.token}});
+  let offline=false;
+  try{
+    status("Checking private GitHub repository access…");
+    const metadata=await verifyPrivateRepository(connection);
+    connection.branch=connection.branch||metadata.default_branch||"main";
+    status("Preparing the empty YARDHUB data structure…");
+    await store.ensureAuthority();
+  }catch(error){
+    const networkUnavailable=!Number.isInteger(error?.status)||error.status>=500;
+    if(!networkUnavailable)throw error;
+    status("GitHub is unavailable. Checking this device's last cached YARDHUB data…");
+    const cached=await store.readDatabase();
+    if(!cached?.offline||!cached.manifest||!cached.tables)throw new Error("GitHub is offline and this device has no previously loaded YARDHUB data. Reconnect to load the shared repository.");
+    await store.readAuthority();
+    offline=true;
+  }
+  const runtime=await installGitHubEdgeRuntime({
+    store,fetchImpl:nativeFetch,offline,
+    env:{DOWNTIME_CANONICAL_AUTH_READY:"true",DOWNTIME_IDENTITY_FINGERPRINT_SECRET:connection.token}
+  });
   activeStore=store;activeRuntime=runtime;
   await window.DowntimeCentral.configureGitHubRuntime(runtime);
   setEndpoints();
-  saveConnection(connection);
+  if(!offline)saveConnection(connection);
   window.YARDHUB_GITHUB_STORE=store;
   window.YARDHUB_GITHUB_RUNTIME=runtime;
   window.YARDHUB_GITHUB_CONNECTED=true;
+  window.YARDHUB_GITHUB_OFFLINE=offline;
   hideOverlay();
-  status("Connected to private GitHub data repository · "+connection.owner+"/"+connection.repo);
+  if(offline)status("OFFLINE MODE · previously loaded shared data only · saves are not sent to GitHub");
+  else status("Connected to private GitHub data repository · "+connection.owner+"/"+connection.repo);
   window.dispatchEvent(new Event("yardhub:github-connected"));
-  return {store,runtime};
+  if(offline)window.dispatchEvent(new Event("yardhub:github-offline"));
+  return {store,runtime,offline};
 }
 function valuesFromForm(){
   const data=new FormData(form);
