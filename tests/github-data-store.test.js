@@ -618,6 +618,7 @@ test("broker transaction commits only for the exact active GitHub-primary author
     operationId: "broker-authority-epoch-commit-0001",
     mutate(tables) {
       mutated = true;
+      tables.gatelog_customers = Array.isArray(tables.gatelog_customers) ? tables.gatelog_customers : [];
       tables.gatelog_customers.push({ id: "authority-gated-write", customer_name: "Committed" });
       return "accepted";
     }
