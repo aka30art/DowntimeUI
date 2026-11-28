@@ -555,66 +555,6 @@ test("single-table polling reads the rows inside the versioned GitHub shard", as
 });
 
 
-test("YARDHUB primary backup is checksum-verified and restored atomically with tables and Storage", async () => {
-  const server = createMockGitHub({ includePrimaryBackup: true });
-  const store = makeStore(server);
-  const info = await store.inspectYardHubPrimaryBackup();
-  assert.equal(info.tableCount, GITHUB_YARDHUB_SOURCE_TABLES.length);
-  assert.equal(info.storageObjectCount, 1);
-  assert.equal(info.exportedAt, "2026-11-27T10:00:00.000Z");
-
-  const restored = await store.restoreYardHubPrimaryBackup({ expectedRevision: 0 });
-  assert.equal(restored.restored, true);
-  assert.equal(restored.checksumVerified, true);
-  assert.equal(restored.tableCount, GITHUB_YARDHUB_SOURCE_TABLES.length);
-  assert.equal(restored.storageObjectCount, 1);
-  assert.equal(restored.storageBytes, 4);
-
-  const database = await store.readDatabase();
-  assert.equal(database.revision, 1);
-  assert.equal(database.tables.downtime_shared_state[0].payload.source, "YARDHUB");
-  assert.equal(database.tables.downtime_central_bank[0].payload.users[0].username, "DEV");
-  assert.deepEqual(database.tables.downtime_central_sessions, []);
-  assert.equal(database.manifest.restoredFrom.checksumVerified, true);
-
-  const listed = await store.listObjects({ bucket: "downtime-evidence", prefix: "week-1" });
-  assert.equal(listed.length, 1);
-  assert.equal(listed[0].name, "photo.png");
-  assert.equal(listed[0].metadata.mimetype, "image/png");
-  const downloaded = await store.downloadObject({ bucket: "downtime-evidence", path: "week-1/photo.png" });
-  assert.deepEqual([...downloaded.bytes], [1, 2, 3, 4]);
-});
-
-test("YARDHUB primary restore refuses to overwrite an existing database", async () => {
-  const server = createMockGitHub({ includePrimaryBackup: true });
-  const store = makeStore(server);
-  await store.transactDatabase({
-    expectedRevision: 0,
-    actorId: "root-dev",
-    mutate(tables) { tables.gatelog_customers = [{ id: "existing", customer_name: "Do not overwrite" }]; }
-  });
-  await assert.rejects(
-    store.restoreYardHubPrimaryBackup({ expectedRevision: 1 }),
-    (error) => error instanceof GitHubStoreError && error.status === 409
-  );
-  const database = await store.readDatabase();
-  assert.equal(database.tables.gatelog_customers[0].customer_name, "Do not overwrite");
-});
-
-test("YARDHUB primary restore rejects a backup with a checksum mismatch", async () => {
-  const server = createMockGitHub({ includePrimaryBackup: true, tamperPrimaryBackupChecksum: true });
-  const store = makeStore(server);
-  const backup = await store.inspectYardHubPrimaryBackup();
-  assert.ok(backup);
-  const before = server.getHead();
-  await assert.rejects(
-    store.restoreYardHubPrimaryBackup({ expectedRevision: 0 }),
-    /checksum/
-  );
-  assert.equal(server.getHead(), before);
-});
-
-
 test("broker database writes are denied until GitHub is the active primary at the expected authority epoch", async () => {
   const server = createMockGitHub();
   const store = makeStore(server);

@@ -29,13 +29,6 @@ export async function installGitHubEdgeRuntime({
   if (offline) {
     const cached = await store.readDatabase();
     if (!cached?.manifest || !cached?.tables) throw new Error("No cached YARDHUB database is available for offline viewing.");
-    if (typeof store.updateLocalCache === "function") {
-      await store.updateLocalCache(snapshot => {
-        for (const session of snapshot.tables.downtime_central_sessions || []) {
-          session.expires_at = "2999-12-31T23:59:59.999Z";
-        }
-      });
-    }
     databaseStatus = { bootstrapCode: null, bootstrapCodeExpiresAt: null, offline: true };
   } else {
     databaseStatus = await ensureGitHubDatabaseReady({ store });
