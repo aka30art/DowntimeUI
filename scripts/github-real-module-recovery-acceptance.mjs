@@ -89,6 +89,7 @@ try {
   assert.equal(baseline.offline, false);
   assert.equal(Object.keys(baseline.tables).length, 39);
   original = structuredClone(baseline.tables);
+  const jsonBackup = JSON.parse(JSON.stringify({ format: "yardhub-github-database-backup", schemaVersion: 1, revision: baseline.revision, tables: original }));
   const allTables = Object.keys(original);
   assert.equal(allTables.length, 39);
 
@@ -214,11 +215,6 @@ try {
   assert.deepEqual([...restoredHistory.bytes], [...historyBytes]);
 
   // Full JSON snapshot/restore: serialize all 39 tables, restore the snapshot on the isolated test branch.
-  const snapshotBeforeRestore = await store.readDatabase();
-  const jsonBackup = JSON.parse(JSON.stringify({
-    format: "yardhub-github-database-backup", schemaVersion: 1,
-    revision: snapshotBeforeRestore.revision, tables: snapshotBeforeRestore.tables
-  }));
   assert.equal(Object.keys(jsonBackup.tables).length, 39);
   await mutate("backup-probe", tables => {
     tables.downtime_reports.push({ id: unique + "-restore-probe", title: "Must disappear after restore" });
