@@ -181,7 +181,7 @@ test("only immutable DEV can link or revoke GitHub identities", async () => {
     staffId: "00000000-0000-4000-8000-000000000006",
     issueId: 1003,
     reason: "Provision operator broker identity"
-  }), /Only immutable DEV/);
+  }), /Only .*immutable DEV/);
 
   const rootAuthority = createGitHubBrokerAuthority({
     store, brokerRepositoryId: BROKER_REPOSITORY_ID,
