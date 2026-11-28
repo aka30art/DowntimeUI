@@ -56,6 +56,29 @@ async function verifyPrivateRepository(connection){
   if(metadata.permissions?.push!==true){const error=new Error("The GitHub token must have read and write (Contents) access to the private YARDHUB data repository.");error.status=403;throw error}
   return metadata;
 }
+async function verifyRepositoryWriteAccess(connection){
+  // POST /git/blobs is permission-gated by the token's Contents: write scope.
+  // It creates an unreferenced Git object only; no branch, ref or operational record changes.
+  const response=await nativeFetch("https://api.github.com/repos/"+encodeURIComponent(connection.owner)+"/"+encodeURIComponent(connection.repo)+"/git/blobs",{
+    method:"POST",
+    headers:{Accept:"application/vnd.github+json",Authorization:"Bearer "+connection.token,"X-GitHub-Api-Version":"2022-11-28","Content-Type":"application/json"},
+    body:JSON.stringify({content:"YARDHUB direct repository Contents write capability probe v1",encoding:"utf-8"})
+  });
+  let result={};try{result=await response.json()}catch{}
+  if(!response.ok){
+    const error=new Error(result.message||"The GitHub token must grant Contents: read and write on this private YARDHUB repository.");
+    error.status=response.status;
+    error.code="YARDHUB_CONTENTS_WRITE_NOT_VERIFIED";
+    throw error;
+  }
+  if(typeof result.sha!=="string"||!result.sha){
+    const error=new Error("GitHub did not confirm the YARDHUB Contents write capability.");
+    error.status=502;
+    error.code="YARDHUB_CONTENTS_WRITE_NOT_VERIFIED";
+    throw error;
+  }
+  return result.sha;
+}
 async function connect(connection){
   if(!connection||!connection.owner||!connection.repo||!connection.token)throw new Error("Enter the private data repository and its fine-grained token.");
   const forbidden=(connection.owner+"/"+connection.repo).toLowerCase();
@@ -66,6 +89,9 @@ async function connect(connection){
     status("Checking private GitHub repository access…");
     const metadata=await verifyPrivateRepository(connection);
     connection.branch=connection.branch||metadata.default_branch||"main";
+    status("Verifying GitHub Contents write permission…");
+    await verifyRepositoryWriteAccess(connection);
+    connection.writeAccessVerified=true;
     status("Preparing the empty YARDHUB data structure…");
     store=createGitHubDataStore({
       owner:connection.owner,repo:connection.repo,branch:connection.branch,
@@ -74,6 +100,9 @@ async function connect(connection){
   }catch(error){
     const networkUnavailable=!Number.isInteger(error?.status)||error.status===0||error.status>=500;
     if(!networkUnavailable)throw error;
+    if(connection.writeAccessVerified!==true){
+      throw new Error("This device has no saved proof of Contents: write access for this repository. Connect successfully while online before using cached offline mode.");
+    }
     connection.branch=connection.branch||"main";
     store=createGitHubDataStore({
       owner:connection.owner,repo:connection.repo,branch:connection.branch,
