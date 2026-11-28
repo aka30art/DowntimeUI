@@ -164,7 +164,7 @@
       event.preventDefault();event.stopPropagation();event.stopImmediatePropagation();
       window.GATELOG?.open();return;
     }
-    if((entry.kind||'custom')==='custom'||submenus.length){
+    if((entry.kind||'custom')==='custom'||(!nativeTargets[entry.kind]&&submenus.length)){
       event.preventDefault();event.stopPropagation();event.stopImmediatePropagation();
       openWorkspace(entry.title,entry.description,submenus,entry.title);
     }
