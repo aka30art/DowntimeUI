@@ -146,13 +146,8 @@ if(saved){
       const field=form.querySelector('[name="'+name+'"]');if(field)field.value=value;
     }
   }
-  connect(saved).catch(async error=>{
+  connect(saved).catch(error=>{
     window.YARDHUB_GITHUB_CONNECTED=false;
-    const offlineFailure=error instanceof TypeError||globalThis.navigator?.onLine===false;
-    if(offlineFailure){
-      try{await connect(saved,{offline:true});return;}
-      catch(offlineError){status((offlineError?.message||"No previously loaded YARDHUB data is available offline."),true);return;}
-    }
     status((error?.message||"Saved GitHub connection could not be restored.")+" Re-enter the repository token to reconnect.",true);
     const token=form?.querySelector('[name="token"]');if(token)token.focus();
   });
