@@ -132,7 +132,7 @@ export function createGitHubDataStore({
     if (!cacheStorage || typeof cacheStorage.getItem !== "function") return null;
     try {
       const value = JSON.parse(cacheStorage.getItem(localCacheKey) || "null");
-      if (!value || !value.manifest || !value.tables || typeof value.tables !== "object") return null;
+      if (!value || typeof value !== "object") return null;
       return value;
     } catch { return null; }
   }
@@ -655,7 +655,7 @@ export function createGitHubDataStore({
         return result;
       } catch (error) {
         const cached = readLocalCache();
-        if (cached) return { ...cached, offline: true, cacheAge: cached.cachedAt || null };
+        if (cached?.manifest && cached?.tables && typeof cached.tables === "object") return { ...cached, offline: true, cacheAge: cached.cachedAt || null };
         throw error;
       }
     },
