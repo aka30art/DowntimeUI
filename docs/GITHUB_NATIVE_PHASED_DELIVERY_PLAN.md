@@ -206,3 +206,12 @@ CI has had repeated failures while the broker runtime and tests were being integ
 - Documentation and code have advanced after those tested commits. The newest PR head must complete its own full CI and browser QA before being considered validated.
 
 **Release rule unchanged:** PR #3 stays open and draft. YARDHUB remains primary. No production migration, merge or deployment is permitted until all Phase 0–8 acceptance gates are evidenced on the exact final head. The protected `aka30art/DOWNTIME` repository remains untouched.
+
+
+## Reusable workflow and identity-onboarding additions — 28 November 2026
+
+- Added `.github/workflows/yardhub-github-broker.yml`, a reusable `workflow_call` runtime that fetches the immutable source commit by SHA and runs only for a newly created encrypted issue comment in the private caller repository. It uses caller `GITHUB_TOKEN` permissions `contents: read` and `issues: write`; the Data App token remains restricted to the separate data repository.
+- Added `.github/workflows/yardhub-github-identity-admin.yml` and `scripts/manage-github-broker-identity.mjs`. The separate `workflow_dispatch` path validates the authenticated GitHub actor, requires immutable DEV authority, verifies the target inbox issue is open/non-PR and assigned to the target account, and audits link/revoke operations.
+- Added private caller workflow templates for both the encrypted inbox and identity administration. They require immutable source-SHA pinning. They are not installed in a dedicated private broker repository.
+- Local CI run #629 passed the complete check suite, Chromium install, Playwright browser QA and screenshot upload on commit `06c58ab6ea50144ed5a2f4148c05d927c5c3a012`. The PR subsequently advanced to `0f5c63ed0aad9e0015c9222a12d2e5a27f76ec8a` for a documentation-only pinning clarification; no exact-head run was present at this checkpoint.
+- A release-control incident occurred: commit `7561df62dacf05c52c9b8b1ac857f577fba93cd6` was unintentionally pushed to `main`, adding only a workflow template under `docs/templates`. The Pages workflow run #26 completed successfully. The main ref was immediately restored to its recorded pre-push/base SHA `58955b13f6a70f9da44d6ead9e409639086989a7`; corrective Pages run #27 completed successfully. The branch now matches the PR base. This accidental Pages deployment is recorded as an incident; no operational data or authority was changed.
