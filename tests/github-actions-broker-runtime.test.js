@@ -72,6 +72,13 @@ test("composed broker denies a GATELOG MANAGE action for a USER whose Traffic ro
   const githubUserId = "987654";
   const tables = {
     downtime_github_broker_requests: [],
+    downtime_github_identities: [{
+      github_user_id: githubUserId,
+      user_id: userId,
+      staff_id: staffId,
+      broker_issue_id: inboxIssueId,
+      status: "ACTIVE"
+    }],
     downtime_central_bank: [{
       id: 1,
       payload: {
