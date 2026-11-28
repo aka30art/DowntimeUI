@@ -65,7 +65,7 @@ function initialRows(table, bootstrapUserId, now) {
   }];
   if (table === "downtime_roots_bootstrap") return [{
     singleton: true, user_id: bootstrapUserId, created_at: timestamp,
-    bootstrap_code_hash: null, bootstrap_code_expires_at: null
+    bootstrap_code: null, bootstrap_code_hash: null, bootstrap_code_expires_at: null
   }];
   return [];
 }
@@ -105,8 +105,10 @@ export async function ensureGitHubDatabaseReady({
       /^[a-f0-9]{64}$/i.test(existingHash) &&
       Number.isFinite(existingExpiry) &&
       existingExpiry > now().getTime();
-    const reuseCode = existingCodeIsActive &&
-      existingCode &&
+    const storedCode = typeof bootstrapRow?.bootstrap_code === "string" ? bootstrapRow.bootstrap_code : null;
+    const storedCodeIsValid = existingCodeIsActive && storedCode &&
+      await hashBootstrapCode(storedCode) === existingHash;
+    const localCodeIsValid = existingCodeIsActive && existingCode &&
       await hashBootstrapCode(existingCode) === existingHash;
 
     let bootstrapCode = null;
@@ -115,16 +117,21 @@ export async function ensureGitHubDatabaseReady({
     let needsBootstrapCodeUpdate = false;
 
     if (!hasDevUser) {
-      if (existingCodeIsActive) {
-        // The hash proves that a one-time code is already active. A different browser
-        // cannot recover its plaintext, so it must not rotate the shared code at startup.
-        bootstrapCode = reuseCode ? existingCode : null;
+      if (storedCodeIsValid) {
+        // All browser profiles can read the same active one-time code from the private data repository.
+        bootstrapCode = storedCode;
         bootstrapCodeHash = existingHash;
         bootstrapCodeExpiresAt = bootstrapRow.bootstrap_code_expires_at;
         candidateBootstrapCode = null;
+      } else if (localCodeIsValid) {
+        // Upgrade an older installation by persisting the already-active code once.
+        bootstrapCode = existingCode;
+        bootstrapCodeHash = existingHash;
+        bootstrapCodeExpiresAt = bootstrapRow.bootstrap_code_expires_at;
+        needsBootstrapCodeUpdate = true;
       } else {
-        // Keep the candidate across CAS retries. If another browser wins the first
-        // initialisation, the next read observes its active hash and stops rotating it.
+        // Older installations only stored a hash. Rotate once, persist the code,
+        // and let every other browser reuse it instead of creating competing commits.
         if (!candidateBootstrapCode) candidateBootstrapCode = generateBootstrapCode();
         bootstrapCode = candidateBootstrapCode;
         bootstrapCodeHash = await hashBootstrapCode(bootstrapCode);
@@ -166,6 +173,7 @@ export async function ensureGitHubDatabaseReady({
           const root = tables.downtime_roots_bootstrap.find(row => row.singleton === true);
           if (!root) throw new Error("Immutable DEV bootstrap record could not be created.");
           if (needsBootstrapCodeUpdate && bootstrapCode) {
+            root.bootstrap_code = bootstrapCode;
             root.bootstrap_code_hash = bootstrapCodeHash;
             root.bootstrap_code_expires_at = bootstrapCodeExpiresAt;
             root.bootstrap_code_created_at = now().toISOString();
