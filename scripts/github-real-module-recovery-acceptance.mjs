@@ -4,7 +4,7 @@ import { GITHUB_YARDHUB_RPC_HANDLERS } from "../src/infrastructure/github-rpc-ha
 
 const repository = String(process.env.YARDHUB_DATA_REPOSITORY || "").trim();
 const token = String(process.env.YARDHUB_DATA_TOKEN || "").trim();
-const sourceBranch = String(process.env.YARDHUB_DATA_BRANCH || "").trim() || "main";
+const configuredBranch = String(process.env.YARDHUB_DATA_BRANCH || "").trim();
 if (!repository || !token) throw new Error("Real module acceptance requires YARDHUB_DATA_REPOSITORY and YARDHUB_DATA_TOKEN.");
 const [owner, repo, ...extra] = repository.split("/");
 if (!owner || !repo || extra.length) throw new Error("YARDHUB_DATA_REPOSITORY must be owner/repo.");
@@ -41,6 +41,7 @@ const metadata = await github("");
 assert.equal(metadata.private, true, "Acceptance target must be private.");
 assert.equal(metadata.archived, false, "Acceptance target must be writable.");
 assert.equal(metadata.permissions?.push, true, "Acceptance token must have repository write access.");
+const sourceBranch = configuredBranch || metadata.default_branch || "main";
 const sourceRef = await github("/git/ref/heads/" + sourceBranch.split("/").map(encodeURIComponent).join("/"));
 const sourceHead = sourceRef.object.sha;
 await github("/git/refs", { method: "POST", body: JSON.stringify({ ref: "refs/heads/" + branch, sha: sourceHead }) });
@@ -147,7 +148,29 @@ try {
   const rmNoteId = unique + "-rm-note";
   const rmPdfId = unique + "-rm-pdf";
   const pdfPath = unique + "/acceptance-report.pdf";
-  const pdfBytes = new Uint8Array([37, 80, 68, 70, 45, 49, 46, 55, 10, 65, 67, 67, 69, 80, 84, 65, 78, 67, 69, 10]);
+  function makeMinimalPdf() {
+  const objects = [
+    "<< /Type /Catalog /Pages 2 0 R >>",
+    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >>",
+    "<< /Length 58 >>\\nstream\\nBT /F1 12 Tf 72 720 Td (YARDHUB acceptance archive) Tj ET\\nendstream",
+    "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>"
+  ];
+  let document = "%PDF-1.4\\n%YARDHUB-ACCEPTANCE\\n";
+  const offsets = [0];
+  objects.forEach((body, index) => {
+    offsets.push(new TextEncoder().encode(document).length);
+    document += (index + 1) + " 0 obj\\n" + body + "\\nendobj\\n";
+  });
+  const xrefOffset = new TextEncoder().encode(document).length;
+  document += "xref\\n0 " + (objects.length + 1) + "\\n0000000000 65535 f \\n";
+  for (let index = 1; index < offsets.length; index += 1) document += String(offsets[index]).padStart(10, "0") + " 00000 n \\n";
+  document += "trailer\\n<< /Size " + (objects.length + 1) + " /Root 1 0 R >>\\nstartxref\\n" + xrefOffset + "\\n%%EOF\\n";
+  return new TextEncoder().encode(document);
+}
+const pdfBytes = makeMinimalPdf();
+assert.equal(new TextDecoder().decode(pdfBytes.slice(0, 8)), "%PDF-1.4");
+assert.match(new TextDecoder().decode(pdfBytes.slice(-12)), /%%EOF/);
   await mutate("rm", tables => {
     tables.repair_maintenance_faults.push({ id: rmFaultId, machine_type: "OTHER_EQUIPMENT", title: "Acceptance fault", status: "OPEN", created_at: now().toISOString() });
     tables.repair_maintenance_notes.push({ id: rmNoteId, fault_id: rmFaultId, note: "Acceptance note", created_at: now().toISOString() });
