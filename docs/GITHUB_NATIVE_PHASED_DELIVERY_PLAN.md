@@ -51,7 +51,7 @@ Review the complete acceptance evidence against the exact final PR head. Only af
 ## Current gate status
 
 - Obsolete GitHub Actions broker and scheduled Supabase backup workflows: removed. The GitHub-native compatibility shim remains local to the browser and has no Supabase network or realtime transport.
-- Universal App Foundation CI #767: passed, including `npm run check` and Playwright browser QA. CI #770 is validating the latest branch-default and browser regression tests.
+- Universal App Foundation CI #767 and #770: passed, including `npm run check` and Playwright browser QA. #770 includes the branch-default, invalid-token and read-only-token regression tests.
 - YARDHUB Real GitHub Acceptance #11: blocked at credential preflight because `YARDHUB_DATA_REPOSITORY` and `YARDHUB_DATA_TOKEN` are not configured. No real private-repository test has been executed.
 - The acceptance script verifies empty fresh-install tables, DEV ROOT bootstrap identity, two independent store clients, stale-write rejection, binary object transport and offline cached reads. It does not yet prove all module workflows or real browser/device behaviour.
 - Full-system JSON backup/restore including binary objects is not yet exposed in the YARDHUB runtime. Git history is available, but full recovery acceptance remains a release blocker.
