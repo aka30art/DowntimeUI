@@ -41,6 +41,7 @@ const metadata = await metadataResponse.json();
 assert.equal(metadataResponse.ok, true, "GitHub token must read the configured data repository");
 assert.equal(metadata.private, true, "YARDHUB operational data repository must be private");
 assert.equal(metadata.archived, false, "YARDHUB data repository must not be archived");
+assert.equal(metadata.permissions?.push, true, "GitHub token must have write access to the private YARDHUB data repository");
 
 const cacheA = memoryStorage();
 const cacheB = memoryStorage();
