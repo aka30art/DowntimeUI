@@ -193,7 +193,7 @@ async function verifyPrivateRepository({ owner, repo, token, fetchImpl }) {
 
 export async function createConnectedGitHubStore({
   storage = globalThis.localStorage,
-  systemId = "YARDHUB-PRIMARY",
+  systemId = "DOWNTIMEUI-GITHUB",
   fetchImpl = globalThis.fetch
 } = {}) {
   const configStore = safeStorage(storage);
@@ -211,7 +211,7 @@ export async function createConnectedGitHubStore({
 
 export async function createConnectedGitHubServices({
   storage = globalThis.localStorage,
-  systemId = "YARDHUB-PRIMARY",
+  systemId = "DOWNTIMEUI-GITHUB",
   fetchImpl = globalThis.fetch,
   actorId = "LOCAL-OPERATOR"
 } = {}) {
