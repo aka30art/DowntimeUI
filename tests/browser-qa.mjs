@@ -298,7 +298,7 @@ try{
   assert.equal(await yardhubPage.locator('[name="token"]').inputValue(),"");
   assert.equal(await yardhubPage.locator("[data-create-private]").isEnabled(),true,"First-run private repository creation must be available.");
   assert.equal(await yardhubPage.locator("#firstDevBootstrapPanel").isHidden(),true,"DEV bootstrap must remain hidden until a private database issues a one-time code.");
-  assert.ok(yardhubRequests.some(url=>url.startsWith("https://github-native.invalid/")),"Unconnected login lookup must use only the disabled GitHub-native adapter endpoint.");
+  assert.equal(yardhubRequests.some(url=>url.startsWith("https://github-native.invalid/")),false,"YARDHUB must wait for the private GitHub runtime before querying central login data.");
   assert.equal(yardhubRequests.some(url=>url.includes("supabase.co")),false,"The YARDHUB runtime must not call any original Supabase endpoint.");
   await yardhubPage.setViewportSize({width:390,height:844});
   const setupLayout=await yardhubPage.evaluate(()=>{
