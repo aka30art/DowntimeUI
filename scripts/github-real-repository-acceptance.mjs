@@ -42,6 +42,14 @@ assert.equal(metadataResponse.ok, true, "GitHub token must read the configured d
 assert.equal(metadata.private, true, "YARDHUB operational data repository must be private");
 assert.equal(metadata.archived, false, "YARDHUB data repository must not be archived");
 assert.equal(metadata.permissions?.push, true, "GitHub token must have write access to the private YARDHUB data repository");
+const writeProbeResponse = await fetch("https://api.github.com/repos/" + encodeURIComponent(owner) + "/" + encodeURIComponent(repo) + "/git/blobs", {
+  method: "POST",
+  headers: { ...headers, "Content-Type": "application/json" },
+  body: JSON.stringify({ content: "YARDHUB direct repository Contents write capability probe v1", encoding: "utf-8" })
+});
+const writeProbe = await writeProbeResponse.json();
+assert.equal(writeProbeResponse.ok, true, "Fine-grained token must have actual Contents: write permission (Git Data blob probe)");
+assert.match(writeProbe.sha || "", /^[a-f0-9]{40}$/, "GitHub must return the created permission-probe blob SHA");
 branch = branch || metadata.default_branch || "main";
 
 const cacheA = memoryStorage();
