@@ -309,6 +309,33 @@ try{
   assert.ok(setupLayout.cardLeft>=0&&setupLayout.cardRight<=setupLayout.viewport+1,"YARDHUB connection card must fit the mobile viewport: "+JSON.stringify(setupLayout));
   await yardhubPage.screenshot({path:"artifacts/yardhub-private-setup-mobile.png",fullPage:true});
 
+  const offlinePage=await browser.newPage({viewport:{width:1440,height:900},deviceScaleFactor:1});
+  const offlineErrors=[];
+  let githubApiRequests=0;
+  offlinePage.on("pageerror",error=>offlineErrors.push(error.message));
+  await offlinePage.addInitScript(()=>{
+    const user={username:"DEV",displayName:"DEV ROOT",tier:"DEV",role:"DEV",userId:"dev-user-1",staffId:"dev-staff-1",rootsAuthority:"DEV",yardRolePermissions:{SCPL:{view:true,enter:true,edit:true,manage:true},Management:{view:true,enter:true,edit:true,manage:true},GATELOG:{view:true,enter:true,edit:true,manage:true},"R&M":{view:true,enter:true,edit:true,manage:true}}};
+    const payload={users:[{username:"DEV",displayName:"DEV ROOT",tier:"DEV",enabled:true}],appData:{},staff:[],tiers:[]};
+    const tables={downtime_central_bank:[{id:1,version:1,updated_at:"2026-11-28T00:00:00.000Z",payload}],downtime_central_sessions:[{token_hash:"cached-session-hash",username:"DEV",expires_at:"2026-11-28T01:00:00.000Z"}],downtime_daily_operator_assignments:[]};
+    const authority={schemaVersion:1,systemId:"YARDHUB-ECOSYSTEM",primarySystemId:"YARDHUB-PRIMARY",secondarySystemId:"DOWNTIMEUI-GITHUB",epoch:1,status:"ACTIVE",replication:{direction:"YARDHUB-PRIMARY_TO_DOWNTIMEUI-GITHUB",status:"NOT_CONFIGURED",lastSuccessfulCheckpoint:null},updatedAt:"2026-11-28T00:00:00.000Z"};
+    localStorage.setItem("yardhub:github-data-connection:v1",JSON.stringify({owner:"demo",repo:"yardhub-data",branch:"main",token:"ghp_offline_test_token"}));
+    localStorage.setItem("yardhub:central-session:v1",JSON.stringify({authenticated:true,token:"offline-session-token",expiresAt:"2026-11-28T01:00:00.000Z",user}));
+    localStorage.setItem("yardhub:github-cache:v1:demo:yardhub-data:YARDHUB-PRIMARY",JSON.stringify({revision:1,manifest:{schemaVersion:1,revision:1,systemId:"YARDHUB-PRIMARY"},tables,authority,headSha:"cached-head",cachedAt:"2026-11-28T00:00:00.000Z"}));
+  });
+  await offlinePage.route("https://api.github.com/**",route=>{githubApiRequests++;return route.abort("internetdisconnected")});
+  await offlinePage.route("https://github-native.invalid/**",route=>route.fulfill({status:503,contentType:"application/json",body:JSON.stringify({error:"Offline browser QA"})}));
+  await offlinePage.goto("http://127.0.0.1:"+address.port+"/yardhub/runtime/index.html",{waitUntil:"networkidle"});
+  await offlinePage.locator("#yardHubOfflineBanner").waitFor({state:"visible",timeout:15000});
+  assert.equal(await offlinePage.locator("#yardHub").isVisible(),true,"A previously connected device must reopen cached YARDHUB data when GitHub is unavailable.");
+  assert.match(await offlinePage.locator("#yardHubOfflineBanner").innerText(),/READ ONLY.*NOT SAVED TO GITHUB/,"Offline mode must be visibly read-only and must not claim central saves.");
+  const requestsBeforeOfflineRefresh=githubApiRequests;
+  await offlinePage.locator("#yardHubRefreshBtn").click();
+  assert.match(await offlinePage.locator("#cloudStatus").innerText(),/REFRESH UNAVAILABLE/,"Manual refresh must report unavailable while offline.");
+  assert.equal(githubApiRequests,requestsBeforeOfflineRefresh,"Offline refresh must not issue a GitHub request or claim a successful sync.");
+  assert.deepEqual(offlineErrors,[],"Offline cached runtime errors: "+offlineErrors.join(" | "));
+  await offlinePage.screenshot({path:"artifacts/yardhub-offline-readonly.png",fullPage:true});
+  await offlinePage.close();
+
   const rmPage=await browser.newPage({viewport:{width:390,height:844},deviceScaleFactor:1});
   const rmRequests=[];
   const rmFailures=[];
@@ -326,7 +353,7 @@ try{
   await yardhubPage.close();
   assert.deepEqual(yardhubFailures,[],"YARDHUB browser runtime errors: "+yardhubFailures.join(" | "));
   assert.deepEqual(rmFailures,[],"Standalone R&M browser runtime errors: "+rmFailures.join(" | "));
-  console.log("PASS: Chromium installer, daily operations, plant overview, task-lock persistence, reports, Settings edits, backup/restore, 390px mobile layout and WIPE OUT reset, YARDHUB private setup gate, standalone R&M lock and mobile layout");
+  console.log("PASS: Chromium installer, daily operations, plant overview, task-lock persistence, reports, Settings edits, backup/restore, 390px mobile layout and WIPE OUT reset, YARDHUB private setup gate, offline cached read-only mode, standalone R&M lock and mobile layout");
 }finally{
   await browser.close();
   await new Promise(resolve=>server.close(resolve));
